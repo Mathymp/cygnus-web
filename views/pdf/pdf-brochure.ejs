@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet">
+    <style>
+        <%- css %>
+        
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Satoshi', 'Helvetica', Arial, sans-serif; 
+            margin: 0; padding: 0; background: white;
+            color: #1f2937; font-size: 11px; line-height: 1.5;
+        }
+
+        .page-wrap {
+            padding: 40px 50px;
+            padding-bottom: 60px;
+            width: 100%;
+            position: relative;
+        }
+
+        .new-page { 
+            page-break-before: always; 
+            padding-top: 40px; 
+        }
+
+        /* HEADER */
+        .header { 
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px;
+        }
+        .logo { height: 45px; object-fit: contain; }
+        .meta-ref { font-size: 12px; font-weight: 800; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* === PÁGINA 1: PORTADA === */
+        
+        .hero { 
+            width: 100%; height: 450px; 
+            position: relative; overflow: hidden; 
+            border-radius: 4px; background: #eee;
+        }
+        .hero img { width: 100%; height: 100%; object-fit: cover; }
+        .badges { position: absolute; top: 20px; left: 20px; display: flex; gap: 8px; }
+        .badge { 
+            background: #fff; color: #111827; padding: 6px 14px; 
+            border-radius: 4px; font-weight: 800; font-size: 10px; 
+            text-transform: uppercase; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .badge.accent { background: #2563eb; color: white; }
+
+        /* Stats Strip */
+        .stats-strip {
+            display: flex; background: #f8fafc; border: 1px solid #e5e7eb; border-top: none;
+            border-radius: 0 0 4px 4px; padding: 15px 0; margin-bottom: 30px;
+        }
+        .stat-item { flex: 1; text-align: center; border-right: 1px solid #e5e7eb; }
+        .stat-item:last-child { border-right: none; }
+        .stat-val { display: block; font-size: 16px; font-weight: 900; color: #111827; }
+        .stat-lbl { font-size: 9px; text-transform: uppercase; color: #6b7280; font-weight: 700; margin-top: 2px; }
+        .stat-icon { color: #2563eb; font-size: 18px; margin-bottom: 5px; display: block; }
+
+        /* Agente Destacado */
+        .agent-featured {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+            padding: 20px 30px; margin-bottom: 30px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05);
+        }
+        .af-left { display: flex; align-items: center; gap: 20px; }
+        .af-logo { width: 60px; height: 60px; object-fit: contain; padding: 4px; border-radius: 50%; border: 1px solid #f3f4f6; }
+        .af-info span { font-size: 10px; color: #9ca3af; text-transform: uppercase; font-weight: 700; }
+        .af-info h3 { margin: 0; font-size: 18px; font-weight: 800; color: #111827; }
+        
+        .af-contact { display: flex; gap: 25px; }
+        .af-btn { font-size: 12px; font-weight: 600; color: #4b5563; display: flex; align-items: center; gap: 8px; }
+        .af-btn i { color: #2563eb; font-size: 16px; }
+
+        /* Info Principal */
+        .title-section { border-top: 2px solid #f3f4f6; padding-top: 30px; }
+        .main-title { font-size: 34px; font-weight: 900; color: #111827; margin: 0 0 10px 0; line-height: 1.1; }
+        .main-addr { 
+            font-size: 14px; color: #4b5563; display: flex; align-items: center; gap: 8px; margin-bottom: 25px; font-weight: 500; 
+        }
+        
+        .price-row { display: flex; gap: 20px; align-items: center; }
+        .price-box { 
+            display: inline-block; background: #eff6ff; border: 1px solid #dbeafe; 
+            padding: 12px 25px; border-radius: 6px;
+        }
+        .price-big { font-size: 24px; font-weight: 900; color: #1e40af; }
+        .price-small { font-size: 13px; color: #60a5fa; font-weight: 600; margin-left: 10px; }
+        
+        .costs-list { display: flex; gap: 15px; }
+        .cost-pill { 
+            background: #f1f5f9; padding: 8px 15px; border-radius: 20px; 
+            font-size: 11px; color: #475569; border: 1px solid #e2e8f0;
+        }
+        .cost-pill strong { color: #0f172a; }
+
+        /* === PÁGINA 2: DETALLES === */
+        
+        /* Galería (Tira de imágenes) */
+        .gallery-strip { 
+            display: flex; gap: 15px; height: 200px; margin-bottom: 30px; 
+        }
+        .gs-img { flex: 1; height: 100%; border-radius: 4px; overflow: hidden; background: #eee; }
+        .gs-img img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Layout 2 Columnas Pág 2 */
+        .details-grid { display: flex; gap: 40px; align-items: flex-start; }
+        .col-main { flex: 1.6; }
+        .col-side { flex: 1; }
+
+        .section-head { 
+            font-size: 14px; font-weight: 900; text-transform: uppercase; color: #111827; 
+            border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 15px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .section-head i { color: #2563eb; }
+
+        .desc-body { font-size: 12px; text-align: justify; color: #374151; white-space: pre-line; line-height: 1.8; margin-bottom: 40px; }
+
+        /* Mapa (En Columna Izquierda) */
+        .map-box { 
+            width: 100%; height: 320px; background: #eee; border: 1px solid #e5e7eb; 
+            border-radius: 8px; overflow: hidden; margin-bottom: 5px; margin-top: 30px;
+        }
+        .map-box img { width: 100%; height: 100%; object-fit: cover; }
+        .map-legend { font-size: 10px; color: #9ca3af; text-align: right; font-style: italic; }
+
+        /* Sidebar Derecha: Features y Legal */
+        .feat-group { margin-bottom: 20px; }
+        .feat-h { 
+            font-size: 11px; font-weight: 800; color: #2563eb; text-transform: uppercase; 
+            margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;
+        }
+        .feat-item { font-size: 11px; color: #4b5563; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+        .feat-item i { color: #10b981; font-size: 10px; }
+
+        /* LEGAL (Al final de la columna derecha) */
+        .legal-box {
+            background: #f8fafc; border: 1px solid #e5e7eb; padding: 20px; 
+            border-radius: 6px; font-size: 9px; text-align: justify; line-height: 1.4; color: #64748b;
+            margin-top: 40px;
+        }
+        .legal-box strong { color: #0f172a; display: block; margin-bottom: 5px; font-size: 10px; text-transform: uppercase; }
+
+        /* Footer Fijo */
+        .footer {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            height: 40px; background: #fff; border-top: 1px solid #e5e7eb;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 50px; z-index: 1000;
+        }
+        .ft-l img { height: 20px; opacity: 0.8; }
+        .ft-r { font-size: 9px; color: #9ca3af; }
+
+    </style>
+</head>
+<body>
+
+    <div class="page-wrap">
+        <div class="header">
+            <img src="<%= imgBase %>/img/logo.png" class="logo">
+            <div class="meta-ref">FICHA TÉCNICA #<%= prop.id %></div>
+        </div>
+
+        <div class="hero">
+            <% if (cleanData.mainImage) { %>
+                <img src="<%= cleanData.mainImage %>">
+            <% } %>
+            <div class="badges">
+                <div class="badge accent"><%= prop.operation_type %></div>
+                <div class="badge"><%= prop.category %></div>
+            </div>
+        </div>
+
+        <div class="stats-strip">
+            <div class="stat-item">
+                <span class="stat-icon"><i class="fas fa-bed"></i></span>
+                <span class="stat-val"><%= prop.bedrooms || '-' %></span>
+                <span class="stat-lbl">Dormitorios</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon"><i class="fas fa-bath"></i></span>
+                <span class="stat-val"><%= prop.bathrooms || '-' %></span>
+                <span class="stat-lbl">Baños</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon"><i class="fas fa-ruler-combined"></i></span>
+                <span class="stat-val"><%= prop.surface_total ? prop.surface_total : '-' %></span>
+                <span class="stat-lbl">m² Total</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon"><i class="fas fa-ruler-horizontal"></i></span>
+                <span class="stat-val"><%= prop.surface_util ? prop.surface_util : '-' %></span>
+                <span class="stat-lbl">m² Útil</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-icon"><i class="fas fa-car"></i></span>
+                <span class="stat-val"><%= prop.parking || '-' %></span>
+                <span class="stat-lbl">Estac.</span>
+            </div>
+        </div>
+
+        <div class="agent-featured">
+            <div class="af-left">
+                <img src="<%= imgBase %>/img/logo.png" class="af-logo">
+                <div class="af-info">
+                    <span>Publicado por</span>
+                    <h3><%= cleanData.contactInfo.displayName %></h3>
+                </div>
+            </div>
+            <div class="af-contact">
+                <div class="af-btn"><i class="fas fa-phone"></i> <%= cleanData.contactInfo.phone %></div>
+                <div class="af-btn"><i class="fas fa-envelope"></i> <%= cleanData.contactInfo.email %></div>
+            </div>
+        </div>
+
+        <div class="title-section">
+            <div class="price-row">
+                <div class="price-box">
+                    <span class="price-big"><%= cleanData.priceMain %></span>
+                    <span class="price-small"><%= cleanData.priceSecond %> (Aprox)</span>
+                </div>
+                
+                <div class="costs-list">
+                    <% if(prop.common_expenses > 0) { %>
+                        <div class="cost-pill">Gastos Comunes: <strong>$<%= Number(prop.common_expenses).toLocaleString('es-CL') %></strong></div>
+                    <% } %>
+                    <% if(prop.contributions > 0) { %>
+                        <div class="cost-pill">Contribuciones: <strong>$<%= Number(prop.contributions).toLocaleString('es-CL') %></strong></div>
+                    <% } %>
+                </div>
+            </div>
+            
+            <h1 class="main-title" style="margin-top: 20px;"><%= prop.title %></h1>
+            <div class="main-addr">
+                <i class="fas fa-map-marker-alt" style="color:#ef4444;"></i>
+                <%= cleanData.addressDisplay %>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-wrap new-page">
+        
+        <div class="header" style="border-color:#e5e7eb; margin-bottom:30px;">
+            <img src="<%= imgBase %>/img/logo.png" style="height:35px; opacity:0.6;">
+            <div class="meta-ref" style="font-size:10px;">DETALLES Y ENTORNO</div>
+        </div>
+
+        <% if (cleanData.galleryImages && cleanData.galleryImages.length > 0) { %>
+        <div class="gallery-strip">
+            <% cleanData.galleryImages.forEach(imgUrl => { %>
+                <div class="gs-img"><img src="<%= imgUrl %>"></div>
+            <% }) %>
+        </div>
+        <% } %>
+
+        <div class="details-grid">
+            <div class="col-main">
+                <div class="section-head"><i class="fas fa-align-left"></i> Descripción</div>
+                <div class="desc-body">
+                    <%- prop.description %>
+                </div>
+
+                <% if (cleanData.mapUrl) { %>
+                <div class="section-head" style="margin-top:40px;"><i class="fas fa-map"></i> Ubicación</div>
+                <div class="map-box">
+                    <img src="<%= cleanData.mapUrl %>">
+                </div>
+                <div class="map-legend">
+                    <%= prop.show_exact_address ? 'Ubicación Exacta' : 'Ubicación Referencial (Zona Aproximada)' %>
+                </div>
+                <% } %>
+            </div>
+
+            <div class="col-side">
+                <div class="section-head" style="border:none; margin-bottom:15px;"><i class="fas fa-list-ul"></i> Equipamiento</div>
+                
+                <% if (cleanData.hasFeatures) { %>
+                    <% Object.keys(cleanData.featureGroups).forEach(groupTitle => { %>
+                        <div class="feat-group">
+                            <div class="feat-h"><%= groupTitle %></div>
+                            <% cleanData.featureGroups[groupTitle].forEach(item => { %>
+                                <div class="feat-item"><i class="fas fa-check-circle"></i> <%= item %></div>
+                            <% }) %>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div style="font-size:11px; color:#6b7280; font-style:italic;">No se especificaron detalles.</div>
+                <% } %>
+
+                <div class="legal-box">
+                    <strong>AVISO LEGAL</strong>
+                    La información contenida en esta ficha técnica es de carácter referencial y ha sido proporcionada por el propietario.
+                    Cygnus Group Propiedades no se responsabiliza por errores u omisiones involuntarias. Las superficies y características deben ser verificadas.
+                    Precios sujetos a confirmación.
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <div class="ft-l">
+            <img src="<%= imgBase %>/img/logo.png">
+        </div>
+        <div class="ft-r">
+            CYGNUS GROUP PROPIEDADES | www.cygnusgroup.cl
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,147 @@
+<div class="prop-card-modern property-item" 
+     data-title="<%= prop.title.toLowerCase() %>" 
+     data-status="<%= prop.status %>"
+     data-agent="<%= prop.agent ? prop.agent.id : 'admin' %>" 
+     data-code="<%= prop.id.split('-')[0] %>">
+    
+    <div class="card-image-section">
+        <img src="<%= (prop.images && prop.images.length > 0) ? prop.images[0].url : '/img/default-prop.jpg' %>" alt="Propiedad">
+        <div class="overlay-info">
+            <span class="badge type"><%= prop.category %></span>
+            <span class="badge oper"><%= prop.operation_type %></span>
+        </div>
+        
+        <% 
+            let sClass = 'bg-gray-500'; let sText = 'Pausada';
+            if(prop.status === 'publicado') { sClass = 'bg-emerald-500'; sText = 'Activa'; }
+            else if(prop.status === 'reservado') { sClass = 'bg-amber-500'; sText = 'Reservada'; }
+            else if(prop.status === 'vendido') { sClass = 'bg-red-500'; sText = 'Vendida'; }
+            else if(prop.status === 'arrendado') { sClass = 'bg-indigo-500'; sText = 'Arrendada'; }
+        %>
+        <div class="status-tag" style="background: white;">
+            <div class="status-dot <%= sClass %>"></div>
+            <span style="color: #475569; font-weight: 700; font-size: 0.75rem;"><%= sText %></span>
+        </div>
+    </div>
+
+    <div class="card-data-section">
+        <div class="data-header">
+            <small class="code">REF: <%= prop.id.split('-')[0] %></small>
+            <h3 class="title" title="<%= prop.title %>"><%= prop.title %></h3>
+            <p class="location"><i class="ph-duotone ph-map-pin"></i> <%= prop.address_commune %></p>
+        </div>
+
+        <div class="price-block">
+            <% if(prop.currency === 'UF') { %>
+                <div class="price-main">UF <%= prop.price.toLocaleString('es-CL') %></div>
+                <div class="price-sub">$<%= Math.round(prop.price * currentUFValue).toLocaleString('es-CL') %></div>
+            <% } else { %>
+                <div class="price-main">$<%= parseInt(prop.price).toLocaleString('es-CL') %></div>
+                <div class="price-sub">Pesos Chilenos</div>
+            <% } %>
+        </div>
+
+        <div class="agent-row">
+            <% if(prop.agent && prop.agent.name) { %>
+                <div class="agent-pill">
+                    <i class="ph-bold ph-user"></i> <%= prop.agent.name.split(' ')[0] %>
+                </div>
+            <% } else { %>
+                <div class="agent-pill company">
+                    <i class="ph-bold ph-buildings"></i> Empresa
+                </div>
+            <% } %>
+        </div>
+
+        <div class="action-buttons">
+            <a href="/propiedad/<%= prop.id %>" target="_blank" class="btn-action view" title="Ver ficha">
+                <i class="ph-bold ph-eye"></i>
+            </a>
+            <a href="/admin/editar-propiedad/<%= prop.id %>" class="btn-action edit" title="Editar">
+                <i class="ph-bold ph-pencil-simple"></i>
+            </a>
+            
+            <div class="dropdown-wrapper" style="flex: 1;">
+                <button class="btn-action menu" onclick="toggleMenu('<%= prop.id %>')" style="width: 100%;">
+                    <i class="ph-bold ph-dots-three"></i>
+                </button>
+                
+                <div id="menu-<%= prop.id %>" class="mini-menu">
+                    <div class="menu-head">Cambiar Estado</div>
+                    <div onclick="changeStatus('<%= prop.id %>', 'publicado')"><span class="dot bg-emerald-500"></span> Publicar</div>
+                    <div onclick="changeStatus('<%= prop.id %>', 'reservado')"><span class="dot bg-amber-500"></span> Reservar</div>
+                    <div onclick="changeStatus('<%= prop.id %>', 'arrendado')"><span class="dot bg-indigo-500"></span> Arrendada</div>
+                    <div onclick="changeStatus('<%= prop.id %>', 'vendido')"><span class="dot bg-red-500"></span> Vendida</div>
+                    <div class="sep"></div>
+                    <div onclick="changeStatus('<%= prop.id %>', 'borrador')"><span class="dot bg-gray-400"></span> Pausar</div>
+                    
+                    <% if(isAdmin) { %>
+                        <div class="sep"></div>
+                        <div onclick="openReassignModal('<%= prop.id %>')"><i class="ph-bold ph-user-switch"></i> Reasignar</div>
+                        <div onclick="openDeleteModal('<%= prop.id %>')" class="text-danger"><i class="ph-bold ph-trash"></i> Eliminar</div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ESTILOS TARJETA ELITE */
+    .prop-card-modern {
+        background: white; border: 1px solid #e2e8f0; border-radius: 16px;
+        overflow: hidden; display: flex; flex-direction: column;
+        transition: all 0.2s ease;
+    }
+    .prop-card-modern:hover { border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+
+    .card-image-section { position: relative; height: 200px; background: #f1f5f9; }
+    .card-image-section img { width: 100%; height: 100%; object-fit: cover; }
+    
+    .overlay-info { position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; }
+    .badge { padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; backdrop-filter: blur(4px); }
+    .badge.type { background: rgba(255,255,255,0.9); color: #0f172a; }
+    .badge.oper { background: #0f172a; color: white; }
+
+    .status-tag { position: absolute; bottom: 12px; right: 12px; padding: 4px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .bg-emerald-500 { background: #10b981; } .bg-amber-500 { background: #f59e0b; }
+    .bg-red-500 { background: #ef4444; } .bg-indigo-500 { background: #6366f1; } .bg-gray-500 { background: #64748b; }
+
+    .card-data-section { padding: 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    
+    .data-header .code { font-size: 0.7rem; color: #94a3b8; font-weight: 700; display: block; margin-bottom: 2px; }
+    .data-header .title { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .data-header .location { font-size: 0.85rem; color: #64748b; margin: 2px 0 0; display: flex; align-items: center; gap: 4px; }
+
+    .price-block { background: #f8fafc; padding: 10px; border-radius: 10px; border: 1px solid #f1f5f9; }
+    .price-main { font-size: 1.25rem; font-weight: 800; color: #0f172a; line-height: 1; }
+    .price-sub { font-size: 0.8rem; color: #64748b; margin-top: 3px; font-weight: 500; }
+
+    .agent-row { display: flex; margin-bottom: 4px; }
+    .agent-pill { background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .agent-pill i { color: #3b82f6; }
+
+    .action-buttons { display: flex; gap: 8px; margin-top: auto; }
+    .btn-action { height: 40px; border: 1px solid #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: 0.2s; background: white; width: 40px; text-decoration: none; font-size: 1.2rem; }
+    .btn-action:hover { background: #f8fafc; color: #0f172a; border-color: #cbd5e1; }
+    .btn-action.menu { width: auto; padding: 0 15px; } /* Botón menú más ancho */
+
+    /* MENU DESPLEGABLE */
+    .dropdown-wrapper { position: relative; }
+    .mini-menu { 
+        position: absolute; bottom: 110%; right: 0; width: 200px; 
+        background: white; border-radius: 12px; padding: 8px; 
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; 
+        display: none; z-index: 50; 
+    }
+    .mini-menu.show { display: block; animation: popUp 0.1s ease-out; }
+    .menu-head { font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; padding: 4px 10px; margin-bottom: 4px; }
+    .mini-menu div:not(.menu-head):not(.sep) { padding: 8px 10px; border-radius: 6px; font-size: 0.9rem; color: #334155; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+    .mini-menu div:not(.menu-head):not(.sep):hover { background: #f1f5f9; color: #0f172a; }
+    .mini-menu .sep { height: 1px; background: #f1f5f9; margin: 4px 0; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .text-danger { color: #ef4444 !important; } .text-danger:hover { background: #fef2f2 !important; }
+
+    @keyframes popUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>

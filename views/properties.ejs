@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <link rel="stylesheet" href="/css/index.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <title>Propiedades | Cygnus Group</title>
+    <style>
+        .properties-header {
+            background: linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.7)), url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2000&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            padding: 80px 20px 40px;
+            text-align: center;
+            color: white;
+            margin-bottom: -60px; /* Para que el buscador se superponga */
+        }
+        .properties-header h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; }
+        .properties-header p { font-size: 1.1rem; opacity: 0.9; font-weight: 300; }
+        .search-container-wrapper { margin-top: 0; position: relative; z-index: 10; }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <%- include('partials/navbar') %>
+
+    <% 
+        let props = (typeof properties !== 'undefined') ? properties : [];
+        let activeFilters = (typeof filters !== 'undefined') ? filters : {};
+        
+        // CORRECCIÓN DE ERROR AQUÍ: Usamos 'pageUf' en lugar de 'ufVal' para evitar conflictos
+        let pageUf = (typeof ufVal !== 'undefined') ? ufVal : 38000;
+
+        const fmtCLP = (v) => '$ ' + Number(v).toLocaleString('es-CL', { maximumFractionDigits: 0 });
+        const fmtUF = (v) => 'UF ' + Number(v).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    %>
+
+    <header class="properties-header">
+        <h1>Catálogo de Propiedades</h1>
+        <p>Encuentra tu próxima inversión o el hogar de tus sueños</p>
+    </header>
+
+    <div class="search-container-wrapper">
+        <form action="/propiedades" method="GET" class="search-card-modern" id="searchForm">
+            <div class="search-header-row">
+                <div class="search-tabs-modern">
+                    <label class="tab-modern">
+                        <input type="radio" name="operacion" value="Venta" <%= (!activeFilters.operacion || activeFilters.operacion === 'Venta') ? 'checked' : '' %>>
+                        <span class="tab-label">Venta</span>
+                    </label>
+                    <label class="tab-modern">
+                        <input type="radio" name="operacion" value="Arriendo" <%= (activeFilters.operacion === 'Arriendo') ? 'checked' : '' %>>
+                        <span class="tab-label">Arriendo</span>
+                    </label>
+                </div>
+                <div class="uf-indicator-pill">
+                    <i class="ph-bold ph-trend-up"></i> Hoy UF: <strong><%= fmtCLP(pageUf).replace('$ ', '$') %></strong>
+                </div>
+            </div>
+
+            <div class="search-grid-modern">
+                <div class="input-modern-group">
+                    <div class="input-label-row"><i class="ph-bold ph-map-trifold"></i> Región</div>
+                    <div class="custom-select-wrapper">
+                        <select name="region" id="regionSelect" class="modern-select" onchange="loadComunas()">
+                            <option value="">Todas</option>
+                        </select>
+                        <i class="ph-bold ph-caret-down select-arrow"></i>
+                    </div>
+                </div>
+
+                <div class="input-modern-group">
+                    <div class="input-label-row"><i class="ph-bold ph-map-pin"></i> Comuna</div>
+                    <div class="custom-select-wrapper">
+                        <select name="comuna" id="comunaSelect" class="modern-select" disabled>
+                            <option value="">Selecciona Región</option>
+                        </select>
+                        <i class="ph-bold ph-caret-down select-arrow"></i>
+                    </div>
+                </div>
+
+                <div class="input-modern-group">
+                    <div class="input-label-row"><i class="ph-bold ph-house"></i> Tipo</div>
+                    <div class="custom-select-wrapper">
+                        <select name="tipo" class="modern-select">
+                            <option value="">Cualquiera</option>
+                            <option value="Casa" <%= activeFilters.tipo === 'Casa' ? 'selected' : '' %>>Casa</option>
+                            <option value="Departamento" <%= activeFilters.tipo === 'Departamento' ? 'selected' : '' %>>Depto</option>
+                            <option value="Oficina" <%= activeFilters.tipo === 'Oficina' ? 'selected' : '' %>>Oficina</option>
+                            <option value="Terreno" <%= activeFilters.tipo === 'Terreno' ? 'selected' : '' %>>Terreno</option>
+                            <option value="Parcela" <%= activeFilters.tipo === 'Parcela' ? 'selected' : '' %>>Parcela</option>
+                            <option value="Industrial" <%= activeFilters.tipo === 'Industrial' ? 'selected' : '' %>>Industrial</option>
+                            <option value="Local" <%= activeFilters.tipo === 'Local' ? 'selected' : '' %>>Local</option>
+                        </select>
+                        <i class="ph-bold ph-caret-down select-arrow"></i>
+                    </div>
+                </div>
+
+                <div class="input-modern-group price-group-wide">
+                    <div class="input-label-row"><i class="ph-bold ph-currency-dollar"></i> Rango Precio</div>
+                    <div class="price-control-wrapper">
+                        <div class="segmented-control">
+                            <input type="radio" name="moneda_display" id="curr_uf" value="UF" checked onchange="toggleCurrency('UF')">
+                            <label for="curr_uf">UF</label>
+                            <input type="radio" name="moneda_display" id="curr_clp" value="CLP" onchange="toggleCurrency('CLP')">
+                            <label for="curr_clp">$</label>
+                        </div>
+                        <div class="price-inputs-modern">
+                            <input type="text" name="min_price" id="min_price" placeholder="Mín UF" class="clean-input-price" oninput="formatPriceInput(this)" value="<%= activeFilters.min_price || '' %>">
+                            <span class="dash">-</span>
+                            <input type="text" name="max_price" id="max_price" placeholder="Máx UF" class="clean-input-price" oninput="formatPriceInput(this)" value="<%= activeFilters.max_price || '' %>">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-modern-group distrib-group">
+                    <div class="input-label-row"><i class="ph-bold ph-door"></i> Distrib.</div>
+                    <div class="distrib-flex">
+                        <div class="custom-select-wrapper mini">
+                            <select name="dorms" class="modern-select">
+                                <option value="">Hab.</option>
+                                <option value="1" <%= activeFilters.dorms == '1' ? 'selected' : '' %>>1+</option>
+                                <option value="2" <%= activeFilters.dorms == '2' ? 'selected' : '' %>>2+</option>
+                                <option value="3" <%= activeFilters.dorms == '3' ? 'selected' : '' %>>3+</option>
+                                <option value="4" <%= activeFilters.dorms == '4' ? 'selected' : '' %>>4+</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down select-arrow"></i>
+                        </div>
+                        <div class="custom-select-wrapper mini">
+                            <select name="banos" class="modern-select">
+                                <option value="">Baños</option>
+                                <option value="1" <%= activeFilters.banos == '1' ? 'selected' : '' %>>1+</option>
+                                <option value="2" <%= activeFilters.banos == '2' ? 'selected' : '' %>>2+</option>
+                                <option value="3" <%= activeFilters.banos == '3' ? 'selected' : '' %>>3+</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down select-arrow"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="search-btn-modern">
+                    <i class="ph-bold ph-magnifying-glass"></i> <span class="btn-text">Filtrar</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <section class="results-section" style="padding-top: 40px;">
+        <div class="results-header">
+            <h2 class="results-title">Resultados de Búsqueda <span class="count-badge"><%= props.length %></span></h2>
+            <% if(Object.keys(activeFilters).length > 0) { %>
+                <a href="/propiedades" class="clear-filters-btn">Limpiar Filtros <i class="ph-bold ph-trash"></i></a>
+            <% } %>
+        </div>
+
+        <% if(props.length === 0) { %>
+            <div class="no-results">
+                <div class="empty-state-icon"><i class="ph-duotone ph-magnifying-glass"></i></div>
+                <h3>No encontramos propiedades</h3>
+                <p>Intenta cambiar la región o ampliar el rango de precio.</p>
+                <a href="/propiedades" class="btn-reset">Ver todo el inventario</a>
+            </div>
+        <% } %>
+
+        <div class="properties-grid">
+            <% props.forEach(p => { 
+                let img = '/img/logo.png';
+                try { 
+                    if(p.images && p.images.length) {
+                        img = (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url);
+                    }
+                } catch(e){}
+
+                let rawPrice = parseFloat(p.price || 0);
+                let currency = p.currency || 'UF';
+                let price1 = '', price2 = '';
+                // Usamos pageUf aquí
+                if(currency === 'UF') {
+                    price1 = fmtUF(rawPrice);
+                    price2 = fmtCLP(rawPrice * pageUf);
+                } else {
+                    price1 = fmtCLP(rawPrice);
+                    price2 = fmtUF(rawPrice / pageUf);
+                }
+
+                const joinAddr = (...parts) => parts.filter(part => part && part.toString().trim().length > 0).join(', ');
+                let fullAddress = joinAddr(p.address_commune, p.city, p.address_region || p.region);
+
+                let statusRaw = (p.status || p.state || 'disponible').toLowerCase().trim();
+                let statusConfig = { text: '', glassClass: '', showOverlay: false };
+                if (statusRaw.includes('vend') || statusRaw.includes('arrendad') || statusRaw.includes('reserv')) {
+                    statusConfig.showOverlay = true;
+                    if (statusRaw.includes('vend')) { statusConfig.text = 'VENDIDO'; statusConfig.glassClass = 'glass-sold'; }
+                    else if (statusRaw.includes('arrend')) { statusConfig.text = 'ARRENDADO'; statusConfig.glassClass = 'glass-rented'; }
+                    else if (statusRaw.includes('reserv')) { statusConfig.text = 'RESERVADO'; statusConfig.glassClass = 'glass-reserved'; }
+                }
+            %>
+            
+            <article class="property-card" onclick="window.location.href='/propiedad/<%= p.id %>'">
+                <div class="card-image-wrapper">
+                    <img src="<%= img %>" alt="<%= p.title %>" loading="lazy">
+                    <div class="card-badges-top">
+                        <div class="card-badge op-badge <%= p.operation_type === 'Arriendo' ? 'rent' : 'sale' %>"><%= p.operation_type %></div>
+                        <div class="card-badge type-badge"><%= p.category %></div>
+                    </div>
+                    <% if(statusConfig.showOverlay) { %>
+                        <div class="status-overlay-center">
+                            <div class="status-glass-card <%= statusConfig.glassClass %>"><%= statusConfig.text %></div>
+                        </div>
+                    <% } %>
+                </div>
+                
+                <div class="card-content">
+                    <div class="card-prices-row">
+                        <span class="price-tag primary"><%= price1 %></span>
+                        <span class="price-divider">|</span>
+                        <span class="price-tag secondary"><%= price2 %></span>
+                    </div>
+                    <h3 class="card-title"><%= p.title %></h3>
+                    <p class="card-address" title="<%= fullAddress %>"><i class="ph-fill ph-map-pin"></i> <%= fullAddress %></p>
+                    <div class="card-features">
+                        <% if(p.bedrooms > 0) { %><span><i class="ph-bold ph-bed"></i> <%= p.bedrooms %></span><% } %>
+                        <% if(p.bathrooms > 0) { %><span><i class="ph-bold ph-shower"></i> <%= p.bathrooms %></span><% } %>
+                        <% if(p.surface_total > 0) { %><span><i class="ph-bold ph-ruler"></i> <%= p.surface_total %> m²</span><% } %>
+                    </div>
+                </div>
+            </article>
+            <% }) %>
+        </div>
+    </section>
+
+    <%- include('partials/footer') %>
+
+    <script>
+        // DATA GEOGRÁFICA (Misma del index)
+        const chileData = {
+            "Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
+            "Tarapacá": ["Iquique", "Alto Hospicio", "Pozo Almonte", "Camiña", "Colchane", "Huara", "Pica"],
+            "Antofagasta": ["Antofagasta", "Mejillones", "Sierra Gorda", "Taltal", "Calama", "Ollagüe", "San Pedro de Atacama", "Tocopilla", "María Elena"],
+            "Atacama": ["Copiapó", "Caldera", "Tierra Amarilla", "Chañaral", "Diego de Almagro", "Vallenar", "Alto del Carmen", "Freirina", "Huasco"],
+            "Coquimbo": ["La Serena", "Coquimbo", "Andacollo", "La Higuera", "Paiguano", "Vicuña", "Illapel", "Canela", "Los Vilos", "Salamanca", "Ovalle", "Combarbalá", "Monte Patria", "Punitaqui", "Río Hurtado"],
+            "Valparaíso": ["Valparaíso", "Casablanca", "Concón", "Juan Fernández", "Puchuncaví", "Quintero", "Viña del Mar", "Isla de Pascua", "Los Andes", "Calle Larga", "Rinconada", "San Esteban", "La Ligua", "Cabildo", "Papudo", "Petorca", "Zapallar", "Quillota", "Calera", "Hijuelas", "La Cruz", "Nogales", "San Antonio", "Algarrobo", "Cartagena", "El Quisco", "El Tabo", "Santo Domingo", "San Felipe", "Catemu", "Llaillay", "Panquehue", "Putaendo", "Santa María", "Quilpué", "Limache", "Olmué", "Villa Alemana"],
+            "Metropolitana": ["Santiago", "Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Joaquín", "San Miguel", "San Ramón", "Vitacura", "Puente Alto", "Pirque", "San José de Maipo", "Colina", "Lampa", "Tiltil", "San Bernardo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
+            "O'Higgins": ["Rancagua", "Codegua", "Coinco", "Coltauco", "Doñihue", "Graneros", "Las Cabras", "Machalí", "Malloa", "Mostazal", "Olivar", "Peumo", "Pichidegua", "Quinta de Tilcoco", "Rengo", "Requínoa", "San Vicente", "Pichilemu", "La Estrella", "Litueche", "Marchihue", "Navidad", "Paredones", "San Fernando", "Chépica", "Chimbarongo", "Lolol", "Nancagua", "Palmilla", "Peralillo", "Placilla", "Pumanque", "Santa Cruz"],
+            "Maule": ["Talca", "Constitución", "Curepto", "Empedrado", "Maule", "Pelarco", "Pencahue", "Río Claro", "San Clemente", "San Rafael", "Cauquenes", "Chanco", "Pelluhue", "Curicó", "Hualañé", "Licantén", "Molina", "Rauco", "Romeral", "Sagrada Familia", "Teno", "Vichuquén", "Linares", "Colbún", "Longaví", "Parral", "Retiro", "San Javier", "Villa Alegre", "Yerbas Buenas"],
+            "Ñuble": ["Chillán", "Chillán Viejo", "Bulnes", "Cobquecura", "Coelemu", "Coihueco", "El Carmen", "Ninhue", "Ñiquén", "Pemuco", "Pinto", "Portezuelo", "Quillón", "Quirihue", "Ránquil", "San Carlos", "San Fabián", "San Ignacio", "San Nicolás", "Treguaco", "Yungay"],
+            "Biobío": ["Concepción", "Coronel", "Chiguayante", "Florida", "Hualqui", "Lota", "Penco", "San Pedro de la Paz", "Santa Juana", "Talcahuano", "Tomé", "Hualpén", "Lebu", "Arauco", "Cañete", "Contulmo", "Curanilahue", "Los Álamos", "Tirúa", "Los Ángeles", "Antuco", "Cabrero", "Laja", "Mulchén", "Nacimiento", "Negrete", "Quilaco", "Quilleco", "San Rosendo", "Santa Bárbara", "Tucapel", "Yumbel", "Alto Biobío"],
+            "Araucanía": ["Temuco", "Carahue", "Cunco", "Curarrehue", "Freire", "Galvarino", "Gorbea", "Lautaro", "Loncoche", "Melipeuco", "Nueva Imperial", "Padre Las Casas", "Perquenco", "Pitrufquén", "Pucón", "Saavedra", "Teodoro Schmidt", "Toltén", "Vilcún", "Villarrica", "Cholchol", "Angol", "Collipulli", "Curacautín", "Ercilla", "Lonquimay", "Los Sauces", "Lumaco", "Purén", "Renaico", "Traiguén", "Victoria"],
+            "Los Ríos": ["Valdivia", "Corral", "Lanco", "Los Lagos", "Máfil", "Mariquina", "Paillaco", "Panguipulli", "La Unión", "Futrono", "Lago Ranco", "Río Bueno"],
+            "Los Lagos": ["Puerto Montt", "Calbuco", "Cochamó", "Fresia", "Frutillar", "Los Muermos", "Llanquihue", "Maullín", "Puerto Varas", "Castro", "Ancud", "Chonchi", "Curaco de Vélez", "Dalcahue", "Puqueldón", "Queilén", "Quellón", "Quemchi", "Quinchao", "Osorno", "Puerto Octay", "Purranque", "Puyehue", "Río Negro", "San Juan de la Costa", "San Pablo", "Chaitén", "Futaleufú", "Hualaihué", "Palena"],
+            "Aysén": ["Coyhaique", "Lago Verde", "Aysén", "Cisnes", "Guaitecas", "Cochrane", "O'Higgins", "Tortel", "Chile Chico", "Río Ibáñez"],
+            "Magallanes": ["Punta Arenas", "Laguna Blanca", "Río Verde", "San Gregorio", "Cabo de Hornos", "Antártica", "Porvenir", "Primavera", "Timaukel", "Natales", "Torres del Paine"]
+        };
+
+        const regionSelect = document.getElementById('regionSelect');
+        const comunaSelect = document.getElementById('comunaSelect');
+        const savedRegion = "<%= activeFilters.region || '' %>";
+        const savedComuna = "<%= activeFilters.comuna || '' %>";
+
+        function initLocationSelectors() {
+            Object.keys(chileData).forEach(region => {
+                const option = document.createElement('option');
+                option.value = region;
+                option.textContent = region;
+                if (savedRegion && (savedRegion.includes(region) || region.includes(savedRegion))) option.selected = true;
+                regionSelect.appendChild(option);
+            });
+            if (regionSelect.value) loadComunas();
+        }
+
+        function loadComunas() {
+            const selectedRegion = regionSelect.value;
+            comunaSelect.innerHTML = '<option value="">Todas las comunas</option>';
+            if (selectedRegion && chileData[selectedRegion]) {
+                comunaSelect.disabled = false;
+                chileData[selectedRegion].forEach(comuna => {
+                    const option = document.createElement('option');
+                    option.value = comuna;
+                    option.textContent = comuna;
+                    if (savedComuna === comuna) option.selected = true;
+                    comunaSelect.appendChild(option);
+                });
+            } else {
+                comunaSelect.disabled = true;
+            }
+        }
+
+        function toggleCurrency(curr) {
+            const minInput = document.getElementById('min_price');
+            const maxInput = document.getElementById('max_price');
+            minInput.value = ''; maxInput.value = '';
+            if(curr === 'UF') { minInput.placeholder = "Mín UF"; maxInput.placeholder = "Máx UF"; } 
+            else { minInput.placeholder = "Mín CLP"; maxInput.placeholder = "Máx CLP"; }
+        }
+
+        function formatPriceInput(input) {
+            let value = input.value.replace(/\D/g, "");
+            if (value === "") { input.value = ""; return; }
+            input.value = new Intl.NumberFormat('es-CL').format(value);
+        }
+
+        document.addEventListener('DOMContentLoaded', initLocationSelectors);
+    </script>
+</body>
+</html>

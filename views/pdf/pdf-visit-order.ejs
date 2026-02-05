@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet">
+    <style>
+        <%- css %>
+        
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Satoshi', 'Helvetica', Arial, sans-serif; 
+            background: white !important; margin: 0; padding: 40px;
+            color: #1e293b; font-size: 11px; line-height: 1.5;
+        }
+
+        .header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 3px solid #0f172a; padding-bottom: 15px; margin-bottom: 30px;
+        }
+        .logo { height: 45px; }
+        .title { text-align: right; }
+        .title h1 { margin: 0; font-size: 22px; text-transform: uppercase; font-weight: 900; color: #0f172a; }
+        .title p { margin: 2px 0 0; color: #64748b; font-size: 10px; font-weight: 600; }
+
+        .section-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 25px; }
+        .section-title { 
+            background: #f8fafc; padding: 8px 12px; font-weight: 800; text-transform: uppercase; 
+            font-size: 10px; color: #0f172a; border-left: 4px solid #2563eb; margin-bottom: 12px;
+        }
+
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .data-item label { display: block; font-size: 9px; color: #64748b; text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+        .data-item div { font-size: 12px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+
+        .legal-text { 
+            font-size: 10px; text-align: justify; color: #334155; line-height: 1.6; 
+            background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0;
+        }
+        .legal-text strong { color: #0f172a; }
+
+        .signatures { margin-top: 70px; display: flex; justify-content: space-between; gap: 40px; }
+        .sig-box { flex: 1; text-align: center; }
+        .sig-line { border-bottom: 1px solid #0f172a; margin-bottom: 8px; height: 30px; }
+        .sig-name { font-weight: 800; font-size: 11px; text-transform: uppercase; }
+        .sig-rut { font-size: 10px; color: #64748b; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <img src="<%= imgBase %>/img/logo.png" class="logo">
+        <div class="title">
+            <h1>Orden de Visita</h1>
+            <p>Folio: <%= prop.id %> | Fecha: <%= cleanData.todayDate %></p>
+        </div>
+    </div>
+
+    <div class="section-title">Propiedad Visitada</div>
+    <div class="section-box">
+        <div class="data-grid">
+            <div class="data-item" style="grid-column: span 2;">
+                <label>Dirección</label>
+                <div><%= prop.address_street %> #<%= prop.address_number %>, <%= prop.address_commune %></div>
+            </div>
+            <div class="data-item">
+                <label>Precio de Lista</label>
+                <div><%= cleanData.priceMain %></div>
+            </div>
+            <div class="data-item">
+                <label>Tipo Operación</label>
+                <div><%= prop.operation_type %></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">Datos del Visitante</div>
+    <div class="section-box">
+        <div class="data-grid">
+            <div class="data-item">
+                <label>Nombre Completo</label>
+                <div><%= cleanData.clientName %></div>
+            </div>
+            <div class="data-item">
+                <label>RUT / Pasaporte</label>
+                <div><%= cleanData.clientRut %></div>
+            </div>
+            <div class="data-item" style="grid-column: span 2;">
+                <label>Teléfono / Email</label>
+                <div>______________________________________________________________________</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-title">Compromiso de Honorarios y Exclusividad</div>
+    <div class="legal-text">
+        <p>Por medio del presente instrumento, declaro haber visitado la propiedad individualizada anteriormente por intermedio de <strong><%= cleanData.contactInfo.displayName %></strong> (Cygnus Group Propiedades).</p>
+        <br>
+        <p><strong>1. EXCLUSIVIDAD:</strong> Reconozco que la gestión comercial de este inmueble corresponde a la corredora y me comprometo a no tratar directamente con el propietario sin la intermediación de la misma.</p>
+        <br>
+        <p><strong>2. HONORARIOS:</strong> En caso de concretarse el cierre de negocio (Compraventa o Arriendo), ya sea a mi nombre, o a través de un familiar directo o sociedad relacionada, me obligo al pago de la siguiente comisión:</p>
+        <ul style="margin: 5px 0 10px 20px;">
+            <li><strong>VENTA:</strong> 2% del valor final de venta + Impuestos.</li>
+            <li><strong>ARRIENDO:</strong> 50% del primer canon de arriendo + Impuestos.</li>
+        </ul>
+        <p>El pago se hará efectivo al momento de la firma de la Promesa de Compraventa o Contrato de Arriendo respectivo.</p>
+    </div>
+
+    <div class="signatures">
+        <div class="sig-box">
+            <div class="sig-line"></div>
+            <div class="sig-name"><%= cleanData.clientName %></div>
+            <div class="sig-rut">CLIENTE</div>
+        </div>
+        <div class="sig-box">
+            <div class="sig-line"></div>
+            <div class="sig-name">CYGNUS GROUP</div>
+            <div class="sig-rut">CORREDOR</div>
+        </div>
+    </div>
+
+</body>
+</html>

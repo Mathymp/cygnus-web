@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <link rel="stylesheet" href="/css/team.css">
+</head>
+<body class="dashboard-body">
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin') %>
+
+        <main class="main-content">
+            <div class="dashboard-scroll">
+                
+                <div class="dash-top-bar">
+                    <div class="welcome-text">
+                        <h1>Gestión de Talento</h1>
+                        <p>Administra los accesos y roles de tu equipo.</p>
+                    </div>
+                    <div>
+                        <a href="/admin/add-agent" class="btn-publish-big">
+                            <i class="ph-bold ph-user-plus"></i> Nuevo Agente
+                        </a>
+                    </div>
+                </div>
+
+                <div style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
+                    <%- include('../partials/alerts') %>
+                </div>
+
+                <div class="team-table-container">
+                    <div class="team-panel-header">
+                        <h3 class="panel-title" style="margin: 0;">Directorio de Personal</h3>
+                    </div>
+
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th style="padding-left: 2rem;">Profesional</th>
+                                <th>Contacto</th>
+                                <th>Rol / Cargo</th>
+                                <th style="text-align: right; padding-right: 2rem;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if(agents && agents.length > 0) { %>
+                                <% agents.forEach(agent => { %>
+                                <tr class="agent-row">
+                                    <td style="padding-left: 2rem;">
+                                        <div class="prop-flex">
+                                            <% if(agent.photo_url) { %>
+                                                <img src="<%= agent.photo_url %>" class="agent-avatar-img" alt="<%= agent.name %>">
+                                            <% } else { %>
+                                                <div class="agent-avatar-placeholder">
+                                                    <%= agent.name.charAt(0).toUpperCase() %>
+                                                </div>
+                                            <% } %>
+                                            <div>
+                                                <div class="agent-name"><%= agent.name %></div>
+                                                <div class="agent-email"><%= agent.email %></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <% if(agent.phone) { %>
+                                            <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.9rem; color: #334155;">
+                                                <i class="ph-fill ph-whatsapp-logo" style="color: #25D366; font-size: 1.1rem;"></i>
+                                                +56 <%= agent.phone %>
+                                            </div>
+                                        <% } else { %>
+                                            <span style="color: var(--text-muted);">--</span>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <span class="badge-role <%= agent.role === 'admin' ? 'role-admin' : 'role-corredor' %>">
+                                            <%= agent.position || (agent.role === 'admin' ? 'Administrador' : 'Corredor') %>
+                                        </span>
+                                    </td>
+                                    <td style="text-align: right; padding-right: 2rem;">
+                                        <div class="actions-cell">
+                                            <a href="/admin/edit-agent/<%= agent.id %>" class="btn-action btn-edit" title="Editar Perfil">
+                                                <i class="ph-bold ph-pencil-simple"></i>
+                                            </a>
+                                            
+                                            <% if (user.id !== agent.id) { %>
+                                                <button class="btn-action btn-delete" title="Desvincular" 
+                                                    onclick="openDeleteModal('<%= agent.id %>', '<%= agent.name %>')">
+                                                    <i class="ph-bold ph-trash"></i>
+                                                </button>
+                                            <% } %>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                                        No hay agentes registrados.
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-icon-warning">
+                <i class="ph-bold ph-warning"></i>
+            </div>
+            <h2 class="modal-title">¿Desvincular Agente?</h2>
+            <p class="modal-desc">
+                Estás a punto de eliminar a <strong id="deleteAgentName" style="color: #111827;"></strong>.<br>
+                Sus propiedades activas quedarán <strong>sin asignar</strong> (propiedad de la empresa) hasta que las reasignes manualmente.
+            </p>
+            
+            <form id="deleteForm" method="POST">
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-cancel" onclick="closeDeleteModal()">Cancelar</button>
+                    <button type="submit" class="btn-modal-confirm">
+                        Confirmar Baja
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const deleteModal = document.getElementById('deleteModal');
+        const deleteForm = document.getElementById('deleteForm');
+        const deleteNameSpan = document.getElementById('deleteAgentName');
+
+        function openDeleteModal(id, name) {
+            // Actualiza la acción del formulario con el ID correcto
+            deleteForm.action = `/admin/delete-agent/${id}`;
+            deleteNameSpan.textContent = name;
+            deleteModal.classList.add('active'); 
+        }
+
+        function closeDeleteModal() {
+            deleteModal.classList.remove('active');
+        }
+
+        // Cerrar al hacer clic fuera del modal
+        window.onclick = function(event) {
+            if (event.target == deleteModal) {
+                closeDeleteModal();
+            }
+        }
+    </script>
+</body>
+</html>

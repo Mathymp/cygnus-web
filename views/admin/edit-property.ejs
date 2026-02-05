@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <link rel="stylesheet" href="/css/publish.css">
+    
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+    <% 
+      // Helper para marcar checkboxes
+      const checkF = (category, key) => {
+          if (prop.features && prop.features[category] && prop.features[category][key] === true) {
+             return 'checked';
+          }
+          return '';
+      }
+    %>
+
+    <script>
+        // --- 1. CONFIG MAPA (CON PRECARGA) ---
+        let map, marker, circle, autocomplete, geocoder;
+        let searchTimeout = null;
+        
+        // Coordenadas guardadas o default
+        const savedLat = <%= prop.latitude && prop.latitude !== 0 ? prop.latitude : -33.4489 %>;
+        const savedLng = <%= prop.longitude && prop.longitude !== 0 ? prop.longitude : -70.6693 %>;
+
+        window.initMap = function() {
+            const defaultPos = { lat: savedLat, lng: savedLng };
+            const mapElement = document.getElementById("googleMap");
+            if (!mapElement) return;
+
+            geocoder = new google.maps.Geocoder();
+            map = new google.maps.Map(mapElement, {
+                center: defaultPos,
+                zoom: 16,
+                mapTypeControl: false, streetViewControl: false, fullscreenControl: true,
+                styles: [{featureType:"poi",stylers:[{visibility:"off"}]}]
+            });
+            marker = new google.maps.Marker({
+                position: defaultPos, map: map, draggable: true, animation: google.maps.Animation.DROP
+            });
+            // Círculo de privacidad
+            const isPrivate = <%= prop.show_exact_address === false %>;
+            circle = new google.maps.Circle({
+                map: map, radius: 300, fillColor: '#2563EB', fillOpacity: 0.2, strokeColor: '#2563EB', strokeOpacity: 0.4, visible: isPrivate
+            });
+            circle.bindTo('center', marker, 'position');
+            
+            if(isPrivate) { marker.setVisible(false); map.setZoom(14); }
+
+            const input = document.getElementById("addressInput");
+            autocomplete = new google.maps.places.Autocomplete(input, {
+                componentRestrictions: { country: "cl" }, fields: ["address_components", "geometry"], types: ["address"]
+            });
+            autocomplete.bindTo("bounds", map);
+
+            autocomplete.addListener("place_changed", () => {
+                const place = autocomplete.getPlace();
+                if (!place.geometry) return;
+                updateMapPosition(place.geometry.location);
+                fillAddressFields(place.address_components); 
+            });
+            marker.addListener("dragend", () => { updateCoordinates(marker.getPosition()); geocodePosition(marker.getPosition()); });
+            map.addListener("click", (e) => { marker.setPosition(e.latLng); updateCoordinates(e.latLng); geocodePosition(e.latLng); });
+            document.getElementById('privacyCheck').addEventListener('change', function() {
+                const isP = this.checked;
+                circle.setVisible(isP); marker.setVisible(!isP); map.setZoom(isP ? 14 : 17);
+            });
+        };
+
+        function updateMapPosition(location) {
+            map.setCenter(location); map.setZoom(17); marker.setPosition(location); updateCoordinates(location);
+        }
+        function geocodePosition(pos) {
+            geocoder.geocode({ location: pos }, (results, status) => {
+                if (status === "OK" && results[0]) {
+                    fillAddressFields(results[0].address_components);
+                    const display = results[0].formatted_address.split(',')[0];
+                    document.getElementById('addressInput').value = display;
+                    document.getElementById('displayAddress').value = display;
+                }
+            });
+        }
+        function updateCoordinates(latLng) {
+            document.getElementById('lat').value = latLng.lat();
+            document.getElementById('lng').value = latLng.lng();
+        }
+        function fillAddressFields(components) {
+            components.forEach(c => {
+                if(c.types.includes('route')) document.getElementById('route').value = c.long_name;
+                if(c.types.includes('street_number')) document.getElementById('street_number').value = c.long_name;
+                if(c.types.includes('locality')) document.getElementById('locality').value = c.long_name;
+                if(c.types.includes('administrative_area_level_1')) document.getElementById('region').value = c.long_name;
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin') %>
+
+        <main class="main-content">
+            <div class="publish-wrapper-fluid">
+                
+                <div class="header-actions-bar">
+                    <div class="header-title">
+                        <h1><i class="ph-duotone ph-pencil-simple"></i> Editar Propiedad</h1>
+                        <% if(indicators && indicators.uf) { %>
+                            <span class="uf-badge">UF Hoy: $<%= parseInt(indicators.uf).toLocaleString('es-CL') %></span>
+                        <% } %>
+                    </div>
+                    <div class="actions-group">
+                        <button type="button" class="btn-ghost" onclick="history.back()">Cancelar</button>
+                        <button type="button" class="btn-primary-glow" onclick="validateAndSubmit()">
+                            Guardar Cambios <i class="ph-bold ph-floppy-disk"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <form id="editForm" enctype="multipart/form-data" novalidate>
+                    <input type="hidden" name="kept_images" id="keptImagesInput">
+
+                    <div class="publish-grid">
+                        
+                        <div class="col-main">
+                            
+                            <div class="panel-card animated-entry">
+                                <h3 class="panel-title"><i class="ph-duotone ph-tag"></i> Definición</h3>
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label>Operación <span class="req">*</span></label>
+                                        <div class="segment-control-modern">
+                                            <input type="radio" name="operacion" id="op_venta" value="Venta" <%= prop.operation_type === 'Venta' ? 'checked' : '' %>>
+                                            <label for="op_venta"><i class="ph-bold ph-currency-dollar"></i> Venta</label>
+                                            
+                                            <input type="radio" name="operacion" id="op_arriendo" value="Arriendo" <%= prop.operation_type === 'Arriendo' ? 'checked' : '' %>>
+                                            <label for="op_arriendo"><i class="ph-bold ph-key"></i> Arriendo</label>
+                                            
+                                            <input type="radio" name="operacion" id="op_temp" value="Temporal" <%= prop.operation_type === 'Temporal' ? 'checked' : '' %>>
+                                            <label for="op_temp"><i class="ph-bold ph-calendar"></i> Temporal</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Categoría <span class="req">*</span></label>
+                                        <div class="custom-select-wrapper">
+                                            <select name="categoria" id="catSelector" class="input-modern" onchange="toggleFeatures(this.value)" required>
+                                                <option value="Casa" <%= prop.category === 'Casa' ? 'selected' : '' %>>🏡 Casa</option>
+                                                <option value="Departamento" <%= prop.category === 'Departamento' ? 'selected' : '' %>>🏢 Departamento</option>
+                                                <option value="Oficina" <%= prop.category === 'Oficina' ? 'selected' : '' %>>💼 Oficina</option>
+                                                <option value="Terreno" <%= prop.category === 'Terreno' ? 'selected' : '' %>>🗺️ Terreno / Sitio</option>
+                                                <option value="Industrial" <%= prop.category === 'Industrial' ? 'selected' : '' %>>🏭 Industrial / Galpón</option>
+                                                <option value="Parcela" <%= prop.category === 'Parcela' ? 'selected' : '' %>>🌲 Parcela / Agrícola</option>
+                                                <option value="Local" <%= prop.category === 'Local' ? 'selected' : '' %>>🏪 Local Comercial</option>
+                                            </select>
+                                            <i class="ph-bold ph-caret-down select-arrow"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="panel-card animated-entry" style="animation-delay: 0.1s;">
+                                <div class="panel-header-flex">
+                                    <h3 class="panel-title"><i class="ph-duotone ph-map-pin"></i> Ubicación</h3>
+                                    <label class="privacy-switch">
+                                        <input type="checkbox" name="ocultar_mapa" id="privacyCheck" <%= prop.show_exact_address === false ? 'checked' : '' %>>
+                                        <span class="slider-round"></span>
+                                        <span class="switch-text">Ubicación Privada</span>
+                                    </label>
+                                </div>
+
+                                <div class="map-search-row" style="margin-bottom: 15px;">
+                                    <div class="map-search-container" style="width: 100%;">
+                                        <i class="ph-bold ph-magnifying-glass search-icon"></i>
+                                        <input type="text" id="addressInput" class="map-search-input" value="<%= prop.address_display %>" placeholder="Buscar dirección..." autocomplete="off">
+                                    </div>
+                                </div>
+
+                                <div id="googleMap" class="map-frame"></div>
+
+                                <div class="address-fields-grid mt-4">
+                                    <div class="form-group span-2">
+                                        <label>Calle</label>
+                                        <input type="text" name="calle" id="route" class="input-modern bg-read" readonly value="<%= prop.address_street %>">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Número <span class="req">*</span></label>
+                                        <input type="text" name="numero" id="street_number" class="input-modern" required value="<%= prop.address_number %>">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Dpto/Of</label>
+                                        <input type="text" name="unidad" class="input-modern" value="<%= prop.address_unit %>">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Comuna</label>
+                                        <input type="text" name="comuna" id="locality" class="input-modern bg-read" readonly value="<%= prop.address_commune %>">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Región</label>
+                                        <input type="text" name="region" id="region" class="input-modern bg-read" readonly value="<%= prop.address_region %>">
+                                    </div>
+                                </div>
+                                <input type="hidden" name="lat" id="lat" value="<%= prop.latitude %>">
+                                <input type="hidden" name="lng" id="lng" value="<%= prop.longitude %>">
+                                <input type="hidden" name="direccion_display" id="displayAddress" value="<%= prop.address_display %>">
+                            </div>
+
+                            <div class="panel-card animated-entry" style="animation-delay: 0.2s;">
+                                <h3 class="panel-title"><i class="ph-duotone ph-list-checks"></i> Detalles y Características</h3>
+                                
+                                <div id="dynamic-features-container">
+                                    <div class="feature-section" id="sec-interior">
+                                        <h4 class="sub-section-title">Interior & Terminaciones</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_amoblado" <%= checkF('interior','amoblado') %>><span>Amoblado</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_hall" <%= checkF('interior','hall') %>><span>Hall Acceso</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_living_sep" <%= checkF('interior','living_comedor_sep') %>><span>Living Sep.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cocina_americana" <%= checkF('interior','cocina_americana') %>><span>Cocina Amer.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cocina_amob" <%= checkF('interior','cocina_amoblada') %>><span>Cocina Amobl.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cocina_equip" <%= checkF('interior','cocina_equipada') %>><span>Cocina Equip.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_granito" <%= checkF('interior','encimera_granito') %>><span>Cub. Granito</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_silestone" <%= checkF('interior','encimera_silestone') %>><span>Cub. Silestone</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_comedor_diario" <%= checkF('interior','comedor_diario') %>><span>Comedor Diario</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_loggia" <%= checkF('interior','loggia') %>><span>Loggia</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_despensa" <%= checkF('interior','despensa') %>><span>Despensa</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_escritorio" <%= checkF('interior','escritorio') %>><span>Escritorio</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_sala_estar" <%= checkF('interior','sala_estar') %>><span>Sala Estar</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_home_cinema" <%= checkF('interior','home_cinema') %>><span>Home Cinema</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_bar" <%= checkF('interior','bar') %>><span>Bar</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_walkin" <%= checkF('interior','walkin_closet') %>><span>Walk-in Closet</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_closet_ropa" <%= checkF('interior','closet_ropa_blanca') %>><span>Closet Blanca</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_jacuzzi" <%= checkF('interior','jacuzzi') %>><span>Jacuzzi</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_chimenea" <%= checkF('interior','chimenea') %>><span>Chimenea</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_bosca" <%= checkF('interior','bosca') %>><span>Bosca</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_aire" <%= checkF('interior','aire_acond') %>><span>Aire Acond.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_calefaccion" <%= checkF('interior','calefaccion_central') %>><span>Calefacción</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_losa" <%= checkF('interior','losa_radiante') %>><span>Losa Radiante</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_radiadores" <%= checkF('interior','radiadores') %>><span>Radiadores</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_termopanel" <%= checkF('interior','termopanel') %>><span>Termopanel</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_ventanas_pvc" <%= checkF('interior','ventanas_pvc') %>><span>Ventanas PVC</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_ventanas_alu" <%= checkF('interior','ventanas_aluminio') %>><span>Ventanas Alu.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_alarma" <%= checkF('interior','alarma_int') %>><span>Alarma Int.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_citofono" <%= checkF('interior','citofono') %>><span>Citófono</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_domotica" <%= checkF('interior','domotica') %>><span>Domótica</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cerradura_dig" <%= checkF('interior','cerradura_digital') %>><span>Cerradura Digital</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_mansarda" <%= checkF('interior','mansarda') %>><span>Mansarda</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_subterraneo" <%= checkF('interior','subterraneo') %>><span>Subterráneo</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pieza_serv" <%= checkF('interior','pieza_servicio') %>><span>Pieza Servicio</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_bano_visita" <%= checkF('interior','bano_visita') %>><span>Baño Visita</span></label>
+                                        </div>
+                                        
+                                        <h4 class="sub-section-title mt-3">Pisos</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_pisos_madera" <%= checkF('pisos','madera') %>><span>Madera</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pisos_flotante" <%= checkF('pisos','flotante') %>><span>Flotante</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pisos_porcelanato" <%= checkF('pisos','porcelanato') %>><span>Porcelanato</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pisos_alfombra" <%= checkF('pisos','alfombra') %>><span>Alfombra</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pisos_ceramica" <%= checkF('pisos','ceramica') %>><span>Cerámica</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pisos_marmol" <%= checkF('pisos','marmol') %>><span>Mármol</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pisos_parquet" <%= checkF('pisos','parquet') %>><span>Parquet</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pisos_vinilico" <%= checkF('pisos','piso_vinilico') %>><span>Vinílico</span></label>
+                                        </div>
+                                    </div>
+
+                                    <div class="feature-section" id="sec-exterior">
+                                        <h4 class="sub-section-title">Exterior & Entorno Privado</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_terraza" <%= checkF('exterior','terraza') %>><span>Terraza</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_terraza_tech" <%= checkF('exterior','terraza_techada') %>><span>Terraza Tech.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_quincho" <%= checkF('exterior','quincho') %>><span>Quincho</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_fogion" <%= checkF('exterior','fogion') %>><span>Fogón</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_piscina" <%= checkF('exterior','piscina') %>><span>Piscina</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_piscina_temp" <%= checkF('exterior','piscina_temp') %>><span>Piscina Temp.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_jardin" <%= checkF('exterior','jardin') %>><span>Jardín</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_riego" <%= checkF('exterior','riego') %>><span>Riego Auto.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_antejardin" <%= checkF('exterior','antejardin') %>><span>Antejardín</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_patio_serv" <%= checkF('exterior','patio_servicio') %>><span>Patio Servicio</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_bodega_jardin" <%= checkF('exterior','bodega_jardin') %>><span>Bodega Jardín</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_canil" <%= checkF('exterior','canil') %>><span>Canil</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_porton" <%= checkF('exterior','porton_aut') %>><span>Portón Auto.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cerco" <%= checkF('exterior','cerco_electrico') %>><span>Cerco Eléct.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_estac_techado" <%= checkF('exterior','estac_techado') %>><span>Estac. Techado</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_estac_visitas" <%= checkF('exterior','estac_visitas') %>><span>Estac. Visitas</span></label>
+                                        </div>
+                                    </div>
+
+                                    <div class="feature-section" id="sec-comunidad">
+                                        <h4 class="sub-section-title">Seguridad & Condominio</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_condominio" <%= checkF('comunidad_seguridad','condominio_cerrado') %>><span>Condominio</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_acceso" <%= checkF('comunidad_seguridad','acceso_controlado') %>><span>Acceso Control</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_conserje_247" <%= checkF('comunidad_seguridad','conserje_247') %>><span>Conserje 24/7</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_conserje_diurno" <%= checkF('comunidad_seguridad','conserje_diurno') %>><span>Conserje Diurno</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_conserje_nocturno" <%= checkF('comunidad_seguridad','conserje_nocturno') %>><span>Conserje Noct.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_mayordomo" <%= checkF('comunidad_seguridad','mayordomo') %>><span>Mayordomo</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_rondas" <%= checkF('comunidad_seguridad','rondas_vigilancia') %>><span>Rondas</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_biometrico" <%= checkF('comunidad_seguridad','acceso_biometrico') %>><span>Biométrico</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cctv" <%= checkF('comunidad_seguridad','cctv') %>><span>CCTV IP</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cerco_perim" <%= checkF('comunidad_seguridad','cerco_perimetral') %>><span>Cerco Perimetral</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_alarma_com" <%= checkF('comunidad_seguridad','alarma_comunitaria') %>><span>Alarma Comunitaria</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_citofonia_port" <%= checkF('comunidad_seguridad','citofonia_porteria') %>><span>Citofonía Portería</span></label>
+                                        </div>
+                                        
+                                        <h4 class="sub-section-title mt-3">Deportes & Recreación</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_club_house" <%= checkF('deportes_recreacion','club_house') %>><span>Club House</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_gym" <%= checkF('deportes_recreacion','gimnasio') %>><span>Gimnasio</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_piscina_comun" <%= checkF('deportes_recreacion','piscina_comun') %>><span>Piscina Común</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_tenis" <%= checkF('deportes_recreacion','cancha_tenis') %>><span>Cancha Tenis</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_padel" <%= checkF('deportes_recreacion','cancha_padel') %>><span>Cancha Padel</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_futbol" <%= checkF('deportes_recreacion','cancha_futbol') %>><span>Cancha Fútbol</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_multicancha" <%= checkF('deportes_recreacion','multicancha') %>><span>Multicancha</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_golf" <%= checkF('deportes_recreacion','cancha_golf') %>><span>Cancha Golf</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_squash" <%= checkF('deportes_recreacion','cancha_squash') %>><span>Squash</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_sauna" <%= checkF('deportes_recreacion','sauna') %>><span>Sauna</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_spa" <%= checkF('deportes_recreacion','spa') %>><span>Spa</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_areas_verdes" <%= checkF('deportes_recreacion','areas_verdes') %>><span>Áreas Verdes</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_juegos" <%= checkF('deportes_recreacion','juegos_infantiles') %>><span>Juegos Niños</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_bicicletero" <%= checkF('deportes_recreacion','bicicletero') %>><span>Bicicletero</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_marina" <%= checkF('deportes_recreacion','marina') %>><span>Marina/Muelle</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_acceso_playa" <%= checkF('deportes_recreacion','acceso_playa') %>><span>Acceso Playa</span></label>
+                                        </div>
+
+                                        <h4 class="sub-section-title mt-3">Amenities & Servicios</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_ascensor" <%= checkF('servicios_comunidad','ascensor') %>><span>Ascensor</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_eventos" <%= checkF('servicios_comunidad','sala_eventos') %>><span>Sala Eventos</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_gourmet" <%= checkF('servicios_comunidad','gourmet') %>><span>Sala Gourmet</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cine" <%= checkF('servicios_comunidad','cine') %>><span>Sala Cine</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cowork" <%= checkF('servicios_comunidad','cowork') %>><span>Cowork</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_business" <%= checkF('servicios_comunidad','business_center') %>><span>Business Center</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_lavanderia" <%= checkF('servicios_comunidad','lavanderia') %>><span>Lavandería</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_electrogeno" <%= checkF('servicios_comunidad','electrogeno') %>><span>Grupo Electrógeno</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_paneles" <%= checkF('servicios_comunidad','paneles_solares') %>><span>Paneles Solares</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_carga_auto" <%= checkF('servicios_comunidad','carga_auto') %>><span>Carga Auto Elec.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_reciclaje" <%= checkF('servicios_comunidad','reciclaje') %>><span>Punto Reciclaje</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_estac_visitas_com" <%= checkF('servicios_comunidad','estac_visitas_comun') %>><span>Estac. Visitas</span></label>
+                                        </div>
+                                    </div>
+
+                                    <div class="feature-section hidden" id="sec-industrial">
+                                        <h4 class="sub-section-title">Industrial & Comercial</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_trifasica" <%= checkF('industrial_comercial','trifasica') %>><span>Trifásica</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_monofasica" <%= checkF('industrial_comercial','monofasica') %>><span>Monofásica</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_generador_ind" <%= checkF('industrial_comercial','generador_ind') %>><span>Generador Ind.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_red_incendio" <%= checkF('industrial_comercial','red_incendio') %>><span>Red Incendio</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_sprinklers" <%= checkF('industrial_comercial','sprinklers') %>><span>Sprinklers</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_anden" <%= checkF('industrial_comercial','anden_carga') %>><span>Andén Carga</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_rampa" <%= checkF('industrial_comercial','rampa') %>><span>Rampa</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_entrada_camiones" <%= checkF('industrial_comercial','entrada_camiones') %>><span>Entrada Camiones</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_acceso_camiones" <%= checkF('industrial_comercial','acceso_camiones') %>><span>Control Camiones</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_grua" <%= checkF('industrial_comercial','puente_grua') %>><span>Puente Grúa</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_galpon" <%= checkF('industrial_comercial','galpon') %>><span>Galpón</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_piso_tonelaje" <%= checkF('industrial_comercial','piso_alto_tonelaje') %>><span>Piso Alto Tonelaje</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_oficinas_ind" <%= checkF('industrial_comercial','oficinas_plantas') %>><span>Oficinas Planta</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_casino" <%= checkF('industrial_comercial','casino') %>><span>Casino Personal</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_camarines" <%= checkF('industrial_comercial','camarines') %>><span>Camarines</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_altura_6m" <%= checkF('industrial_comercial','altura_hombro_6m') %>><span>Altura > 6m</span></label>
+                                        </div>
+                                    </div>
+
+                                    <div class="feature-section hidden" id="sec-agricola">
+                                        <h4 class="sub-section-title">Legal & Urbanización</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_rol_propio" <%= checkF('agricola','rol_propio') %>><span>Rol Propio</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_acciones_derechos" <%= checkF('agricola','acciones_derechos') %>><span>Acciones/Derechos</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_subdivision" <%= checkF('agricola','subdivision_aprobada') %>><span>Subdiv. Aprobada</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_recepcion_final" <%= checkF('agricola','recepcion_final') %>><span>Recepción Final</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_fact_luz" <%= checkF('agricola','factibilidad_luz') %>><span>Factib. Eléctrica</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_luz_red" <%= checkF('agricola','luz_red') %>><span>Luz de Red (Poste)</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_fact_agua" <%= checkF('agricola','factibilidad_agua') %>><span>Factib. Agua</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_apr" <%= checkF('agricola','apr') %>><span>Agua Potable (APR)</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_fibra" <%= checkF('agricola','fibra_optica') %>><span>Factib. Fibra Óptica</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_senal_4g" <%= checkF('agricola','senal_4g') %>><span>Señal Celular 4G/5G</span></label>
+                                        </div>
+
+                                        <h4 class="sub-section-title mt-3">Agua & Riego</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_derechos_agua" <%= checkF('agricola','derechos_agua') %>><span>Derechos Agua Insc.</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_acciones_canal" <%= checkF('agricola','acciones_canal') %>><span>Acciones Canal</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pozo" <%= checkF('agricola','pozo') %>><span>Pozo Profundo</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_noria" <%= checkF('agricola','noria') %>><span>Noria</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_vertiente" <%= checkF('agricola','vertiente') %>><span>Vertiente</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_orilla_rio" <%= checkF('agricola','orilla_rio') %>><span>Orilla Río/Estero</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_orilla_lago" <%= checkF('agricola','orilla_lago') %>><span>Orilla Lago</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_estanque" <%= checkF('agricola','estanque') %>><span>Estanque Acumulación</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_sala_bombas" <%= checkF('agricola','sala_bombas') %>><span>Sala Bombas</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_riego_tec" <%= checkF('agricola','riego_tecnificado') %>><span>Riego Tecnificado</span></label>
+                                        </div>
+
+                                        <h4 class="sub-section-title mt-3">Terreno & Entorno</h4>
+                                        <div class="features-grid-dense">
+                                            <label class="feature-check"><input type="checkbox" name="f_topo_plana" <%= checkF('agricola','topografia_plana') %>><span>Topografía Plana</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_topo_pendiente" <%= checkF('agricola','topografia_pendiente') %>><span>Con Pendiente/Loma</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_camino_asfaltado" <%= checkF('agricola','camino_asfaltado') %>><span>Acceso Asfaltado</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_camino_tierra" <%= checkF('agricola','camino_tierra') %>><span>Camino Tierra/Ripio</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_camino_servidumbre" <%= checkF('agricola','servidumbre_paso') %>><span>Servidumbre Paso</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_cercado" <%= checkF('agricola','cercado') %>><span>Cercado Completo</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_porton_acceso" <%= checkF('agricola','porton_acceso') %>><span>Portón Acceso</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_bosque_nativo" <%= checkF('agricola','bosque_nativo') %>><span>Bosque Nativo</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_eucaliptus" <%= checkF('agricola','plantacion_eucaliptus') %>><span>Plant. Eucaliptus</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_pinos" <%= checkF('agricola','plantacion_pinos') %>><span>Plant. Pinos</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_frutales" <%= checkF('agricola','arboles_frutales') %>><span>Árboles Frutales</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_apto_cultivo" <%= checkF('agricola','apto_cultivo') %>><span>Apto Cultivo</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_vista_volcan" <%= checkF('agricola','vista_volcan') %>><span>Vista Volcán</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_vista_valle" <%= checkF('agricola','vista_valle') %>><span>Vista Valle</span></label>
+                                            <label class="feature-check"><input type="checkbox" name="f_casa_cuidador" <%= checkF('agricola','casa_cuidador') %>><span>Casa Cuidador</span></label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="panel-card animated-entry" style="animation-delay: 0.3s;">
+                                <h3 class="panel-title"><i class="ph-duotone ph-article"></i> Descripción</h3>
+                                <div class="form-group mb-4">
+                                    <label>Título del Aviso <span class="req">*</span></label>
+                                    <input type="text" name="titulo" class="input-modern input-lg font-bold" value="<%= prop.title %>" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Descripción Detallada</label>
+                                    <div id="quill-editor" class="quill-modern"></div>
+                                    <input type="hidden" name="descripcion" id="hiddenDesc">
+                                </div>
+                            </div>
+
+                            <div class="panel-card animated-entry" style="animation-delay: 0.4s;">
+                                <h3 class="panel-title"><i class="ph-duotone ph-images"></i> Galería de Fotos</h3>
+                                
+                                <div class="upload-zone-wide" id="dropZone">
+                                    <div class="upload-content">
+                                        <i class="ph-duotone ph-cloud-arrow-up icon-upload"></i>
+                                        <div>
+                                            <strong>Arrastra fotos para agregar</strong>
+                                            <p>Puedes reordenarlas (incluso las antiguas) arrastrándolas.</p>
+                                        </div>
+                                    </div>
+                                    <input type="file" id="fileInput" multiple accept="image/*" hidden>
+                                </div>
+
+                                <div class="gallery-wide-grid" id="galleryPreview">
+                                    </div>
+                            </div>
+
+                        </div>
+
+                        <div class="col-side">
+                            
+                            <div class="panel-card highlight-card animated-entry">
+                                <h3 class="panel-title">Valor Comercial</h3>
+                                
+                                <div class="currency-pills">
+                                    <label><input type="radio" name="moneda" value="UF" <%= prop.currency === 'UF' ? 'checked' : '' %> onchange="setCurrencyMode('UF')"><span>UF</span></label>
+                                    <label><input type="radio" name="moneda" value="CLP" <%= prop.currency === 'CLP' ? 'checked' : '' %> onchange="setCurrencyMode('CLP')"><span>Pesos ($)</span></label>
+                                    <label><input type="radio" name="moneda" value="USD" <%= prop.currency === 'USD' ? 'checked' : '' %> onchange="setCurrencyMode('USD')"><span>USD</span></label>
+                                </div>
+
+                                <div class="form-group mb-2">
+                                    <label>Precio <span class="req">*</span></label>
+                                    <div class="input-prefix-wrapper">
+                                        <span id="pricePrefix" class="prefix-badge"><%= prop.currency || 'UF' %></span>
+                                        <input type="text" name="precio" id="priceInput" class="input-modern input-price" value="<%= (prop.price || 0).toLocaleString('es-CL') %>" onkeyup="calcPrice()" required autocomplete="off">
+                                    </div>
+                                    <div class="error-msg">Falta precio</div>
+                                </div>
+
+                                <div class="conversion-glass">
+                                    <div class="conv-row">
+                                        <span class="label">Conversión:</span>
+                                        <span class="value" id="convertedPrice">$ 0</span>
+                                    </div>
+                                    <% if(indicators && indicators.uf) { %>
+                                        <div class="conv-tiny">Calculado con UF: $<%= parseInt(indicators.uf).toLocaleString('es-CL') %></div>
+                                    <% } else { %>
+                                        <div class="conv-tiny">⚠️ Sin valor UF referencial</div>
+                                    <% } %>
+                                </div>
+
+                                <div class="divider"></div>
+
+                                <div class="form-group">
+                                    <label>Gastos Comunes</label>
+                                    <div class="input-prefix-wrapper">
+                                        <span class="prefix-badge is-light">$</span>
+                                        <input type="text" name="gastos_comunes" class="input-modern pl-50" onkeyup="formatNum(this)" value="<%= (prop.common_expenses || 0).toLocaleString('es-CL') %>">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Contribuciones</label>
+                                    <div class="input-prefix-wrapper">
+                                        <span class="prefix-badge is-light">$</span>
+                                        <input type="text" name="contribuciones" class="input-modern pl-50" onkeyup="formatNum(this)" value="<%= (prop.contributions || 0).toLocaleString('es-CL') %>">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="panel-card animated-entry">
+                                <h3 class="panel-title">Superficie (m²)</h3>
+                                <div class="grid-2-sm">
+                                    <div class="form-group"><label>Útil</label><input type="number" name="m2_util" class="input-modern" value="<%= prop.surface_util %>"></div>
+                                    <div class="form-group"><label>Total</label><input type="number" name="m2_total" class="input-modern" value="<%= prop.surface_total %>"></div>
+                                    <div class="form-group span-2"><label>Terraza</label><input type="number" name="m2_terraza" class="input-modern" value="<%= prop.surface_terrace %>"></div>
+                                </div>
+                            </div>
+
+                            <div class="panel-card animated-entry" id="program-card">
+                                <h3 class="panel-title">Ficha Técnica</h3>
+                                
+                                <div class="grid-2-sm mb-3">
+                                    <div class="form-group"><label>Dorms</label><input type="number" name="dormitorios" class="input-modern" value="<%= prop.bedrooms %>"></div>
+                                    <div class="form-group"><label>Baños</label><input type="number" name="banos" class="input-modern" value="<%= prop.bathrooms %>"></div>
+                                    <div class="form-group"><label>Estac.</label><input type="number" name="estacionamientos" class="input-modern" value="<%= prop.parking %>"></div>
+                                    <div class="form-group"><label>Bodegas</label><input type="number" name="bodegas" class="input-modern" value="<%= prop.storage_units %>"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Estado Propiedad</label>
+                                    <div class="custom-select-wrapper">
+                                        <select name="condicion" class="input-modern">
+                                            <option value="Usada - Buen Estado" <%= prop.condition === 'Usada - Buen Estado' ? 'selected' : '' %>>Usada - Buen Estado</option>
+                                            <option value="Usada - Excelente" <%= prop.condition === 'Usada - Excelente' ? 'selected' : '' %>>Usada - Excelente</option>
+                                            <option value="Nueva - Entrega Inmediata" <%= prop.condition === 'Nueva - Entrega Inmediata' ? 'selected' : '' %>>Nueva/Entrega Inmediata</option>
+                                            <option value="En Verde" <%= prop.condition === 'En Verde' ? 'selected' : '' %>>En Verde</option>
+                                            <option value="En Blanco (Planos)" <%= prop.condition === 'En Blanco (Planos)' ? 'selected' : '' %>>En Blanco (Planos)</option>
+                                            <option value="Remodelada" <%= prop.condition === 'Remodelada' ? 'selected' : '' %>>Remodelada</option>
+                                            <option value="Para Remodelar" <%= prop.condition === 'Para Remodelar' ? 'selected' : '' %>>Para Remodelar (Inversión)</option>
+                                        </select>
+                                        <i class="ph-bold ph-caret-down select-arrow"></i>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Orientación</label>
+                                    <div class="custom-select-wrapper">
+                                        <select name="orientacion" class="input-modern">
+                                            <option value="">No definida</option>
+                                            <option value="Norte" <%= prop.orientation === 'Norte' ? 'selected' : '' %>>Norte</option>
+                                            <option value="Nor-Oriente" <%= prop.orientation === 'Nor-Oriente' ? 'selected' : '' %>>Nor-Oriente</option>
+                                            <option value="Oriente" <%= prop.orientation === 'Oriente' ? 'selected' : '' %>>Oriente (Este)</option>
+                                            <option value="Sur-Oriente" <%= prop.orientation === 'Sur-Oriente' ? 'selected' : '' %>>Sur-Oriente</option>
+                                            <option value="Sur" <%= prop.orientation === 'Sur' ? 'selected' : '' %>>Sur</option>
+                                            <option value="Sur-Poniente" <%= prop.orientation === 'Sur-Poniente' ? 'selected' : '' %>>Sur-Poniente</option>
+                                            <option value="Poniente" <%= prop.orientation === 'Poniente' ? 'selected' : '' %>>Poniente (Oeste)</option>
+                                            <option value="Nor-Poniente" <%= prop.orientation === 'Nor-Poniente' ? 'selected' : '' %>>Nor-Poniente</option>
+                                        </select>
+                                        <i class="ph-bold ph-caret-down select-arrow"></i>
+                                    </div>
+                                </div>
+
+                                <div class="form-group mt-2">
+                                    <label>Antigüedad (Años)</label>
+                                    <input type="number" name="antiguedad" class="input-modern" placeholder="0" value="<%= prop.property_age %>">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <div style="height: 120px;"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const UF_VALUE = <%= indicators && indicators.uf ? indicators.uf : 0 %>;
+        let currentCurrency = '<%= prop.currency || "UF" %>';
+        const uploadedFiles = []; // Almacena NUEVOS archivos
+
+        // 1. QUILL PRECARGADO
+        function emojiHandler() { /* ... */ }
+        var quill = new Quill('#quill-editor', {
+            theme: 'snow', placeholder: 'Descripción detallada...',
+            modules: { toolbar: [['bold', 'italic', 'underline'], [{'list': 'ordered'}, {'list': 'bullet'}], ['clean']] }
+        });
+        // Inyectar HTML seguro
+        quill.root.innerHTML = `<%- prop.description ? prop.description.replace(/`/g, '\\`') : '' %>`;
+
+        // 2. TOGGLE FEATURES
+        function toggleFeatures(cat) {
+            const residential = ['Casa', 'Departamento'];
+            const commercial = ['Oficina', 'Local'];
+            const industrial = ['Industrial'];
+            const land = ['Terreno', 'Parcela'];
+            ['sec-interior', 'sec-exterior', 'sec-comunidad', 'sec-industrial', 'sec-agricola'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.style.display = 'none';
+            });
+            if(residential.includes(cat) || commercial.includes(cat) || cat === 'Parcela') {
+                document.getElementById('sec-interior').style.display = 'block';
+                if(cat !== 'Oficina' && cat !== 'Local' && cat !== 'Departamento') document.getElementById('sec-exterior').style.display = 'block';
+                if(cat === 'Departamento' || cat === 'Oficina') document.getElementById('sec-exterior').style.display = 'block';
+            }
+            if(['Departamento', 'Oficina', 'Local', 'Casa'].includes(cat)) {
+                document.getElementById('sec-comunidad').style.display = 'block';
+            }
+            if(industrial.includes(cat)) document.getElementById('sec-industrial').style.display = 'block';
+            if(land.includes(cat)) document.getElementById('sec-agricola').style.display = 'block';
+            document.getElementById('program-card').style.display = 'block';
+        }
+
+        // 3. PRECIO
+        function setCurrencyMode(mode) {
+            currentCurrency = mode;
+            document.getElementById('pricePrefix').innerText = mode === 'UF' ? 'UF' : (mode === 'CLP' ? '$' : 'US');
+            calcPrice();
+        }
+        function formatNum(e) { let v = e.value.replace(/\D/g,''); if(v) e.value = parseInt(v).toLocaleString('es-CL');
+        }
+        function calcPrice() {
+            const input = document.getElementById('priceInput');
+            formatNum(input);
+            const raw = parseInt(input.value.replace(/\./g, '')) || 0;
+            const disp = document.getElementById('convertedPrice');
+            
+            if(raw === 0) { disp.innerText = '$ 0'; return; }
+            if(UF_VALUE === 0 && currentCurrency !== 'USD') { disp.innerText = "Sin valor UF"; return; }
+
+            if(currentCurrency === 'UF') disp.innerText = '$ ' + Math.round(raw * UF_VALUE).toLocaleString('es-CL');
+            else if(currentCurrency === 'CLP') disp.innerText = 'UF ' + (raw / UF_VALUE).toFixed(2);
+            else disp.innerText = 'USD ' + raw;
+        }
+
+        // 4. GALERÍA UNIFICADA (CARGAR ANTIGUAS + GESTIONAR NUEVAS)
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const gallery = document.getElementById('galleryPreview');
+
+        // Inicializar Sortable para reordenar TODO
+        new Sortable(gallery, { animation: 200, ghostClass: 'ghost', onEnd: updateCovers });
+        // Cargar imágenes antiguas desde el servidor
+        const oldImages = <%- JSON.stringify(prop.images || []) %>;
+        oldImages.forEach(img => {
+            const div = document.createElement('div');
+            div.className = 'img-card-wide';
+            div.dataset.type = 'old'; // Marca de agua: es antigua
+            div.dataset.url = img.url;
+            div.dataset.publicId = img.public_id;
+            
+            div.innerHTML = `
+                <div class="badge-cover">PORTADA</div>
+                <img src="${img.url}">
+                <button type="button" class="btn-del" onclick="this.parentElement.remove(); updateCovers();"><i class="ph-bold ph-trash"></i></button>
+            `;
+            gallery.appendChild(div);
+        });
+        updateCovers(); // Actualizar etiqueta portada inicial
+
+        // Eventos Drag & Drop (Nuevas)
+        dropZone.onclick = () => fileInput.click();
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-active'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('drag-active');
+        dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('drag-active');
+        handleFiles(e.dataTransfer.files); };
+        fileInput.onchange = (e) => handleFiles(e.target.files);
+
+        function handleFiles(files) {
+            Array.from(files).forEach(f => {
+                if(f.type.startsWith('image/')) {
+                    f.uid = Math.random().toString(36).substr(2,9);
+                    uploadedFiles.push(f);
+                    const div = document.createElement('div');
+                    div.className = 'img-card-wide';
+                    div.dataset.type = 'new'; // Marca de agua: es nueva
+                    div.dataset.uid = f.uid;
+                    div.innerHTML = `<div class="badge-cover">PORTADA</div><img src="${URL.createObjectURL(f)}"><button type="button" class="btn-del" onclick="delNewImg('${f.uid}')"><i class="ph-bold ph-trash"></i></button>`;
+                    gallery.appendChild(div);
+                    updateCovers();
+                }
+            });
+        }
+
+        window.delNewImg = (uid) => {
+            const idx = uploadedFiles.findIndex(f => f.uid === uid);
+            if(idx > -1) uploadedFiles.splice(idx, 1);
+            document.querySelector(`[data-uid="${uid}"]`).remove();
+            updateCovers();
+        }
+
+        function updateCovers() { 
+            document.querySelectorAll('.img-card-wide').forEach((el,i) => el.classList.toggle('is-cover', i===0));
+        }
+
+        // 5. SUBMIT (LÓGICA ACTUALIZADA PARA MANEJAR ERRORES HTML)
+        window.validateAndSubmit = async () => {
+            document.getElementById('hiddenDesc').value = quill.root.innerHTML;
+            const form = document.getElementById('editForm');
+            let valid = true;
+            
+            // Validación simple
+            form.querySelectorAll('[required]').forEach(el => {
+                if(!el.value.trim()) { el.classList.add('input-error'); valid = false; }
+            });
+            if(!valid) { Swal.fire({ icon:'error', title:'Faltan datos', text:'Revisa los campos en rojo.' }); return;
+            }
+
+            const formData = new FormData(form);
+            // A) RECOLECTAR ORDEN VISUAL
+            const visualCards = document.querySelectorAll('.img-card-wide');
+            const keptImagesData = [];
+            
+            visualCards.forEach(card => {
+                const type = card.dataset.type;
+                if (type === 'old') {
+                    // Es antigua: la agregamos a la lista keptImages en este orden
+                    keptImagesData.push({
+                        url: card.dataset.url,
+                        public_id: card.dataset.publicId
+                    });
+                } else if (type === 'new') {
+                    // Es nueva: buscamos el archivo real y lo adjuntamos
+                    const file = uploadedFiles.find(f => f.uid === card.dataset.uid);
+                    if(file) formData.append('new_images', file); // El backend las pegará al final
+                }
+            });
+
+            // Pasamos el array de antiguas como string
+            formData.set('kept_images', JSON.stringify(keptImagesData));
+            // Limpieza de números
+            ['precio','gastos_comunes','contribuciones'].forEach(k=> {
+                let v = formData.get(k);
+                if(v) formData.set(k, v.replace(/\./g,''));
+            });
+
+            Swal.fire({
+                title: 'Guardando Cambios...',
+                text: 'Actualizando propiedad',
+                allowOutsideClick: false, didOpen: () => { Swal.showLoading() }
+            });
+            
+            try {
+                // Validación explícita de ID
+                const propId = '<%= prop.id %>';
+                if (!propId) throw new Error("ID de propiedad no encontrado");
+
+                const url = `/admin/propiedades/actualizar/${propId}`;
+                
+                const res = await fetch(url, { method:'POST', body:formData });
+                
+                // 1. Verificación básica de error HTTP
+                if (!res.ok) {
+                    const text = await res.text();
+                    console.error("Error Servidor:", text);
+                    if (res.status === 401 || res.status === 403 || text.includes('login')) {
+                         throw new Error("Tu sesión expiró. Recarga la página.");
+                    }
+                    throw new Error(`Error del servidor (${res.status}).`);
+                }
+
+                // 2. Verificar si es JSON válido
+                const contentType = res.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    const text = await res.text();
+                    console.error("Respuesta no es JSON:", text);
+                    if (text.trim().startsWith('<')) {
+                        throw new Error("El servidor devolvió HTML (posiblemente error 500 o login). Revisa la consola.");
+                    }
+                    throw new Error("Formato de respuesta inválido.");
+                }
+
+                // 3. Procesar JSON
+                const d = await res.json();
+                
+                if(d.success) {
+                    Swal.fire({ icon:'success', title:'¡Actualizado!', text:'Cambios guardados correctamente.' })
+                    .then(() => window.location.href='/admin/propiedades');
+                } else {
+                    throw new Error(d.message);
+                }
+            } catch(e) { 
+                console.error(e);
+                Swal.fire({ icon:'error', title:'Error', text: e.message });
+            }
+        };
+
+        // Init
+        toggleFeatures('<%= prop.category %>');
+        calcPrice();
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=<%= googleMapsKey %>&libraries=places&callback=initMap" async defer></script>
+</body>
+</html>

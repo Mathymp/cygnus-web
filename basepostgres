@@ -1,0 +1,95 @@
+-- Tabla Usuarios
+create table users (
+  id uuid default gen_random_uuid() primary key,
+  email text unique not null,
+  password text not null,
+  role text default 'agent',
+  name text,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+-- Agregar columna de teléfono y avatar a la tabla users existente
+ALTER TABLE users ADD COLUMN phone text;
+ALTER TABLE users ADD COLUMN position text DEFAULT 'Corredor Inmobiliario';
+ALTER TABLE users ADD COLUMN photo_url text; 
+
+
+-- Tabla Propiedades
+create table properties (
+  id uuid default gen_random_uuid() primary key,
+  title text not null,
+  description text,
+  price integer not null,
+  currency text default 'UF',
+  type text,
+  operation text,
+  location text,
+  address text,
+  features jsonb,
+  images text[],
+  status text default 'disponible',
+  agent_id uuid references users(id),
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+-- Habilitar extensión para IDs únicos si no está activa
+create extension if not exists "uuid-ossp";
+
+DROP TABLE IF EXISTS properties;
+
+CREATE TABLE properties (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- PASO 1: Categorización
+    category TEXT NOT NULL, -- 'Departamento', 'Casa', 'Oficina', etc.
+    operation_type TEXT NOT NULL, -- 'Venta', 'Arriendo', etc.
+    
+    -- PASO 2: Ubicación (Google Maps)
+    address_display TEXT, -- La dirección que escribió el usuario
+    address_street TEXT,
+    address_number TEXT,
+    address_commune TEXT,
+    address_region TEXT,
+    latitude DOUBLE PRECISION, -- Para el PIN del mapa
+    longitude DOUBLE PRECISION, -- Para el PIN del mapa
+    show_exact_address BOOLEAN DEFAULT true, -- Ocultar/Mostrar radio
+    
+    -- PASO 3: Características Principales (Numéricos y Filtros duros)
+    surface_total NUMERIC,
+    surface_util NUMERIC,
+    bedrooms INT,
+    bathrooms INT,
+    parking INT,
+    storage_units INT DEFAULT 0, -- Bodegas
+    property_age INT, -- Antigüedad en años
+    floors_count INT,
+    house_number TEXT,
+    house_type TEXT, -- 'Aislada', 'Pareada', etc.
+    orientation TEXT, -- 'Norte', 'Sur', etc.
+    property_code TEXT, -- Código interno opcional
+    
+    -- PASO 4: Características Secundarias (JSONB es CLAVE aquí)
+    -- Aquí guardaremos el objeto gigante de: { servicios: [...], seguridad: [...], ambientes: [...] }
+    features JSONB DEFAULT '{}'::jsonb,
+    
+    -- PASO 5: Multimedia y Descripción
+    title TEXT NOT NULL,
+    description TEXT, -- Acepta saltos de línea y emojis
+    images JSONB DEFAULT '[]'::jsonb, -- Array ordenado: [{url: '...', cover: true}, {url: '...'}]
+    
+    -- PRECIO Y ESTADO
+    currency TEXT DEFAULT 'UF', -- 'UF' o 'CLP'
+    price NUMERIC NOT NULL,
+    common_expenses NUMERIC, -- Gastos comunes
+    
+    status TEXT DEFAULT 'publicado', -- 'borrador', 'publicado', 'vendido'
+    
+    -- RELACIÓN (Si tienes tabla de usuarios/agentes)
+    agent_id UUID REFERENCES auth.users(id) -- O ajusta según tu tabla de usuarios
+);
+
+-- Índices para búsquedas rápidas
+CREATE INDEX idx_properties_category ON properties(category);
+CREATE INDEX idx_properties_operation ON properties(operation_type);
+CREATE INDEX idx_properties_price ON properties(price);
+CREATE INDEX idx_properties_commune ON properties(address_commune);

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <title>Nosotros | Cygnus Group</title>
+    <style>
+        /* --- ESTILOS MODERNOS ABOUT --- */
+        body { background-color: #f8fafc; }
+
+        /* Hero Section Premium */
+        .about-hero {
+            position: relative;
+            height: 50vh;
+            min-height: 400px;
+            /* Foto de arquitectura moderna abstracta */
+            background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2301&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed; /* Efecto Parallax */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            overflow: hidden;
+            margin-top: -1px;
+        }
+
+        /* Overlay Gradiente Oscuro y Elegante */
+        .about-hero::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.8) 100%);
+            z-index: 1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+            padding: 0 20px;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .hero-content h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-content p {
+            font-size: 1.25rem;
+            color: #cbd5e1;
+            line-height: 1.6;
+            font-weight: 300;
+        }
+
+        /* Secciones Generales */
+        .section-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 100px 25px;
+        }
+
+        /* Grid de Historia */
+        .history-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .text-block h2 {
+            font-size: 2.5rem;
+            color: #0f172a;
+            font-weight: 700;
+            margin-bottom: 30px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .text-block h2::after {
+            content: '';
+            position: absolute;
+            bottom: -10px; left: 0;
+            width: 60px; height: 4px;
+            background: #2563EB;
+            border-radius: 2px;
+        }
+
+        .text-block p {
+            font-size: 1.1rem;
+            color: #475569;
+            line-height: 1.8;
+            margin-bottom: 20px;
+        }
+
+        .image-stack {
+            position: relative;
+            height: 500px;
+        }
+        
+        .img-modern {
+            position: absolute;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            object-fit: cover;
+        }
+        
+        .img-1 {
+            width: 80%;
+            height: 80%;
+            top: 0; left: 0;
+            z-index: 1;
+            /* Foto reunión moderna */
+            content: url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?q=80&w=2070&auto=format&fit=crop');
+        }
+        
+        .img-2 {
+            width: 60%;
+            height: 60%;
+            bottom: 0; right: 0;
+            z-index: 2;
+            border: 8px solid #f8fafc;
+            /* Foto llaves/manos */
+            content: url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=2000&auto=format&fit=crop');
+        }
+
+        /* Stats Bar */
+        .stats-section {
+            background: #0f172a;
+            padding: 80px 20px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Decoración de fondo */
+        .stats-section::before {
+            content: 'CYGNUS';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 15rem;
+            font-weight: 900;
+            color: rgba(255,255,255,0.03);
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .stats-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .stat-card i {
+            font-size: 2.5rem;
+            color: #3b82f6;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 5px;
+            background: linear-gradient(to bottom, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        /* Cards Misión / Visión */
+        .values-section {
+            background: white;
+            padding: 100px 25px;
+        }
+
+        .values-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+
+        .value-card {
+            background: #f8fafc;
+            padding: 40px;
+            border-radius: 24px;
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .value-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px -5px rgba(0,0,0,0.1);
+            background: white;
+            border-color: #bfdbfe;
+        }
+
+        .icon-box {
+            width: 60px; height: 60px;
+            background: #eff6ff;
+            color: #2563EB;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+        }
+
+        .value-card h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #1e293b;
+        }
+
+        .value-card p {
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        /* CTA Final */
+        .cta-section {
+            text-align: center;
+            padding: 100px 20px;
+            background: linear-gradient(135deg, #2563EB 0%, #1d4ed8 100%);
+            color: white;
+        }
+        
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            color: #1d4ed8;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-weight: 700;
+            text-decoration: none;
+            margin-top: 30px;
+            transition: transform 0.2s;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .cta-btn:hover { transform: scale(1.05); }
+
+        @media(max-width: 900px) {
+            .hero-content h1 { font-size: 2.5rem; }
+            .history-grid { grid-template-columns: 1fr; gap: 50px; }
+            .image-stack { height: 350px; margin-top: 30px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+            .values-grid { grid-template-columns: 1fr; }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/navbar') %>
+
+    <header class="about-hero">
+        <div class="hero-content">
+            <h1>Redefiniendo el Estándar Inmobiliario</h1>
+            <p>En Cygnus Group combinamos la potencia de la tecnología moderna con la calidez del trato personalizado. No solo vendemos metros cuadrados, creamos futuros.</p>
+        </div>
+    </header>
+
+    <section class="section-wrapper">
+        <div class="history-grid">
+            <div class="text-block">
+                <h2>Nuestra Esencia</h2>
+                <p>Nacidos en el corazón de la Región del Biobío, Cygnus Group surgió como respuesta a una necesidad clara: el mercado inmobiliario necesitaba evolucionar. Dejamos atrás la burocracia lenta y la gestión impersonal.</p>
+                <p>Hoy, somos más que una corredora; somos un <strong>socio estratégico</strong>. Utilizamos análisis de datos, fotografía profesional y una red de contactos sólida para asegurar que cada propiedad alcance su máximo potencial. Ya sea que busques tu primer hogar, una oficina para tu empresa o una inversión segura, nosotros pavimentamos el camino.</p>
+                
+                <div style="margin-top: 30px; padding: 20px; background: #eff6ff; border-radius: 12px; border-left: 4px solid #2563eb;">
+                    <p style="margin: 0; font-style: italic; color: #1e40af; font-weight: 500;">
+                        "La confianza no se pide, se construye con resultados. Esa es nuestra única moneda de cambio."
+                    </p>
+                </div>
+            </div>
+            
+            <div class="image-stack">
+                <img class="img-modern img-1" alt="Equipo Reunión">
+                <img class="img-modern img-2" alt="Llaves Casa">
+            </div>
+        </div>
+    </section>
+
+    <div class="stats-section">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="ph-duotone ph-buildings"></i>
+                <div class="stat-number">+250</div>
+                <div class="stat-label">Propiedades Gestionadas</div>
+            </div>
+            <div class="stat-card">
+                <i class="ph-duotone ph-users-three"></i>
+                <div class="stat-number">+500</div>
+                <div class="stat-label">Clientes Felices</div>
+            </div>
+            <div class="stat-card">
+                <i class="ph-duotone ph-chart-line-up"></i>
+                <div class="stat-number">98%</div>
+                <div class="stat-label">Tasa de Cierre</div>
+            </div>
+            <div class="stat-card">
+                <i class="ph-duotone ph-medal"></i>
+                <div class="stat-number">10+</div>
+                <div class="stat-label">Años de Experiencia</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="values-section">
+        <div style="text-align: center; max-width: 700px; margin: 0 auto 60px;">
+            <h2 style="font-size: 2.2rem; color: #0f172a; font-weight: 800; margin-bottom: 15px;">¿Por qué elegir Cygnus?</h2>
+            <p style="color: #64748b; font-size: 1.1rem;">Nuestra metodología se basa en tres pilares fundamentales que garantizan el éxito de tu operación.</p>
+        </div>
+
+        <div class="values-grid">
+            <div class="value-card">
+                <div class="icon-box"><i class="ph-fill ph-lightning"></i></div>
+                <h3>Agilidad Digital</h3>
+                <p>Olvídate de los procesos eternos. Implementamos firmas digitales, visitas virtuales y gestión documental en la nube para acelerar cada etapa de la compraventa o arriendo.</p>
+            </div>
+            
+            <div class="value-card">
+                <div class="icon-box"><i class="ph-fill ph-shield-check"></i></div>
+                <h3>Seguridad Jurídica</h3>
+                <p>Nuestro equipo legal revisa cada título y contrato con lupa. No dejamos cabos sueltos. Tu patrimonio está blindado desde la primera visita hasta la entrega de llaves.</p>
+            </div>
+
+            <div class="value-card">
+                <div class="icon-box"><i class="ph-fill ph-heart"></i></div>
+                <h3>Enfoque Humano</h3>
+                <p>Detrás de cada transacción hay una historia de vida. Escuchamos tus necesidades reales y adaptamos nuestra búsqueda para encontrar no solo una casa, sino un hogar.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 20px;">¿Listo para dar el siguiente paso?</h2>
+        <p style="font-size: 1.2rem; opacity: 0.9; max-width: 600px; margin: 0 auto;">
+            Agenda una reunión gratuita con uno de nuestros agentes expertos y descubre el valor real de tu propiedad.
+        </p>
+        <a href="/contacto" class="cta-btn">
+            Contáctanos Ahora <i class="ph-bold ph-arrow-right"></i>
+        </a>
+    </section>
+
+    <%- include('partials/footer') %>
+</body>
+</html>

@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <style>
+        /* --- 1. LAYOUT FIXED & PRETTY SCROLL (CORREGIDO) --- */
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* Importante: Evita que toda la página haga scroll */
+            background-color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #1e293b;
+        }
+
+        .app-layout {
+            display: flex;
+            height: 100vh; /* Fuerza al layout a ocupar toda la pantalla */
+            width: 100vw;
+            overflow: hidden; 
+        }
+
+        /* El Sidebar se arregla automáticamente al tener el padre 100vh */
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden; /* Contiene el scroll hijo */
+            position: relative;
+            padding: 0; /* Quitamos padding aquí para que el scroll llegue al borde */
+        }
+
+        .dashboard-scroll {
+            flex: 1;
+            height: 100%;
+            overflow-y: auto; /* El scroll ocurre SOLO aquí */
+            padding: 20px;
+            padding-bottom: 60px; /* Espacio extra abajo para no cortar contenido */
+        }
+
+        /* --- ESTILOS DE SCROLLBAR (SUTIL Y BONITO) --- */
+        /* Ancho de la barra */
+        .dashboard-scroll::-webkit-scrollbar {
+            width: 6px; 
+        }
+        
+        /* Fondo de la barra (invisible) */
+        .dashboard-scroll::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        
+        /* El "dedo" o indicador del scroll */
+        .dashboard-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1; /* Gris suave */
+            border-radius: 20px;       /* Bordes muy redondos */
+        }
+        
+        /* Al pasar el mouse por encima del scroll */
+        .dashboard-scroll::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8; /* Un poco más oscuro */
+        }
+
+        /* --- 2. ESTILOS DE TABLA INTERACTIVA (HOVER) --- */
+        .tr-hover {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .tr-hover:hover {
+            background-color: rgba(37, 99, 235, 0.08) !important;
+            transform: scale(1.005);
+        }
+        .tr-hover:hover td {
+            color: #1e3a8a;
+        }
+
+        /* --- 3. ESTILOS DE MOVIMIENTOS (TIMELINE) --- */
+        .timeline-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .timeline-item:last-child { border-bottom: none; }
+        
+        .t-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; flex-shrink: 0;
+        }
+        /* Colores de avatar según acción */
+        .t-avatar.create { background: #dcfce7; color: #166534; }
+        .t-avatar.update { background: #dbeafe; color: #1e40af; }
+        .t-avatar.delete { background: #fee2e2; color: #991b1b; }
+        .t-avatar.login { background: #f3e8ff; color: #6b21a8; } /* Morado para login */
+
+        .t-content { display: flex; flex-direction: column; font-size: 0.85rem; }
+        .t-time { font-size: 0.75rem; color: #94a3b8; }
+
+        /* --- ESTILOS GENERALES PREVIOS (MANTENIDOS) --- */
+        ul, ol { list-style: none; padding: 0; margin: 0; }
+
+        /* Skeleton Loading */
+        @keyframes shimmer { 0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; } }
+        .skeleton-loader { width: 100%; padding-bottom: 2rem; }
+        .sk-box {
+            background: #f1f5f9;
+            background-image: linear-gradient(to right, #f1f5f9 0%, #e2e8f0 20%, #f1f5f9 40%, #f1f5f9 100%);
+            background-repeat: no-repeat; background-size: 1000px 100%; 
+            display: inline-block; position: relative;
+            overflow: hidden;
+            border-radius: 12px; animation: shimmer 1.5s infinite linear forwards;
+        }
+        /* ... (Clases Skeleton originales) ... */
+        .sk-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .sk-title { width: 200px; height: 40px; border-radius: 8px; }
+        .sk-subtitle { width: 150px; height: 20px; margin-top: 10px; border-radius: 4px; }
+        .sk-actions { display: flex; gap: 1.5rem; }
+        .sk-btn { width: 180px; height: 50px; border-radius: 50px; }
+        .sk-widget { width: 190px; height: 70px; border-radius: 24px; }
+        .sk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 2rem; }
+        .sk-card-lg { height: 160px; border-radius: 24px; }
+        .sk-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 2rem; }
+        .sk-mini { height: 80px; border-radius: 12px; }
+        .sk-split { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .sk-panel-lg { height: 400px; border-radius: 20px; }
+        .sk-panel-sm { height: 350px; border-radius: 20px; }
+
+        #dashboardRealContent { display: none; opacity: 0; transition: opacity 0.5s ease-in; }
+        #dashboardSkeleton { transition: opacity 0.5s ease-out; }
+
+        /* Widgets Header */
+        .header-widgets-group { display: flex; gap: 20px; align-items: center; }
+        .pro-widget-lg {
+            background: white;
+            padding: 10px 20px; border-radius: 24px; border: 1px solid #e2e8f0;
+            display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            min-width: 190px; transition: all 0.5s ease; position: relative; overflow: hidden;
+        }
+        .pro-widget-lg:hover { transform: translateY(-2px); }
+
+        /* Fases del Cielo */
+        @keyframes skyLive { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .sky-sunrise { background: linear-gradient(-45deg, #FF9A9E, #FECFEF, #a18cd1, #fbc2eb); background-size: 400% 400%;
+            animation: skyLive 15s ease infinite; border: 1px solid rgba(255,255,255,0.2); color: white !important;
+        }
+        .sky-day { background: linear-gradient(-45deg, #005bea, #00c6fb, #0072ff, #4facfe); background-size: 400% 400%;
+            animation: skyLive 20s ease infinite; border: 1px solid rgba(255,255,255,0.2); color: white !important;
+        }
+        .sky-sunset { background: linear-gradient(-45deg, #ea411f, #dd2476, #eb5e17, #fd9400); background-size: 400% 400%;
+            animation: skyLive 15s ease infinite; border: 1px solid rgba(255,255,255,0.2); color: white !important;
+        }
+        .sky-night { background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #000000); background-size: 400% 400%;
+            animation: skyLive 25s ease infinite; border: 1px solid rgba(255,255,255,0.1); color: white !important;
+        }
+        
+        /* Variantes de Clima Sensible (Manteniendo estructura original) */
+        .sky-rain { background: linear-gradient(-45deg, #374151, #6b7280, #4b5563);
+            background-size: 400% 400%; animation: skyLive 20s ease infinite; border: 1px solid rgba(255,255,255,0.1); color: white !important;
+        }
+        .sky-storm { background: linear-gradient(-45deg, #1f2937, #312e81, #1e1b4b); background-size: 400% 400%;
+            animation: skyLive 10s ease infinite; border: 1px solid rgba(255,255,255,0.1); color: white !important;
+        }
+        .sky-cloudy { background: linear-gradient(-45deg, #9ca3af, #d1d5db, #9ca3af); background-size: 400% 400%;
+            animation: skyLive 30s ease infinite; border: 1px solid rgba(255,255,255,0.2); color: white !important;
+        }
+
+        .sky-sunrise *, .sky-day *, .sky-sunset *, .sky-night *, .sky-rain *, .sky-storm *, .sky-cloudy * { color: white !important;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 2; position: relative; }
+        
+        .stars-container { position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;
+        }
+        .star { position: absolute; background: white; border-radius: 50%; opacity: 0.8;
+            animation: twinkle var(--duration, 3s) infinite alternate; }
+        @keyframes twinkle { 0% { opacity: 0.2;
+            transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 8px rgba(255,255,255,0.9);
+        } }
+
+        /* Elementos Widget */
+        .widget-anim-icon { width: 64px; height: 64px; object-fit: contain; z-index: 2; }
+        .widget-clock-icon { font-size: 2.5rem; color: inherit; z-index: 2; }
+        .widget-text-col { display: flex; flex-direction: column; justify-content: center; line-height: 1.1; z-index: 2; }
+        .widget-hero-text { font-size: 1.6rem; font-weight: 800; color: #0f172a; letter-spacing: -0.03em; }
+        .widget-sub-text { font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 2px; text-transform: capitalize; }
+
+        /* KPI Cards */
+        .uf-card-3d { background: radial-gradient(circle at top right, #3b82f6 0%, #1e3a8a 40%, #0f172a 100%);
+            border-radius: 24px; padding: 24px; position: relative; overflow: hidden; color: white; display: flex; flex-direction: column; justify-content: space-between; height: 100%;
+        }
+        .uf-card-3d::before { content: ''; position: absolute; top: -50px; right: -50px; width: 200px;
+            height: 200px; background: rgba(255,255,255,0.1); filter: blur(40px); border-radius: 50%; pointer-events: none;
+        }
+        .uf-card-3d::after { content: ''; position: absolute; bottom: -30px; left: -30px; width: 120px;
+            height: 120px; background: rgba(99, 102, 241, 0.3); filter: blur(30px); border-radius: 50%; pointer-events: none;
+        }
+        .uf-header-row { display: flex; justify-content: space-between; align-items: flex-start; z-index: 2; }
+        .icon-box-glass { background: rgba(255,255,255,0.15); backdrop-filter: blur(5px); padding: 10px; border-radius: 12px; color: white;
+            border: 1px solid rgba(255,255,255,0.1); }
+        .uf-value-display { font-size: 3rem; font-weight: 800; color: white;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-top: 10px; z-index: 2; line-height: 1;
+        }
+        .trend-badge-pro { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px;
+            border-radius: 99px; font-size: 0.8rem; font-weight: 700; backdrop-filter: blur(4px); }
+        .trend-up-pro { background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .trend-down-pro { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        /* Calculadora y Tablas */
+        .calc-pro-card { background: white;
+            border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); height: 100%;
+        }
+        .calc-header-price { background: rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 8px;
+            font-size: 0.85rem; font-weight: 700; }
+        .calc-body-compact { padding: 10px 15px; display: flex;
+            flex-direction: column; gap: 8px; flex: 1; }
+        .inputs-grid-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } 
+        .divider-compact { height: 1px; background: #f1f5f9; margin: 4px 0; }
+        .results-container { display: flex; flex-direction: column; gap: 6px; }
+        .result-block { padding: 8px 12px; }
+        .res-row { margin-bottom: 2px; }
+
+        .modern-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .modern-table th { text-align: left; padding: 16px; color: #64748b; font-weight: 600;
+            font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; }
+        .modern-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; }
+        .prop-flex { display: flex; align-items: center; gap: 12px; }
+        .prop-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: #f1f5f9; }
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+        .status-ok { background: #dcfce7; color: #166534; }
+        .status-low { background: #fee2e2; color: #991b1b; }
+
+        .indicators-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 2rem; margin-top: -10px; }
+        .mini-stat { background: white; padding: 12px 20px; border-radius: 12px;
+            border: 1px solid #e2e8f0; border-left-width: 4px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            transition: all 0.2s ease; }
+        .mini-stat:hover { transform: translateY(-2px); box-shadow: 0 8px 15px rgba(0,0,0,0.05); }
+        .mini-icon { display: flex; align-items: center;
+            justify-content: center; width: 42px; height: 42px; border-radius: 8px; font-size: 1.2rem;
+        }
+        .mini-content { text-align: right; display: flex; flex-direction: column; justify-content: center; }
+        .mini-label { font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+        .mini-sub { font-size: 0.65rem; font-weight: 600; margin-top: 2px; display: inline-block;
+            padding: 2px 6px; border-radius: 4px; }
+        .mini-value { font-size: 1.1rem; font-weight: 800; color: #1e293b; }
+
+        .variant-dolar { border-left-color: #10b981; } .variant-dolar .mini-icon { background: #ecfdf5; color: #047857; } 
+        .variant-dolar .mini-sub { color: #047857; background: #f0fdf4; border: 1px solid #d1fae5; }
+        
+        .variant-utm { border-left-color: #3b82f6; } .variant-utm .mini-icon { background: #eff6ff; color: #1d4ed8; } 
+        .variant-utm .mini-sub { color: #1d4ed8; background: #eff6ff; border: 1px solid #dbeafe; }
+        
+        .variant-ipc { border-left-color: #f43f5e; } .variant-ipc .mini-icon { background: #fff1f2; color: #be123c; } 
+        .variant-ipc .mini-sub { color: #be123c; background: #fff1f2; border: 1px solid #ffe4e6; }
+        /* --- CORRECCIÓN WIDGET CLIMA (Texto Oscuro) --- */
+        #weatherWidget {
+            background: #ffffff !important; /* Asegura fondo blanco */
+            border: 1px solid #e2e8f0 !important;
+        }
+        
+        /* Esto fuerza a todos los elementos DENTRO del widget de clima a ser oscuros y sin sombra */
+        #weatherWidget * {
+            color: #1e293b !important; /* Color oscuro (Slate-800) */
+            text-shadow: none !important; /* Elimina la sombra negra */
+        }
+        
+        /* Excepción: Si quieres que el icono animado conserve sus colores originales */
+        #weatherWidget img.widget-anim-icon {
+            filter: none !important;
+        }
+    </style>
+</head>
+<body class="dashboard-body">
+
+    <%- include('partials/alerts') %>
+
+    <div class="app-layout">
+        <%- include('partials/sidebar-admin') %>
+
+        <main class="main-content">
+            <div class="dashboard-scroll">
+                
+                <div id="dashboardSkeleton" class="skeleton-loader">
+                    <div class="sk-header">
+                        <div>
+                            <div class="sk-box sk-title"></div>
+                            <div class="sk-box sk-subtitle"></div>
+                        </div>
+                        <div class="sk-actions">
+                            <div class="sk-box sk-btn"></div>
+                            <div class="sk-box sk-widget"></div>
+                            <div class="sk-box sk-widget"></div>
+                        </div>
+                    </div>
+                    <div class="sk-grid">
+                        <div class="sk-box sk-card-lg"></div>
+                        <div class="sk-box sk-card-lg"></div>
+                        <div class="sk-box sk-card-lg"></div>
+                    </div>
+                    <div class="sk-strip">
+                        <div class="sk-box sk-mini"></div>
+                        <div class="sk-box sk-mini"></div>
+                        <div class="sk-box sk-mini"></div>
+                    </div>
+                    <div class="sk-split">
+                        <div class="sk-box sk-panel-lg"></div> <div class="sk-box sk-panel-sm"></div> </div>
+                </div>
+
+                <div id="dashboardRealContent">
+                    
+                    <div class="dash-top-bar" style="margin-bottom: 2rem;">
+                        <div class="welcome-text">
+                            <h1>Hola, <%= user ? user.name.split(' ')[0] : 'Admin' %> 👋</h1>
+                            <p>Panel de Control y Gestión.</p>
+                        </div>
+
+                        <div style="display: flex; gap: 1.5rem; align-items: center;">
+                            <a href="/admin/publicar" class="btn-publish-header hover-fill-effect">
+                                <i class="ph-bold ph-plus"></i>
+                                <span>Publicar Propiedad</span>
+                            </a>
+
+                            <div class="header-widgets-group">
+                                <div class="pro-widget-lg" id="timeWidget">
+                                    <i class="ph-bold ph-clock widget-clock-icon"></i>
+                                    <div class="widget-text-col">
+                                        <span class="widget-hero-text" id="liveClock">--:--</span>
+                                        <span class="widget-sub-text" id="liveDate">Cargando...</span>
+                                    </div>
+                                </div>
+
+                                <div class="pro-widget-lg" id="weatherWidget" style="background: white;">
+                                    <img src="/animated/cloudy.svg" id="weatherIconImg" class="widget-anim-icon" alt="Clima">
+                                    <div class="widget-text-col">
+                                        <span class="widget-hero-text" id="weatherTemp">--°</span>
+                                        <span class="widget-sub-text" id="locationCity">Detectando...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-grid">
+                        <div class="uf-card-3d hover-fill-effect">
+                            <div class="uf-header-row">
+                                <div class="icon-box-glass"><i class="ph-bold ph-currency-dollar"></i></div>
+                                <% 
+                                    const currentUF = parseFloat(ufValue);
+                                    const prevUF = 39700; // Valor referencial
+                                    const diff = currentUF - prevUF;
+                                    const percent = ((diff / prevUF) * 100).toFixed(2); 
+                                    const isPositive = diff >= 0;
+                                %>
+                                <div class="trend-badge-pro <%= isPositive ? 'trend-up-pro' : 'trend-down-pro' %>">
+                                    <% if(isPositive) { %> <i class="ph-bold ph-trend-up"></i> +<%= percent %>% <% } else { %> <i class="ph-bold ph-trend-down"></i> <%= percent %>% <% } %>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="uf-value-display">$<%= parseInt(currentUF).toLocaleString('es-CL') %></div>
+                                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
+                                    <span style="font-size: 0.9rem; color: #bfdbfe; font-weight: 500;">Valor UF Hoy</span>
+                                    <span style="font-size: 0.7rem; color: rgba(255,255,255,0.5);">Fuente: SII</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card hover-fill-effect">
+                            <div class="card-header-row"><div class="icon-box bg-indigo"><i class="ph-bold ph-house-line"></i></div></div>
+                            <div class="kpi-value"><%= typeof totalProperties !== 'undefined' ? totalProperties : 0 %></div>
+                            <div class="kpi-label">Propiedades Activas</div>
+                        </div>
+
+                        <div class="stat-card hover-fill-effect">
+                            <div class="card-header-row">
+                                <div class="icon-box bg-emerald"><i class="ph-bold ph-users-three"></i></div>
+                                <a href="/admin/team" class="trend-badge trend-up" style="text-decoration:none;">Gestionar &rarr;</a>
+                            </div>
+                            <div class="kpi-value">Equipo</div>
+                            <div class="kpi-label">Fuerza de Ventas</div>
+                        </div>
+                    </div>
+                    
+                    <div class="indicators-strip">
+                        <div class="mini-stat variant-dolar">
+                            <div class="mini-icon"><i class="ph-bold ph-currency-dollar-simple"></i></div>
+                            <div class="mini-content">
+                                <div class="mini-label">Dólar Obs.</div>
+                                <div class="mini-value">$<%= parseFloat(dolarValue).toLocaleString('es-CL', {minimumFractionDigits: 2}) %></div>
+                                <div class="mini-sub">USD &rarr; CLP</div>
+                            </div>
+                        </div>
+                        <div class="mini-stat variant-utm">
+                            <div class="mini-icon"><i class="ph-bold ph-scroll"></i></div>
+                            <div class="mini-content">
+                                <div class="mini-label">UTM Mensual</div>
+                                <div class="mini-value">$<%= parseInt(utmValue).toLocaleString('es-CL') %></div>
+                                <div class="mini-sub">Tributaria</div>
+                            </div>
+                        </div>
+                        <div class="mini-stat variant-ipc">
+                            <div class="mini-icon"><i class="ph-bold ph-chart-line-up"></i></div>
+                            <div class="mini-content">
+                                <div class="mini-label">IPC Mensual</div>
+                                <div class="mini-value"><%= ipcValue %>%</div>
+                                <div class="mini-sub">Inflación</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-split">
+                        <div class="main-col-left">
+                            <div class="glass-panel">
+                                <div class="panel-head"><div class="panel-title">Inventario Reciente</div></div>
+                                <table class="modern-table">
+                                    <thead><tr><th>Propiedad</th><th>Precio</th><th>Estado</th></tr></thead>
+                                    <tbody>
+                                        <% if (typeof properties !== 'undefined' && properties.length > 0) { %>
+                                            <% properties.forEach(prop => { %>
+                                            <tr class="tr-hover" onclick="window.location.href='/propiedad/<%= prop.id %>'">
+                                                <td>
+                                                    <div class="prop-flex">
+                                                        <img src="<%= (prop.images && prop.images.length > 0) ? prop.images[0].url : '/img/logo.png' %>" class="prop-thumb" alt="propiedad">
+                                                        <div>
+                                                            <div style="font-weight: 700;"><%= prop.title %></div>
+                                                            <div style="font-size: 0.8rem; color: var(--text-muted);"><%= prop.address_commune || 'Ubicación' %></div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td style="font-weight: 700;">
+                                                    <% if(prop.currency === 'UF') { %> UF <%= parseFloat(prop.price).toLocaleString('es-CL', {minimumFractionDigits: 2}) %> <% } else { %> $<%= parseInt(prop.price).toLocaleString('es-CL') %> <% } %>
+                                                </td>
+                                                <td>
+                                                    <span class="status-badge <%= prop.status === 'publicado' ? 'status-ok' : 'status-low' %>">
+                                                        <%= prop.status ? (prop.status.charAt(0).toUpperCase() + prop.status.slice(1)) : 'Publicado' %>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <tr><td colspan="3" style="text-align: center; padding: 3rem; color: #94a3b8;">No hay propiedades publicadas aún.</td></tr>
+                                        <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="glass-panel">
+                                <div class="panel-title" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+                                    <i class="ph-duotone ph-pulse" style="color: var(--primary);"></i> Últimos Movimientos
+                                </div>
+                                <div class="activity-feed">
+                                    <% if (typeof activityLogs !== 'undefined' && activityLogs.length > 0) { %>
+                                        <% activityLogs.forEach(log => { %>
+                                            <% 
+                                                let icon = 'plus';
+                                                let avatarClass = 'create';
+                                                if(log.action_type === 'update') { icon = 'pencil-simple'; avatarClass = 'update'; }
+                                                if(log.action_type === 'delete') { icon = 'trash'; avatarClass = 'delete'; }
+                                                if(log.action_type === 'login') { icon = 'sign-in'; avatarClass = 'login'; }
+                                            %>
+                                            <div class="timeline-item">
+                                                <div class="t-avatar <%= avatarClass %>"><i class="ph-bold ph-<%= icon %>"></i></div>
+                                                <div class="t-content">
+                                                    <div style="font-weight: 600; color: #1e293b;"><%= log.user_name || 'Usuario' %></div>
+                                                    <div style="color: #64748b; font-size: 0.85rem;"><%= log.details %></div>
+                                                    <div class="t-time"><%= new Date(log.created_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %></div>
+                                                </div>
+                                            </div>
+                                        <% }) %>
+                                    <% } else { %>
+                                        <p style="color: #64748b; padding: 1rem; text-align: center;">Sin actividad reciente.</p>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div> 
+                        
+                        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                            <div class="calc-pro-card">
+                                <div style="background: #2563eb; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <i class="ph-bold ph-calculator" style="color: white;"></i>
+                                        <h3 style="margin:0; font-size: 1rem; color: white;">Calculadora</h3>
+                                    </div>
+                                    <div class="calc-header-price">UF: $<%= parseInt(currentUF).toLocaleString('es-CL') %></div>
+                                </div>
+                                <div class="calc-body-compact">
+                                    <div class="currency-toggle-container">
+                                        <label class="toggle-label">Moneda Entrada:</label>
+                                        <div class="currency-toggle">
+                                            <div class="toggle-option active" id="btnModeUF" onclick="setMode('UF')">UF</div>
+                                            <div class="toggle-option" id="btnModeCLP" onclick="setMode('CLP')">PESOS ($)</div>
+                                        </div>
+                                    </div>
+                                    <div class="inputs-grid-compact">
+                                        <div class="calc-input-group">
+                                            <label class="calc-label">Valor Propiedad</label>
+                                            <div class="input-wrapper-fixed">
+                                                <span class="input-prefix-fixed" id="pricePrefix">UF</span>
+                                                <input type="text" id="inputPrice" class="calc-input-fixed" placeholder="0" onkeyup="formatCurrency(this); calculateAll()">
+                                            </div>
+                                        </div>
+                                        <div class="calc-input-group">
+                                            <label class="calc-label">Comisión %</label>
+                                            <div class="input-wrapper-fixed">
+                                                <input type="number" id="inputComm" class="calc-input-fixed" value="2" oninput="calculateAll()" style="padding-right: 25px;">
+                                                <span class="input-suffix-fixed">%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="divider-compact"></div>
+                                    <div class="results-container">
+                                        <div class="result-block">
+                                            <div class="res-title">Conversión</div>
+                                            <div class="res-value-main" id="valConversion">$ 0</div>
+                                        </div>
+                                        <div class="result-block highlight">
+                                            <div class="res-title">Comisión Estimada</div>
+                                            <div class="res-row"><span>En UF:</span> <strong id="commUF">UF 0,00</strong></div>
+                                            <div class="res-row"><span>En Pesos:</span> <strong id="commCLP">$ 0</strong></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div> 
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- 1. SKELETON LOADER ---
+        window.addEventListener('DOMContentLoaded', () => {
+            const skeleton = document.getElementById('dashboardSkeleton');
+            const realContent = document.getElementById('dashboardRealContent');
+
+            setTimeout(() => {
+                if(skeleton && realContent) {
+                    skeleton.style.opacity = '0';
+                    setTimeout(() => {
+                        skeleton.style.display = 'none';
+                        realContent.style.display = 'block';
+                        setTimeout(() => {
+                            realContent.style.opacity = '1';
+                        }, 50);
+                    }, 500); 
+                }
+            }, 900);
+        });
+
+        // --- 2. CONFIGURACIÓN VISUAL (ESTRELLAS) ---
+        function createStars(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const existing = container.querySelector('.stars-container');
+            if(existing) existing.remove();
+
+            const starBox = document.createElement('div');
+            starBox.className = 'stars-container';
+            for(let i=0; i<35; i++) { 
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random() * 2 + 1;
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.setProperty('--duration', (Math.random() * 2 + 1) + 's'); 
+                starBox.appendChild(star);
+            }
+            container.appendChild(starBox);
+        }
+
+        // --- 3. LÓGICA DE FASES DEL CIELO Y CLIMA SENSIBLE ---
+        function updateWidgetTheme(sunriseStr, sunsetStr, weatherCode) {
+            const el = document.getElementById('timeWidget');
+            const widget = document.getElementById('weatherWidget');
+            const imgEl = document.getElementById('weatherIconImg');
+            
+            if(!el || !sunriseStr || !sunsetStr) return;
+
+            const now = new Date();
+            const sunrise = new Date(sunriseStr);
+            const sunset = new Date(sunsetStr);
+            // 1. Fases del Día (Widget Hora)
+            const dawnStart = new Date(sunrise.getTime() - 20 * 60000);
+            const dawnEnd = new Date(sunrise.getTime() + 20 * 60000);
+            const duskStart = new Date(sunset.getTime() - 30 * 60000);
+            const duskEnd = new Date(sunset.getTime() + 10 * 60000); 
+
+            el.classList.remove('sky-sunrise', 'sky-day', 'sky-sunset', 'sky-night');
+            const stars = el.querySelector('.stars-container');
+            if(stars) stars.remove();
+            let isNight = false;
+
+            if (now >= dawnStart && now < dawnEnd) {
+                el.classList.add('sky-sunrise');
+            } else if (now >= dawnEnd && now < duskStart) {
+                el.classList.add('sky-day');
+            } else if (now >= duskStart && now < duskEnd) {
+                el.classList.add('sky-sunset');
+            } else {
+                el.classList.add('sky-night');
+                createStars('timeWidget');
+                isNight = true;
+            }
+
+            // 2. Clima Sensible (Widget Clima)
+            widget.classList.remove('sky-rain', 'sky-storm', 'sky-cloudy');
+            let iconName = 'day.svg';
+
+            if (weatherCode === 0) iconName = isNight ? 'night.svg' : 'day.svg';
+            else if ([1, 2, 3].includes(weatherCode)) {
+                iconName = isNight ? 'cloudy-night-3.svg' : 'cloudy-day-3.svg';
+                widget.classList.add('sky-cloudy');
+            }
+            else if ([45, 48].includes(weatherCode)) {
+                iconName = 'cloudy.svg';
+                widget.classList.add('sky-cloudy');
+            }
+            else if ([51, 53, 55].includes(weatherCode)) {
+                iconName = 'rainy-2.svg';
+                widget.classList.add('sky-rain');
+            }
+            else if ([61, 63, 65, 80, 81, 82].includes(weatherCode)) {
+                iconName = 'rainy-6.svg';
+                widget.classList.add('sky-rain');
+            }
+            else if (weatherCode >= 95) {
+                iconName = 'thunder.svg';
+                widget.classList.add('sky-storm');
+            }
+            else iconName = isNight ? 'night.svg' : 'day.svg';
+
+            if(imgEl) imgEl.src = `/animated/${iconName}`;
+        }
+
+        // --- 4. RELOJ ---
+        function updateClock() {
+            const now = new Date();
+            const clockEl = document.getElementById('liveClock');
+            const dateEl = document.getElementById('liveDate');
+            if(clockEl) clockEl.textContent = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+            if(dateEl) dateEl.textContent = now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+        setInterval(updateClock, 1000); 
+        updateClock();
+        // --- 5. FETCH CLIMA ---
+        async function fetchWeather(lat, lon, fallbackName) {
+            try {
+                let realCityName = fallbackName;
+                try {
+                    const cityRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=es`);
+                    const cityData = await cityRes.json();
+                    realCityName = cityData.city || cityData.locality || cityData.principalSubdivision || fallbackName;
+                } catch (errCity) { }
+
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=sunrise,sunset&timezone=auto`);
+                const data = await res.json();
+                
+                if(data.current_weather && data.daily) {
+                    const temp = Math.round(data.current_weather.temperature);
+                    const code = data.current_weather.weathercode;
+                    document.getElementById('weatherTemp').textContent = `${temp}°`;
+                    document.getElementById('locationCity').textContent = realCityName;
+                    updateWidgetTheme(data.daily.sunrise[0], data.daily.sunset[0], code);
+                }
+            } catch (e) {
+                console.error("Error clima:", e);
+            }
+        }
+        
+        function initWeather() {
+            if (navigator.geolocation) {
+                document.getElementById('locationCity').textContent = "Localizando...";
+                navigator.geolocation.getCurrentPosition(
+                    (p) => { fetchWeather(p.coords.latitude, p.coords.longitude, "Ubicación"); },
+                    (e) => { fetchWeather(-36.8270, -73.0503, "Concepción"); }
+                );
+            } else {
+                fetchWeather(-36.8270, -73.0503, "Concepción");
+            }
+        }
+        initWeather();
+        // --- 6. CALCULADORA ---
+        const UF_VALUE = <%= currentUF %>;
+        let currentMode = 'UF';
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btnModeUF').className = mode === 'UF' ? 'toggle-option active' : 'toggle-option';
+            document.getElementById('btnModeCLP').className = mode === 'CLP' ? 'toggle-option active' : 'toggle-option';
+            document.getElementById('pricePrefix').textContent = mode === 'UF' ? 'UF' : '$';
+            document.getElementById('inputPrice').value = '';
+            document.getElementById('inputPrice').focus();
+            calculateAll();
+        }
+
+        function formatCurrency(input) {
+            let val = input.value.replace(/\D/g, '');
+            if(val === '') return;
+            input.value = parseInt(val).toLocaleString('es-CL');
+        }
+
+        function calculateAll() {
+            const rawPrice = document.getElementById('inputPrice').value.replace(/\./g, '');
+            const price = parseInt(rawPrice) || 0;
+            const percent = parseFloat(document.getElementById('inputComm').value) || 0;
+            let finalConversion = '$ 0', commUf = 0, commClp = 0;
+            if (currentMode === 'UF') {
+                finalConversion = '$ ' + (price * UF_VALUE).toLocaleString('es-CL');
+                commUf = price * (percent / 100);
+                commClp = commUf * UF_VALUE;
+            } else {
+                finalConversion = 'UF ' + (price / UF_VALUE).toLocaleString('es-CL', {maximumFractionDigits: 2});
+                commClp = price * (percent / 100);
+                commUf = commClp / UF_VALUE;
+            }
+            document.getElementById('valConversion').textContent = finalConversion;
+            document.getElementById('commUF').textContent = 'UF ' + commUf.toLocaleString('es-CL', {maximumFractionDigits: 2});
+            document.getElementById('commCLP').textContent = '$ ' + parseInt(commClp).toLocaleString('es-CL');
+        }
+    </script>
+</body>
+</html>

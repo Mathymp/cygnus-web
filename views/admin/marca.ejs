@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* --- ESTILOS V13: FORMAT MASTER --- */
+        :root {
+            --panel-bg: #ffffff;
+            --accent: #2563eb; 
+            --accent-hover: #1d4ed8;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        /* 1. LAYOUT PRINCIPAL */
+        .marca-container {
+            height: calc(100vh - 85px);
+            display: flex; flex-direction: column;
+            gap: 10px; padding-bottom: 0 !important;
+            overflow: hidden; 
+        }
+
+        /* HEADER & BOTONES */
+        .header-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 0.5rem; flex-shrink: 0; height: 50px;
+        }
+        .header-title h1 { font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin: 0; }
+        
+        .btn-header-primary {
+            background: white; border: 1px solid #e2e8f0; color: var(--accent);
+            padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.85rem;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .btn-header-primary:hover { 
+            background: var(--accent); color: white; border-color: var(--accent); 
+            transform: translateY(-1px); box-shadow: 0 2px 5px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-header-danger {
+            background: white; border: 1px solid #fecaca; color: var(--danger);
+            padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .btn-header-danger:hover { background: #fef2f2; border-color: var(--danger); }
+
+        /* ZONA DE CARGA */
+        .upload-zone {
+            flex: 1; border: 2px dashed #cbd5e1; border-radius: 16px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #f8fafc; cursor: pointer; transition: 0.2s; margin: 0 10px 10px 10px;
+        }
+        .upload-zone:hover { border-color: var(--accent); background: #eff6ff; }
+        .upload-icon { font-size: 3rem; color: #94a3b8; margin-bottom: 1rem; }
+
+        /* 2. EDITOR GRID */
+        .editor-grid {
+            display: none; 
+            grid-template-columns: 340px 1fr;
+            gap: 15px; height: 100%; min-height: 0;
+            padding-bottom: 10px;
+        }
+
+        /* 3. SIDEBAR CONTROLES */
+        .controls-sidebar {
+            background: white; border-radius: 12px; border: 1px solid var(--border);
+            display: flex; flex-direction: column; overflow: hidden; height: 100%;
+        }
+
+        .scroll-area {
+            flex: 1; overflow-y: auto; padding: 15px;
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .scroll-area::-webkit-scrollbar { width: 4px; }
+        .scroll-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .btn-magic {
+            background: linear-gradient(135deg, #3b82f6, #4f46e5); color: white; border: none;
+            padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2); font-size: 0.9rem; margin-bottom: 5px;
+        }
+        .btn-magic:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+        /* SECCIONES Y SLIDERS */
+        .control-section { display: flex; flex-direction: column; gap: 10px; }
+        .section-header { 
+            font-size: 0.75rem; font-weight: 800; color: var(--text-main); 
+            display: flex; align-items: center; gap: 6px; 
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .section-desc { font-size: 0.7rem; color: #94a3b8; margin: -5px 0 5px 22px; }
+        .section-divider { border-top: 1px solid #f1f5f9; margin: 5px 0; }
+
+        .slider-block { display: flex; flex-direction: column; gap: 4px; }
+        
+        .slider-top { 
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.8rem; font-weight: 600; color: var(--text-muted); 
+        }
+        
+        .val-badge {
+            background: #eff6ff; color: var(--accent); padding: 1px 6px; 
+            border-radius: 4px; font-size: 0.75rem; font-weight: 700; min-width: 30px; text-align: center;
+        }
+        
+        .slider-row { display: flex; align-items: center; gap: 8px; height: 24px; }
+        
+        input[type=range] {
+            flex: 1; -webkit-appearance: none; background: transparent; cursor: pointer; height: 20px; margin: 0;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 5px; background: #e2e8f0; border-radius: 10px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
+            background: white; border: 2px solid var(--accent); margin-top: -6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); background: var(--accent); }
+        
+        /* Reset individual */
+        .btn-reset-single {
+            background: #f8fafc; border: 1px solid var(--border); color: var(--text-muted);
+            width: 100%; padding: 8px; border-radius: 8px; font-weight: 600; font-size: 0.8rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+            margin-top: 5px;
+        }
+        .btn-reset-single:hover { background: #e2e8f0; color: var(--text-main); }
+
+        /* Footer Sidebar */
+        .bottom-action { padding: 15px; border-top: 1px solid var(--border); background: #f8fafc; margin-top: auto; }
+        .btn-download {
+            width: 100%; background: #0f172a; color: white; border: none;
+            padding: 14px; border-radius: 10px; font-size: 1rem; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: 0.2s;
+        }
+        .btn-download:hover { background: #1e293b; transform: translateY(-1px); }
+
+        /* 4. VISOR CENTRAL */
+        .stage-column {
+            display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; overflow: hidden;
+        }
+        .preview-box {
+            flex: 1; background: white; border: 1px solid var(--border); border-radius: 12px;
+            position: relative; overflow: hidden;
+            display: flex; align-items: center; justify-content: center; min-height: 0;
+        }
+        #mainCanvas {
+            max-width: 100%; max-height: 100%; object-fit: contain;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+
+        /* 5. CARRUSEL MINIATURAS */
+        .carousel-wrapper {
+            background: white; border: 1px solid var(--border); border-radius: 12px;
+            padding: 8px; display: flex; align-items: center; gap: 8px; 
+            height: 90px; flex-shrink: 0;
+        }
+        .nav-arrow {
+            background: #f1f5f9; border: none; color: var(--text-muted);
+            width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s;
+        }
+        .nav-arrow:hover { background: var(--accent); color: white; }
+
+        .thumbs-track {
+            flex: 1; display: flex; gap: 8px; overflow-x: auto; scroll-behavior: smooth;
+            height: 100%; align-items: center; scrollbar-width: none;
+        }
+        .thumbs-track::-webkit-scrollbar { display: none; }
+
+        .thumb-item {
+            position: relative; width: 64px; height: 64px; flex-shrink: 0;
+            border-radius: 8px; overflow: hidden; cursor: pointer;
+            border: 2px solid transparent; opacity: 0.6; transition: 0.2s; background: #e2e8f0;
+        }
+        .thumb-item img { width: 100%; height: 100%; object-fit: cover; }
+        .thumb-item.active { border-color: var(--accent); opacity: 1; transform: scale(1.05); }
+        
+        /* ETIQUETA "EDITADA" */
+        .edit-tag {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: var(--success); color: white;
+            font-size: 9px; font-weight: 800; text-align: center;
+            text-transform: uppercase; padding: 2px 0;
+            display: none; letter-spacing: 0.5px;
+        }
+        .thumb-item.is-edited { border-color: var(--success); opacity: 1; }
+        .thumb-item.is-edited .edit-tag { display: block; }
+
+        .del-thumb-btn {
+            position: absolute; top: 0; right: 0; width: 20px; height: 20px;
+            background: rgba(239, 68, 68, 0.9); color: white;
+            display: flex; align-items: center; justify-content: center; font-size: 10px;
+            cursor: pointer; opacity: 0; transition: 0.2s; border-bottom-left-radius: 8px; z-index: 5;
+        }
+        .thumb-item:hover .del-thumb-btn { opacity: 1; }
+        .del-thumb-btn:hover { background: #dc2626; }
+
+        /* LOADERS & MODAL */
+        .loader-overlay {
+            position: absolute; inset: 0; background: rgba(255,255,255,0.95); z-index: 50;
+            display: none; align-items: center; justify-content: center; flex-direction: column; font-weight: 600; color: var(--text-main);
+        }
+        
+        .progress-container {
+            width: 200px; height: 10px; background: #e2e8f0; border-radius: 20px;
+            margin-top: 15px; overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%; background: var(--accent); width: 0%; 
+            transition: width 0.3s ease; border-radius: 20px;
+        }
+        .progress-text { font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; }
+
+        .upload-loading {
+            position: absolute; inset: 0; background: rgba(255,255,255,0.9); z-index: 20;
+            display: none; align-items: center; justify-content: center; flex-direction: column; border-radius: 16px;
+        }
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+            display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px);
+        }
+        .modal-box {
+            background: white; width: 90%; max-width: 380px; padding: 25px;
+            border-radius: 16px; text-align: center; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.2);
+        }
+        .modal-input {
+            width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 8px;
+            font-size: 1rem; margin: 15px 0; outline: none;
+        }
+        .modal-input:focus { border-color: var(--accent); }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; }
+        .btn-modal { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; }
+        .btn-cancel { background: #f1f5f9; color: var(--text-muted); }
+        .btn-confirm { background: var(--accent); color: white; }
+        /* --- CORRECCIÓN DE LAYOUT Y SIDEBAR --- */
+        
+        /* 1. Asegura que el contenedor principal use Flexbox */
+        .app-layout {
+            display: flex;
+            min-height: 100vh; /* Ocupa al menos el 100% de la pantalla */
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* 2. Corrige el Sidebar para que sea Sticky (se queda fijo al bajar) */
+        aside.sidebar {
+            width: 280px; /* Mismo ancho que tu variable --sb-width */
+            height: 100vh; /* Altura completa de la ventana */
+            position: sticky; /* Se pega al borde superior */
+            top: 0;
+            left: 0;
+            flex-shrink: 0; /* Evita que se encoja */
+            overflow-y: auto; /* Permite scroll interno si el menú es muy alto */
+            z-index: 1000;
+            background: #ffffff; /* Asegura fondo blanco */
+            border-right: 1px solid #e2e8f0;
+        }
+
+        /* 3. Ajusta el contenido principal para que fluya a la derecha */
+        .main-content {
+            flex: 1; /* Toma el espacio restante */
+            width: calc(100% - 280px); /* Resta el ancho del sidebar */
+            min-height: 100vh;
+            background-color: #f8fafc; /* Color de fondo general */
+            display: block; /* Asegura flujo normal */
+        }
+
+        /* 4. Ajuste específico para el wrapper de publicar */
+        .publish-wrapper-fluid {
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin') %>
+        <main class="main-content">
+            <div class="dashboard-scroll" style="padding: 10px 20px;">
+                
+                <div class="marca-container">
+                    
+                    <div class="header-bar">
+                        <div class="header-title">
+                            <h1>Centro de Marca</h1>
+                        </div>
+                        <div id="topActions" style="display:none; gap:10px;">
+                            <button class="btn-header-primary" onclick="triggerAddMore()">
+                                <i class="ph-bold ph-plus"></i> Agregar más
+                            </button>
+                            <button class="btn-header-danger" onclick="showResetModal()">
+                                <i class="ph-bold ph-trash"></i> Nueva Tanda
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="upload-zone" id="dropZone">
+                        <div class="upload-loading" id="uploadLoader">
+                            <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; margin-bottom:10px;"></i>
+                            Cargando fotos...
+                        </div>
+                        <div class="upload-content" style="text-align: center;">
+                            <i class="ph-duotone ph-images-square upload-icon"></i>
+                            <h3>Arrastra tus fotos aquí</h3>
+                            <p style="color:#64748b; margin-top:5px; font-size:0.9rem;">JPG, PNG, WebP, HEIC (Auto-Convert)</p>
+                        </div>
+                    </div>
+                    
+                    <input type="file" id="fileInput" multiple style="display:none;">
+                    <input type="file" id="fileAdd" multiple style="display:none;">
+
+                    <div class="editor-grid" id="editorUI">
+                        
+                        <div class="controls-sidebar">
+                            <div class="scroll-area">
+                                <button class="btn-magic" id="btnAuto">
+                                    <i class="ph-fill ph-sparkle"></i> Mejora Automática
+                                </button>
+                                
+                                <div class="section-divider"></div>
+
+                                <div class="control-section">
+                                    <div class="section-header"><i class="ph-bold ph-sun"></i> ILUMINACIÓN</div>
+                                    <div class="section-desc">Brillo, contraste y detalles.</div>
+                                    
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Exposición</span> <span id="v-exp" class="val-badge">0</span></div>
+                                        <div class="slider-row">
+                                            <i class="fas fa-moon" style="font-size:0.7rem; color:#94a3b8;"></i>
+                                            <input type="range" id="exp" min="-50" max="50" value="0">
+                                            <i class="fas fa-sun" style="font-size:0.7rem; color:#f59e0b;"></i>
+                                        </div>
+                                    </div>
+
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Luminosidad</span> <span id="v-bright" class="val-badge">0</span></div>
+                                        <div class="slider-row"><input type="range" id="bright" min="-50" max="50" value="0"></div>
+                                    </div>
+
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Contraste</span> <span id="v-con" class="val-badge">0</span></div>
+                                        <div class="slider-row"><input type="range" id="con" min="-50" max="50" value="0"></div>
+                                    </div>
+
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Recuperar Ventanas</span> <span id="v-high" class="val-badge">0</span></div>
+                                        <div class="slider-row"><input type="range" id="high" min="0" max="100" value="0"></div>
+                                    </div>
+
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Aclarar Sombras</span> <span id="v-shadow" class="val-badge">0</span></div>
+                                        <div class="slider-row"><input type="range" id="shadow" min="0" max="60" value="0"></div>
+                                    </div>
+
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Punto Negro</span> <span id="v-black" class="val-badge">0</span></div>
+                                        <div class="slider-row"><input type="range" id="black" min="0" max="50" value="0"></div>
+                                    </div>
+                                </div>
+
+                                <div class="section-divider"></div>
+
+                                <div class="control-section">
+                                    <div class="section-header"><i class="ph-bold ph-palette"></i> COLOR & AMBIENTE</div>
+                                    <div class="section-desc">Temperatura y viveza.</div>
+
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Temperatura</span> <span id="v-temp" class="val-badge">0</span></div>
+                                        <div class="slider-row">
+                                            <span style="font-size:0.7rem; color:#3b82f6;">Frío</span>
+                                            <input type="range" id="temp" min="-40" max="40" value="0">
+                                            <span style="font-size:0.7rem; color:#f97316;">Cálido</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Vibrancia</span> <span id="v-sat" class="val-badge">0</span></div>
+                                        <div class="slider-row"><input type="range" id="sat" min="-30" max="50" value="0"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="section-divider"></div>
+
+                                <div class="control-section">
+                                    <div class="section-header"><i class="ph-bold ph-tree-evergreen"></i> EXTERIORES</div>
+                                    
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Verdes (Pasto) 🌿</span> <span id="v-green" class="val-badge">0</span></div>
+                                        <div class="slider-row"><input type="range" id="green" min="0" max="50" value="0"></div>
+                                    </div>
+
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Azules (Cielo/Agua) ☁️</span> <span id="v-blue" class="val-badge">0</span></div>
+                                        <div class="slider-row"><input type="range" id="blue" min="0" max="50" value="0"></div>
+                                    </div>
+                                </div>
+
+                                <button class="btn-reset-single" onclick="resetCurrent()">
+                                    <i class="ph-bold ph-arrow-counter-clockwise"></i> Restaurar Foto
+                                </button>
+                            </div>
+
+                            <div class="bottom-action">
+                                <button class="btn-download" onclick="openDownloadModal()">
+                                    <i class="ph-bold ph-download-simple"></i> Descargar Todo
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="stage-column">
+                            <div class="preview-box">
+                                <img id="mainCanvas" src="" alt="">
+                                <div class="loader-overlay" id="procLoader">
+                                    <i class="fas fa-cog fa-spin" style="font-size: 2rem; color:var(--accent);"></i>
+                                    <div style="margin-top:15px; font-size:1.1rem;">Procesando imágenes...</div>
+                                    <div class="progress-container">
+                                        <div class="progress-bar" id="progBar"></div>
+                                    </div>
+                                    <div class="progress-text" id="progText">0% completado</div>
+                                </div>
+                            </div>
+                            
+                            <div class="carousel-wrapper">
+                                <button class="nav-arrow" onclick="scrollThumbs(-1)"><i class="fas fa-chevron-left"></i></button>
+                                <div class="thumbs-track" id="thumbsTrack"></div>
+                                <button class="nav-arrow" onclick="scrollThumbs(1)"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="dlModal">
+        <div class="modal-box">
+            <h3 style="margin:0 0 15px 0;">Descargar Fotos</h3>
+            <p style="color:#64748b; font-size:0.9rem;">Nombre de la carpeta / ZIP:</p>
+            <input type="text" id="folderName" class="modal-input" placeholder="Ej: Propiedad 123">
+            <div class="modal-btns">
+                <button class="btn-modal btn-cancel" onclick="closeDlModal()">Cancelar</button>
+                <button class="btn-modal btn-confirm" onclick="confirmDownload()">Descargar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="resetModal">
+        <div class="modal-box">
+            <div style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
+            <h3 style="margin: 0 0 10px 0; color: #1e293b;">¿Iniciar nueva tanda?</h3>
+            <p style="color: #64748b; font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px;">
+                Se eliminarán todas las fotos y ediciones actuales.
+                <br><strong style="color: #ef4444;">¡Asegúrate de haber descargado tus cambios!</strong>
+            </p>
+            <div class="modal-btns">
+                <button class="btn-modal btn-cancel" onclick="closeResetModal()">Cancelar</button>
+                <button class="btn-modal btn-confirm" style="background: #ef4444;" onclick="confirmReset()">Sí, limpiar todo</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CORE ---
+        let photos = [];
+        let currentIdx = 0;
+        let wm = new Image();
+        let wmReady = false;
+        
+        // Settings Default
+        const defSet = { 
+            exp: 0, bright: 0, con: 0, high: 0, shadow: 0, black: 0, 
+            temp: 0, sat: 0, green: 0, blue: 0 
+        };
+        
+        // DOM
+        const els = {
+            drop: document.getElementById('dropZone'),
+            inp: document.getElementById('fileInput'),
+            add: document.getElementById('fileAdd'),
+            ui: document.getElementById('editorUI'),
+            topAct: document.getElementById('topActions'),
+            img: document.getElementById('mainCanvas'),
+            track: document.getElementById('thumbsTrack'),
+            uLoad: document.getElementById('uploadLoader'),
+            pLoad: document.getElementById('procLoader'),
+            pBar: document.getElementById('progBar'),
+            pText: document.getElementById('progText'),
+            sliders: {
+                exp: document.getElementById('exp'),
+                bright: document.getElementById('bright'),
+                con: document.getElementById('con'),
+                high: document.getElementById('high'),
+                shadow: document.getElementById('shadow'),
+                black: document.getElementById('black'),
+                temp: document.getElementById('temp'),
+                sat: document.getElementById('sat'),
+                green: document.getElementById('green'),
+                blue: document.getElementById('blue')
+            }
+        };
+
+        // Init
+        wm.crossOrigin = "anonymous";
+        wm.src = '/img/marca-footer.png';
+        wm.onload = () => wmReady = true;
+
+        els.drop.onclick = () => els.inp.click();
+        els.inp.onchange = (e) => loadFiles(e.target.files, false);
+        window.triggerAddMore = () => els.add.click();
+        els.add.onchange = (e) => loadFiles(e.target.files, true);
+        
+        els.drop.ondragover = (e) => { e.preventDefault(); els.drop.style.borderColor = '#2563eb'; };
+        els.drop.ondrop = (e) => { e.preventDefault(); loadFiles(e.dataTransfer.files, false); };
+
+        // Bind Sliders & Badges
+        Object.keys(els.sliders).forEach(k => {
+            els.sliders[k].oninput = (e) => {
+                if(!photos[currentIdx]) return;
+                const val = parseInt(e.target.value);
+                photos[currentIdx].set[k] = val;
+                photos[currentIdx].edited = true;
+                
+                // Update badge text
+                const badge = document.getElementById(`v-${k}`);
+                if(badge) badge.innerText = val > 0 ? `+${val}` : val;
+
+                updateThumbUI(currentIdx);
+                renderFastPreview();
+            };
+        });
+
+        // --- CARGA ---
+        function loadFiles(files, append) {
+            if(!files.length) return;
+            
+            // Check formato
+            const valid = Array.from(files).filter(f => {
+                // Aceptar solo imagenes
+                return f.type.startsWith('image/') || f.name.match(/\.(heic|heif|avif)$/i);
+            });
+
+            if(valid.length === 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Formato no soportado',
+                    text: 'Solo puedes subir imágenes (JPG, PNG, WebP, HEIC). Los videos o documentos serán ignorados.',
+                    confirmButtonColor: '#2563eb'
+                });
+                return;
+            }
+
+            if(!append) { photos = []; currentIdx = 0; els.uLoad.style.display = 'flex'; }
+            else els.pLoad.style.display = 'flex';
+
+            let loaded = 0;
+            
+            valid.forEach(f => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const scale = Math.min(1, 600 / img.naturalWidth);
+                        const cv = document.createElement('canvas');
+                        cv.width = img.naturalWidth * scale;
+                        cv.height = img.naturalHeight * scale;
+                        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+
+                        photos.push({
+                            file: f,
+                            original: img,
+                            previewSrc: cv.toDataURL(),
+                            previewW: cv.width,
+                            previewH: cv.height,
+                            set: { ...defSet },
+                            edited: false
+                        });
+                        loaded++;
+                        if(loaded === valid.length) {
+                            els.uLoad.style.display = 'none';
+                            els.pLoad.style.display = 'none';
+                            initUI();
+                        }
+                    };
+                    img.onerror = () => {
+                        // Si falla (ej HEIC sin soporte), pasar al siguiente
+                        loaded++;
+                        if(loaded === valid.length) {
+                            els.uLoad.style.display = 'none';
+                            els.pLoad.style.display = 'none';
+                            initUI();
+                        }
+                    }
+                };
+                reader.readAsDataURL(f);
+            });
+        }
+
+        function initUI() {
+            els.drop.style.display = 'none';
+            els.ui.style.display = 'grid';
+            els.topAct.style.display = 'flex';
+            renderThumbs();
+            selectPhoto(currentIdx);
+        }
+
+        // --- THUMBS & NAV ---
+        function renderThumbs() {
+            els.track.innerHTML = '';
+            photos.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = `thumb-item ${i===currentIdx?'active':''} ${p.edited?'is-edited':''}`;
+                div.innerHTML = `
+                    <img src="${p.previewSrc}">
+                    <div class="del-thumb-btn" onclick="event.stopPropagation(); removePhoto(${i})"><i class="fas fa-times"></i></div>
+                    <div class="edit-tag">EDITADA</div>
+                `;
+                div.onclick = () => selectPhoto(i);
+                els.track.appendChild(div);
+            });
+        }
+
+        function removePhoto(i) {
+            photos.splice(i, 1);
+            if(photos.length === 0) resetAll();
+            else {
+                if(currentIdx >= photos.length) currentIdx = photos.length - 1;
+                renderThumbs();
+                selectPhoto(currentIdx);
+            }
+        }
+
+        function selectPhoto(i) {
+            if(!photos[i]) return;
+            currentIdx = i;
+            Array.from(els.track.children).forEach((el, idx) => el.classList.toggle('active', idx === i));
+            
+            const s = photos[i].set;
+            Object.keys(els.sliders).forEach(k => {
+                els.sliders[k].value = s[k];
+                const badge = document.getElementById(`v-${k}`);
+                if(badge) badge.innerText = s[k] > 0 ? `+${s[k]}` : s[k];
+            });
+            renderFastPreview();
+        }
+
+        function updateThumbUI(i) {
+            const el = els.track.children[i];
+            if(el) {
+                if(photos[i].edited) el.classList.add('is-edited');
+                else el.classList.remove('is-edited');
+            }
+        }
+
+        window.scrollThumbs = (dir) => els.track.scrollBy({ left: dir * 120, behavior: 'smooth' });
+
+        // --- PREVIEW ---
+        const cv = document.createElement('canvas');
+        const ctx = cv.getContext('2d', { willReadFrequently: true });
+
+        function renderFastPreview() {
+            const p = photos[currentIdx];
+            cv.width = p.previewW;
+            cv.height = p.previewH;
+            ctx.drawImage(p.original, 0, 0, cv.width, cv.height); 
+            applyFilters(ctx, cv.width, cv.height, p.set);
+            els.img.src = cv.toDataURL();
+        }
+
+        // --- FILTERS ---
+        function applyFilters(ctx, w, h, s) {
+            const d = ctx.getImageData(0,0,w,h);
+            const data = d.data;
+            
+            const expF = 1 + (s.exp / 100);
+            const brightVal = s.bright; 
+            const conF = (100 + s.con) / 100;
+            const conOff = 128 * (1 - conF);
+            
+            const highReduc = s.high / 100;
+            const shadowBoost = s.shadow * 1.5;
+            const blackCrush = s.black; 
+
+            const satMul = 1 + (s.sat / 100);
+            const temp = s.temp;
+            const greenB = s.green / 50; 
+            const blueB = s.blue / 50;
+
+            for(let i=0; i<data.length; i+=4) {
+                let r = data[i], g = data[i+1], b = data[i+2];
+
+                // 1. Exposición
+                r *= expF; g *= expF; b *= expF;
+
+                // 2. Luminosidad
+                if(brightVal !== 0) { r += brightVal; g += brightVal; b += brightVal; }
+
+                // 3. Contraste
+                if(s.con !== 0) {
+                    r = r * conF + conOff;
+                    g = g * conF + conOff;
+                    b = b * conF + conOff;
+                }
+
+                // 4. Highlight Recovery
+                const lum = 0.299*r + 0.587*g + 0.114*b;
+                if(lum > 200) {
+                    const diff = lum - 200;
+                    r -= diff * highReduc; g -= diff * highReduc; b -= diff * highReduc;
+                }
+                
+                // 5. Sombras
+                if(shadowBoost > 0 && lum < 70) {
+                    const f = (70 - lum) / 70;
+                    const boost = shadowBoost * f;
+                    r += boost; g += boost; b += boost;
+                }
+
+                // 6. Punto Negro
+                if(blackCrush > 0 && lum < 100) {
+                    const f = (100 - lum) / 100;
+                    const cut = blackCrush * f;
+                    r -= cut; g -= cut; b -= cut;
+                }
+
+                // 7. Temperatura
+                r += temp; b -= temp;
+
+                // 8. Vibrancia
+                if(s.sat !== 0) {
+                    const avg = (r+g+b)/3;
+                    r = avg + (r-avg)*satMul; g = avg + (g-avg)*satMul; b = avg + (b-avg)*satMul;
+                }
+
+                // 9. Boosts
+                if(greenB > 0 && g > r && g > b) g += (g - Math.max(r,b)) * greenB;
+                if(blueB > 0 && b > r && b > g) b += (b - Math.max(r,g)) * blueB;
+
+                data[i] = r; data[i+1] = g; data[i+2] = b;
+            }
+            ctx.putImageData(d, 0, 0);
+        }
+
+        // --- ACTIONS ---
+        document.getElementById('btnAuto').onclick = () => {
+            const s = photos[currentIdx].set;
+            s.exp = 10; s.high = 30; s.shadow = 15; 
+            s.con = 10; s.black = 5; s.sat = 15; 
+            s.blue = 10; s.green = 10;
+            
+            photos[currentIdx].edited = true;
+            updateThumbUI(currentIdx);
+            selectPhoto(currentIdx);
+        };
+
+        window.resetCurrent = () => {
+            photos[currentIdx].set = { ...defSet };
+            photos[currentIdx].edited = false;
+            updateThumbUI(currentIdx);
+            selectPhoto(currentIdx);
+        };
+        
+        window.showResetModal = () => document.getElementById('resetModal').style.display = 'flex';
+        window.closeResetModal = () => document.getElementById('resetModal').style.display = 'none';
+        window.confirmReset = () => { location.reload(); };
+        window.resetAll = () => { showResetModal(); };
+
+        // --- DOWNLOAD ---
+        window.openDownloadModal = () => document.getElementById('dlModal').style.display = 'flex';
+        window.closeDlModal = () => document.getElementById('dlModal').style.display = 'none';
+
+        window.confirmDownload = async () => {
+            const name = document.getElementById('folderName').value || 'fotos_editadas';
+            closeDlModal();
+            els.pLoad.style.display = 'flex';
+            
+            const zip = new JSZip();
+            const folder = zip.folder(name);
+            const wCv = document.createElement('canvas');
+            const wCtx = wCv.getContext('2d');
+
+            const total = photos.length;
+            
+            for(let i=0; i<total; i++) {
+                const pct = Math.round(((i + 1) / total) * 100);
+                els.pBar.style.width = pct + '%';
+                els.pText.innerText = `Procesando foto ${i+1} de ${total} (${pct}%)`;
+
+                const p = photos[i];
+                const w = p.original.naturalWidth;
+                const h = p.original.naturalHeight;
+                wCv.width = w; wCv.height = h;
+
+                wCtx.drawImage(p.original, 0, 0);
+                applyFilters(wCtx, w, h, p.set);
+
+                if(wmReady) {
+                    let ww, wx, wy;
+                    const r = wm.naturalHeight / wm.naturalWidth;
+                    if(h > w) ww = w * 1.5; else ww = w * 1.1;
+                    const wh = ww * r;
+                    wx = (w - ww) / 2;
+                    wy = h - wh;
+                    wCtx.drawImage(wm, wx, wy, ww, wh);
+                }
+
+                const blob = await new Promise(r => wCv.toBlob(r, 'image/jpeg', 0.90));
+                folder.file(`${name}_${i+1}.jpg`, blob);
+                
+                await new Promise(r => setTimeout(r, 10));
+            }
+
+            els.pText.innerText = "Generando ZIP...";
+            const content = await zip.generateAsync({type:"blob"});
+            saveAs(content, `${name}.zip`);
+            
+            els.pLoad.style.display = 'none';
+            els.pBar.style.width = '0%';
+        };
+
+    </script>
+</body>
+</html>

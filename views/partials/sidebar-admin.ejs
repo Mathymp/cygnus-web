@@ -1,0 +1,83 @@
+<aside class="sidebar" id="adminSidebar">
+    
+    <div class="sidebar-header">
+        <a href="/dashboard" class="brand-link">
+            <img src="/img/logo.png" alt="Cygnus Group" class="brand-logo">
+        </a>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-group-label">Principal</div>
+        <ul class="nav-list">
+            <li>
+                <a href="/dashboard" class="nav-link <%= (typeof page !== 'undefined' && page === 'dashboard') ? 'active' : '' %>">
+                    <i class="ph-bold ph-squares-four"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="/admin/propiedades" class="nav-link <%= (typeof page !== 'undefined' && page === 'propiedades') ? 'active' : '' %>">
+                    <i class="ph-bold ph-house-line"></i>
+                    <span>Propiedades</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="/admin/publicar" class="nav-link <%= (typeof page !== 'undefined' && page === 'publicar') ? 'active' : '' %>">
+                    <i class="ph-bold ph-plus-circle"></i>
+                    <span>Publicar</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="nav-group-label">Herramientas</div>
+        <ul class="nav-list">
+            <li>
+                <a href="/admin/marca" class="nav-link <%= (typeof activePage !== 'undefined' && activePage === 'marca') ? 'active' : '' %>">
+                    <i class="ph-bold ph-stamp"></i>
+                    <span>Centro de Marca</span>
+                </a>
+            </li>
+        </ul>
+
+        <% if (user && user.role === 'admin') { %>
+            <div class="nav-group-label">Administración</div>
+            <ul class="nav-list">
+                <li>
+                    <a href="/admin/team" class="nav-link <%= (typeof page !== 'undefined' && page === 'team') ? 'active' : '' %>">
+                        <i class="ph-bold ph-users-three"></i>
+                        <span>Equipo</span>
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="/admin/configuracion" class="nav-link <%= (typeof page !== 'undefined' && page === 'config') ? 'active' : '' %>">
+                        <i class="ph-bold ph-gear"></i>
+                        <span>Configuración</span>
+                    </a>
+                </li>
+            </ul>
+        <% } %>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="user-card">
+            <div class="avatar-box">
+                <% if (user && user.avatar) { %>
+                    <img src="<%= user.avatar %>" alt="User" class="user-img">
+                <% } else { %>
+                    <i class="ph-fill ph-user-circle user-icon-fallback"></i>
+                <% } %>
+            </div>
+            <div class="user-meta">
+                <span class="user-name"><%= user && user.name ? user.name.split(' ')[0] : 'Usuario' %></span>
+                <span class="user-badge"><%= user && user.role === 'admin' ? 'Admin' : 'Agente' %></span>
+            </div>
+        </div>
+        
+        <a href="/logout" class="btn-exit" title="Cerrar Sesión">
+            <i class="ph-bold ph-sign-out"></i>
+        </a>
+    </div>
+</aside>

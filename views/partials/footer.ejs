@@ -1,0 +1,330 @@
+<footer class="footer-modern">
+    <div class="footer-bg-decor"></div>
+
+    <div class="footer-container">
+        
+        <div class="footer-brand-col">
+            <img src="/img/logo.png" alt="Cygnus Group" class="footer-logo">
+            <p class="footer-bio">
+                Transformamos la experiencia inmobiliaria en la Región del Biobío. Tecnología, confianza y resultados.
+            </p>
+            
+            <div class="social-links-container">
+                <a href="https://www.instagram.com/CygnusGroup.cl" target="_blank" class="social-btn instagram" aria-label="Instagram">
+                    <i class="ph-fill ph-instagram-logo"></i>
+                </a>
+                <a href="https://www.facebook.com/cygnusgrouppropiedades" target="_blank" class="social-btn facebook" aria-label="Facebook">
+                    <i class="ph-fill ph-facebook-logo"></i>
+                </a>
+                <a href="https://www.tiktok.com/@Cygnusgroup.cl" target="_blank" class="social-btn tiktok" aria-label="TikTok">
+                    <i class="ph-fill ph-tiktok-logo"></i>
+                </a>
+                <a href="https://www.youtube.com/@CygnusGrouppropiedades" target="_blank" class="social-btn youtube" aria-label="YouTube">
+                    <i class="ph-fill ph-youtube-logo"></i>
+                </a>
+                <a href="https://wa.me/56923830830?text=Hola%20Cygnus%20Group,%20quisiera%20m%C3%A1s%20informaci%C3%B3n%20sobre%20sus%20servicios." target="_blank" class="social-btn whatsapp" aria-label="WhatsApp">
+                    <i class="ph-fill ph-whatsapp-logo"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="footer-links-col">
+            <h4>Navegación</h4>
+            <ul>
+                <li><a href="/">Inicio</a></li>
+                <li><a href="/propiedades">Propiedades</a></li> <li><a href="/nosotros">Nosotros</a></li>       <li><a href="/contacto">Contacto</a></li>       <li><a href="/login">Intranet Agentes</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-offices-col">
+            <h4>Nuestras Oficinas</h4>
+            
+            <div class="office-item">
+                <div class="office-icon"><i class="ph-duotone ph-buildings"></i></div>
+                <div class="office-info">
+                    <strong>Concepción</strong>
+                    <span>Barros Arana 1098, Torre Mall del Centro Of #1807</span>
+                </div>
+            </div>
+
+            <div class="office-item">
+                <div class="office-icon"><i class="ph-duotone ph-map-pin"></i></div>
+                <div class="office-info">
+                    <strong>Chillán</strong>
+                    <span>Calle 18 de Septiembre 246, Edif. Centro Urbano Of #312</span>
+                </div>
+            </div>
+            
+            <a href="https://wa.me/56923830830?text=Hola,%20necesito%20asistencia%20inmobiliaria." target="_blank" class="footer-cta-wsp">
+                <i class="ph-bold ph-whatsapp-logo"></i> Contactar por WhatsApp
+            </a>
+        </div>
+
+    </div>
+
+    <div class="footer-bottom">
+        <div class="bottom-container">
+            <p>&copy; <span id="copyright-year"></span> Cygnus Group Propiedades. Todos los derechos reservados.</p>
+            <div class="legal-links">
+                <a href="#">Privacidad</a>
+                <span class="separator">•</span>
+                <a href="#">Términos</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // Script para año automático
+    document.getElementById('copyright-year').textContent = new Date().getFullYear();
+</script>
+
+<style>
+    /* --- Footer Modern Gradient --- */
+    .footer-modern {
+        /* Degradado moderno: Deep Slate -> Royal Blue oscuro */
+        background: linear-gradient(135deg, #0f172a 0%, #172554 100%);
+        color: #cbd5e1;
+        font-size: 0.95rem;
+        margin-top: auto;
+        position: relative;
+        overflow: hidden;
+        border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    /* Efecto de brillo superior */
+    .footer-modern::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+    }
+
+    .footer-container {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 80px 25px 50px;
+        display: grid;
+        grid-template-columns: 1.4fr 0.8fr 1.4fr;
+        gap: 60px;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Logo & Bio */
+    .footer-logo {
+        height: 50px;
+        width: auto; /* Corrección para mantener proporción */
+        filter: brightness(0) invert(1);
+        margin-bottom: 20px;
+        opacity: 0.9;
+    }
+    .footer-bio {
+        line-height: 1.6;
+        margin-bottom: 30px;
+        color: #94a3b8;
+        max-width: 380px;
+        font-weight: 300;
+    }
+
+    /* --- REDES SOCIALES ESTILIZADAS --- */
+    .social-links-container {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .social-btn {
+        width: 42px; height: 42px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem;
+        color: white;
+        background: rgba(255,255,255,0.08); /* Fondo base translúcido */
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255,255,255,0.05);
+        text-decoration: none;
+    }
+
+    .social-btn:hover {
+        transform: translateY(-4px) scale(1.05);
+        box-shadow: 0 10px 20px -5px rgba(0,0,0,0.3);
+    }
+
+    /* Colores Específicos de Marca al Hover */
+    .social-btn.instagram:hover {
+        background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+        border-color: transparent;
+    }
+    .social-btn.facebook:hover {
+        background: #1877F2;
+        border-color: #1877F2;
+    }
+    .social-btn.tiktok:hover {
+        background: #000000;
+        border-color: #25F4EE; /* Efecto neon cyan borde */
+        box-shadow: 3px 3px 0 #FE2C55, -3px -3px 0 #25F4EE; /* Efecto glitch */
+    }
+    .social-btn.youtube:hover {
+        background: #FF0000;
+        border-color: #FF0000;
+    }
+    .social-btn.whatsapp:hover {
+        background: #25D366;
+        border-color: #25D366;
+    }
+
+    /* Títulos */
+    .footer-modern h4 {
+        color: white;
+        font-size: 1.1rem;
+        margin-bottom: 25px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+
+    /* Links Navegación */
+    .footer-links-col ul { list-style: none; padding: 0; }
+    .footer-links-col li { margin-bottom: 12px; }
+    .footer-links-col a {
+        color: #cbd5e1;
+        text-decoration: none;
+        transition: 0.2s;
+        display: inline-block;
+        font-weight: 400;
+    }
+    .footer-links-col a:hover {
+        color: #60a5fa;
+        transform: translateX(6px);
+    }
+
+    /* Oficinas */
+    .office-item {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .office-icon {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+        min-width: 36px; height: 36px;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    .office-info strong { display: block; color: white; margin-bottom: 2px; }
+    .office-info span { font-size: 0.85rem; color: #94a3b8; }
+
+    /* Botón CTA Footer */
+    .footer-cta-wsp {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 15px;
+        padding: 10px 20px;
+        background: rgba(37, 211, 102, 0.1);
+        color: #4ade80; /* Verde claro */
+        border: 1px solid rgba(37, 211, 102, 0.2);
+        border-radius: 50px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: 0.3s;
+    }
+    .footer-cta-wsp:hover {
+        background: rgba(37, 211, 102, 0.2);
+        color: #ffffff;
+        transform: translateY(-2px);
+    }
+
+    /* Bottom Bar */
+    .footer-bottom {
+        background: rgba(0,0,0,0.2); /* Oscurecer un poco más */
+        padding: 25px 0;
+        backdrop-filter: blur(5px);
+    }
+    .bottom-container {
+        max-width: 1280px; margin: 0 auto; padding: 0 25px;
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 0.85rem; color: #64748b;
+    }
+    .legal-links { display: flex; gap: 15px; }
+    .legal-links a { color: #64748b; text-decoration: none; transition: 0.2s; }
+    .legal-links a:hover { color: white; }
+
+    @media(max-width: 900px) {
+        .footer-container { grid-template-columns: 1fr; gap: 40px; padding: 60px 25px; }
+        .bottom-container { flex-direction: column; gap: 15px; text-align: center; }
+        .footer-cta-wsp { width: 100%; justify-content: center; }
+    }
+</style>
+
+<style>
+    /* 1. ARREGLAR ICONOS ROTOS DE SWEETALERT (La X y el Check deformes) */
+    /* Respetando tus estilos al 100% como pediste */
+    .swal2-icon,
+    .swal2-icon div,
+    .swal2-icon span,
+    .swal2-icon::before,
+    .swal2-icon::after {
+        box-sizing: content-box !important;
+        display: flex !important;
+    }
+
+    /* 2. MAQUILLAJE GENERAL DEL MODAL */
+    div:where(.swal2-container) div:where(.swal2-popup) {
+        border-radius: 24px !important;
+        font-family: 'Inter', system-ui, sans-serif !important;
+        padding: 2.5rem !important;
+        background: #ffffff !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    div:where(.swal2-container) .swal2-title {
+        color: #1e293b !important;
+        font-size: 1.6rem !important;
+        font-weight: 800 !important;
+        padding-bottom: 1rem !important;
+    }
+
+    div:where(.swal2-container) .swal2-html-container {
+        color: #64748b !important;
+        font-size: 1.05rem !important;
+        line-height: 1.6 !important;
+    }
+
+    div:where(.swal2-container) .swal2-actions {
+        margin-top: 1.5rem !important;
+        gap: 1rem !important;
+    }
+
+    div:where(.swal2-container) .swal2-confirm {
+        background-color: #2563EB !important;
+        border-radius: 12px !important;
+        padding: 14px 28px !important;
+        font-weight: 600 !important;
+        box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2) !important;
+        border: none !important;
+    }
+
+    div:where(.swal2-container) .swal2-cancel {
+        background-color: #f1f5f9 !important;
+        color: #64748b !important;
+        border-radius: 12px !important;
+        padding: 14px 28px !important;
+        font-weight: 600 !important;
+        border: none !important;
+    }
+
+    /* COLORES DE ICONOS */
+    .swal2-icon.swal2-success { border-color: #10b981 !important; color: #10b981 !important; }
+    .swal2-icon.swal2-success [class^='swal2-success-line'] { background-color: #10b981 !important; }
+    .swal2-icon.swal2-success .swal2-success-ring { border: .25em solid rgba(16, 185, 129, 0.2) !important; }
+    
+    .swal2-icon.swal2-error { border-color: #ef4444 !important; color: #ef4444 !important; }
+    .swal2-icon.swal2-error [class^='swal2-x-mark-line'] { background-color: #ef4444 !important; }
+
+    .swal2-icon.swal2-info { border-color: #3b82f6 !important; color: #3b82f6 !important; }
+    .swal2-icon.swal2-info::before { background-color: #3b82f6 !important; }
+</style>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <link rel="stylesheet" href="/css/publish.css">
+    <link rel="stylesheet" href="/css/team.css">
+    <style>
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            padding-right: 40px;
+        }
+        .btn-toggle-pass {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+            z-index: 2; /* Asegura que esté sobre el input */
+        }
+        .btn-toggle-pass:hover {
+            color: #0f172a;
+        }
+        .publish-container {
+            max-width: 800px;
+            margin: 2rem auto;
+        }
+    </style>
+</head>
+<body class="dashboard-body">
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin') %>
+
+        <main class="main-content">
+            <div class="dashboard-scroll">
+                
+                <div class="dash-top-bar">
+                    <div class="welcome-text">
+                        <h1>Editar Perfil</h1>
+                        <p>Actualizando datos de <strong><%= agent.name %></strong></p>
+                    </div>
+                    <div>
+                        <a href="/admin/team" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; background: #fff; border: 1px solid #ddd; border-radius: 50px; color: #555; font-weight: 600; transition: all 0.2s;">
+                            <i class="ph-bold ph-arrow-left"></i> Cancelar
+                        </a>
+                    </div>
+                </div>
+
+                <div class="publish-container">
+                    
+                    <%- include('../partials/alerts') %>
+
+                    <form action="/admin/edit-agent/<%= agent.id %>" method="POST" class="publish-form" id="editAgentForm">
+                        
+                        <div class="form-section">
+                            <h3 class="section-title"><i class="ph-bold ph-identification-card"></i> Información Básica</h3>
+                            
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label>Nombre Completo</label>
+                                    <input type="text" id="nameInput" name="name" value="<%= agent.name %>" required>
+                                    <small style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">Solo letras y espacios.</small>
+                                </div>
+                                
+                                <div class="input-group">
+                                    <label>Correo Electrónico</label>
+                                    <input type="email" name="email" value="<%= agent.email %>" required>
+                                </div>
+
+                                <div class="input-group">
+                                    <label>Teléfono</label>
+                                    <div class="phone-input-wrapper" style="display: flex; align-items: center; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background: white;">
+                                        <span style="background: #f8fafc; padding: 12px; color: #64748b; font-weight: 600; border-right: 1px solid #ddd;">+56</span>
+                                        <input type="text" id="phoneInput" name="phone" value="<%= agent.phone || '' %>" style="border: none; box-shadow: none;" maxlength="11">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3 class="section-title"><i class="ph-bold ph-shield-check"></i> Seguridad y Permisos</h3>
+                            
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label>Cargo / Puesto</label>
+                                    <input type="text" name="position" value="<%= agent.position || '' %>" placeholder="Ej: Agente Senior">
+                                </div>
+
+                                <div class="input-group">
+                                    <label>Rol en Sistema</label>
+                                    <select name="role" required style="cursor: pointer;">
+                                        <option value="agent" <%= agent.role === 'agent' ? 'selected' : '' %>>Corredor de Propiedades</option>
+                                        <option value="admin" <%= agent.role === 'admin' ? 'selected' : '' %>>Administrador</option>
+                                    </select>
+                                </div>
+
+                                <div class="input-group full-width" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px dashed #cbd5e1;">
+                                    <label style="color: #475569;">Cambiar Contraseña (Opcional)</label>
+                                    
+                                    <div class="password-wrapper">
+                                        <input type="password" id="passwordInput" name="password" placeholder="Dejar en blanco para mantener la actual">
+                                        <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility(event)">
+                                            <i class="ph-bold ph-eye" id="eyeIcon"></i>
+                                        </button>
+                                    </div>
+
+                                    <small style="color: #64748b; margin-top: 5px; display: block;">Solo rellena este campo si deseas cambiar la clave.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions" style="margin-top: 2rem; display: flex; justify-content: center;">
+                            <button type="submit" class="btn-publish-submit" style="padding: 14px 60px; font-size: 1.1rem; border-radius: 50px;">
+                                <i class="ph-bold ph-floppy-disk"></i> Guardar Cambios
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 1. Validación de Nombre
+        const nameInput = document.getElementById('nameInput');
+        nameInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+        });
+
+        // 2. Formato de Teléfono
+        const phoneInput = document.getElementById('phoneInput');
+        
+        function formatPhone(input) {
+            let numbers = input.value.replace(/\D/g, '');
+            if (numbers.length > 9) numbers = numbers.substring(0, 9);
+            
+            if (numbers.length > 0) {
+                let formatted = numbers;
+                if (numbers.length > 1) formatted = numbers.substring(0, 1) + ' ' + numbers.substring(1);
+                if (numbers.length > 5) formatted = formatted.substring(0, 6) + ' ' + formatted.substring(6);
+                input.value = formatted;
+            } else {
+                input.value = '';
+            }
+        }
+
+        phoneInput.addEventListener('input', function() { formatPhone(this); });
+        
+        // Formatear al cargar la página si ya viene con datos
+        document.addEventListener("DOMContentLoaded", () => {
+            if(phoneInput.value) formatPhone(phoneInput);
+        });
+
+        // 3. Toggle Password (Ojito)
+        function togglePasswordVisibility(e) {
+            // Prevenir que el botón haga submit del form
+            if(e) e.preventDefault();
+            
+            const passInput = document.getElementById('passwordInput');
+            const icon = document.getElementById('eyeIcon');
+            
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                icon.classList.remove('ph-eye');
+                icon.classList.add('ph-eye-slash');
+            } else {
+                passInput.type = 'password';
+                icon.classList.remove('ph-eye-slash');
+                icon.classList.add('ph-eye');
+            }
+        }
+    </script>
+</body>
+</html>

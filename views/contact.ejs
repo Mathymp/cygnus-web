@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <title>Contacto | Cygnus Group</title>
+    <style>
+        .contact-page-wrapper { padding: 80px 25px; max-width: 1200px; margin: 0 auto; }
+        .contact-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 60px; }
+        
+        .contact-info-card { background: #0f172a; color: white; padding: 40px; border-radius: 24px; position: relative; overflow: hidden; }
+        .contact-info-card::before {
+            content: ''; position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; background: rgba(37, 99, 235, 0.2); border-radius: 50%; blur(40px);
+        }
+        
+        .contact-info-card h2 { font-size: 1.8rem; margin-bottom: 10px; position: relative; z-index: 2; }
+        .contact-info-card p { opacity: 0.8; margin-bottom: 40px; position: relative; z-index: 2; }
+        
+        .info-item { display: flex; gap: 15px; margin-bottom: 30px; align-items: flex-start; position: relative; z-index: 2; }
+        .info-icon { min-width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #60a5fa; }
+        .info-text strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+        .info-text span { opacity: 0.8; font-size: 0.95rem; line-height: 1.5; }
+
+        .contact-form-container { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #334155; }
+        .form-control { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; transition: 0.2s; font-family: inherit; }
+        .form-control:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        
+        .btn-submit-contact { width: 100%; background: #2563eb; color: white; padding: 14px; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-submit-contact:hover { background: #1d4ed8; transform: translateY(-2px); }
+
+        @media(max-width: 800px) { .contact-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <%- include('partials/navbar') %>
+
+    <div class="contact-page-wrapper">
+        <div class="header-contact" style="text-align: center; margin-bottom: 50px;">
+            <h1 style="font-size: 2.5rem; font-weight: 800; color: #0f172a;">Hablemos de tus proyectos</h1>
+            <p style="color: #64748b; font-size: 1.1rem;">Estamos aquí para responder todas tus dudas inmobiliarias.</p>
+        </div>
+
+        <div class="contact-grid">
+            <div class="contact-info-card">
+                <h2>Información de Contacto</h2>
+                <p>Visítanos en nuestras oficinas o contáctanos directamente a través de nuestros canales oficiales.</p>
+
+                <div class="info-item">
+                    <div class="info-icon"><i class="ph-fill ph-phone"></i></div>
+                    <div class="info-text">
+                        <strong>Llámanos</strong>
+                        <span>+56 9 2383 0830</span>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-icon"><i class="ph-fill ph-envelope"></i></div>
+                    <div class="info-text">
+                        <strong>Escríbenos</strong>
+                        <span>contacto@cygnusgroup.cl</span>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-icon"><i class="ph-fill ph-buildings"></i></div>
+                    <div class="info-text">
+                        <strong>Oficina Concepción</strong>
+                        <span>Barros Arana 1098, Torre Mall del Centro Of #1807</span>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-icon"><i class="ph-fill ph-map-pin"></i></div>
+                    <div class="info-text">
+                        <strong>Oficina Chillán</strong>
+                        <span>Calle 18 de Septiembre 246, Edif. Centro Urbano Of #312</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="contact-form-container">
+                <form action="/contacto" method="POST">
+                    <div class="form-group">
+                        <label>Nombre Completo</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej. Juan Pérez" required>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="email" class="form-control" placeholder="juan@correo.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono</label>
+                            <input type="tel" name="telefono" id="phoneInput" class="form-control" placeholder="+56 9 XXXX XXXX" maxlength="16" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Asunto</label>
+                        <select name="asunto" class="form-control">
+                            <option value="Quiero vender una propiedad">Quiero vender una propiedad</option>
+                            <option value="Busco comprar una propiedad">Busco comprar una propiedad</option>
+                            <option value="Consulta general">Consulta general</option>
+                            <option value="Trabajar con ustedes">Trabajar con ustedes</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mensaje</label>
+                        <textarea name="mensaje" class="form-control" rows="5" placeholder="Cuéntanos más detalles..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-submit-contact">
+                        Enviar Mensaje <i class="ph-bold ph-paper-plane-right"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div style="width: 100%; height: 400px; background: #e2e8f0; border-top: 1px solid #cbd5e1;">
+        <iframe 
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3192.569248476219!2d-73.0506076846985!3d-36.82845347994273!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9669b5d275753b8d%3A0x6b3f81358913926e!2sBarros%20Arana%201098%2C%20Concepci%C3%B3n%2C%20B%C3%ADo%20B%C3%ADo!5e0!3m2!1ses!2scl!4v1695155123456!5m2!1ses!2scl" 
+            width="100%" height="100%" style="border:0; filter: grayscale(1) opacity(0.8);" allowfullscreen="" loading="lazy">
+        </iframe>
+    </div>
+
+    <%- include('partials/footer') %>
+    
+    <script>
+        // MÁSCARA PARA TELÉFONO CHILENO
+        const phoneInput = document.getElementById('phoneInput');
+
+        // Inicializar con el prefijo
+        if(!phoneInput.value) phoneInput.value = "+56 9 ";
+
+        phoneInput.addEventListener('keydown', function(e) {
+            // Evitar borrar el prefijo "+56 9 "
+            if (this.selectionStart < 6 && (e.key === 'Backspace' || e.key === 'Delete')) {
+                e.preventDefault();
+            }
+        });
+
+        phoneInput.addEventListener('input', function(e) {
+            let input = this.value;
+
+            // Asegurarse de que empiece con +56 9 
+            if (!input.startsWith('+56 9 ')) {
+                input = '+56 9 ' + input.replace(/^\+56\s?9\s?/, '');
+            }
+
+            // Extraer solo los números después del prefijo
+            let numbers = input.substring(6).replace(/\D/g, '');
+
+            // Limitar a 8 dígitos (móvil chileno)
+            if (numbers.length > 8) numbers = numbers.substring(0, 8);
+
+            // Formatear en bloques de 4 (xxxx xxxx)
+            let formatted = '';
+            if (numbers.length > 4) {
+                formatted = numbers.substring(0, 4) + ' ' + numbers.substring(4);
+            } else {
+                formatted = numbers;
+            }
+
+            this.value = '+56 9 ' + formatted;
+        });
+
+        // ALERTA DE ÉXITO O ERROR (Desde el Backend)
+        <% if(typeof msg !== 'undefined' && msg === 'success') { %>
+            Swal.fire({
+                title: '¡Mensaje Enviado!',
+                text: 'Hemos recibido tu consulta. Te contactaremos a la brevedad.',
+                icon: 'success',
+                confirmButtonColor: '#2563eb'
+            });
+        <% } %>
+
+        <% if(typeof msg !== 'undefined' && msg === 'error') { %>
+            Swal.fire({
+                title: 'Error',
+                text: 'Hubo un problema al enviar el mensaje. Intenta nuevamente.',
+                icon: 'error',
+                confirmButtonColor: '#ef4444'
+            });
+        <% } %>
+    </script>
+</body>
+</html>

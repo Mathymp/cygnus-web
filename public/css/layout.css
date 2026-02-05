@@ -1,0 +1,96 @@
+/* layout.css - Estructura y Grillas (CORREGIDO PARA SCROLL Y ZOOM) */
+
+/* Contenedor Principal de la Vista de Ventas */
+.sales-container {
+  display: grid;
+  grid-template-columns: 1fr 400px; /* Productos a la izq, Carrito fijo a la der */
+  /* FIX SCROLL: Usamos 'auto' en las filas para que crezca según el contenido */
+  grid-template-rows: 80px auto; 
+  
+  /* FIX GIGANTE/SCROLL: 
+     En lugar de forzar height: 100vh (que bloquea), usamos min-height.
+     Y overflow: visible permite que el scroll del body funcione.
+  */
+  min-height: 100vh;
+  width: 100%;
+  overflow: visible !important; 
+  background-color: var(--bg-primary);
+}
+
+/* 1. Header Superior (Barra de búsqueda, filtros, usuario) */
+.sales-header {
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-lg);
+  z-index: 10;
+  height: 80px; /* Altura fija explícita */
+}
+
+/* 2. Área Principal (Grid de Productos) */
+.products-area {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+  padding: var(--spacing-lg);
+  /* FIX SCROLL: Quitamos overflow-y: auto para que use el scroll principal de la página */
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* Grid de Tarjetas de Productos */
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  padding-bottom: var(--spacing-xl); /* Espacio al final para no cortar */
+}
+
+/* 3. Sidebar del Carrito */
+.cart-sidebar {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+  background-color: var(--bg-secondary);
+  border-left: 1px solid var(--bg-tertiary);
+  display: flex;
+  flex-direction: column;
+  
+  /* FIX: Hacemos que el carrito sea 'sticky' (pegajoso) para que baje contigo */
+  position: sticky;
+  top: 80px; /* Se pega justo debajo del header */
+  height: calc(100vh - 80px); /* Ocupa el resto de la pantalla */
+  box-shadow: -4px 0 20px rgba(0,0,0,0.2);
+}
+
+/* Secciones internas del Carrito */
+.cart-items-container {
+  flex: 1; /* Ocupa el espacio disponible */
+  overflow-y: auto; /* El carrito SI lleva scroll interno si se llena mucho */
+  padding: var(--spacing-md);
+}
+
+.cart-summary {
+  background-color: var(--bg-tertiary);
+  padding: var(--spacing-lg);
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+/* RESPONSIVE: Ajustes para pantallas pequeñas */
+@media (max-width: 1024px) {
+    .sales-container {
+        grid-template-columns: 1fr; /* Una sola columna */
+        grid-template-rows: 80px auto auto; /* Header, contenido, carrito abajo */
+    }
+    .cart-sidebar {
+        grid-column: 1 / -1;
+        grid-row: 3 / 4;
+        height: auto;
+        position: static;
+        border-left: none;
+        border-top: 1px solid var(--bg-tertiary);
+    }
+}

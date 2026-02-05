@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <link rel="stylesheet" href="/css/publish.css">
+    <link rel="stylesheet" href="/css/team.css">
+    <style>
+        /* Estilos específicos para las mejoras solicitadas */
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .password-wrapper input {
+            padding-right: 40px; /* Espacio para el ojito */
+        }
+        .btn-toggle-pass {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+        .btn-toggle-pass:hover {
+            color: #0f172a;
+        }
+        
+        /* Mejora del botón Registrar */
+        .btn-publish-submit {
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #2563eb; /* Azul base */
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        }
+        .btn-publish-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+            background: #1d4ed8;
+        }
+        .btn-publish-submit:active {
+            transform: translateY(0);
+        }
+
+        /* Centrado del contenedor */
+        .publish-container {
+            max-width: 800px;
+            margin: 2rem auto; /* Más margen vertical */
+        }
+    </style>
+</head>
+<body class="dashboard-body">
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin') %>
+
+        <main class="main-content">
+            <div class="dashboard-scroll">
+                
+                <div class="dash-top-bar">
+                    <div class="welcome-text">
+                        <h1>Nuevo Miembro</h1>
+                        <p>Añade un nuevo profesional al equipo.</p>
+                    </div>
+                    <div>
+                        <a href="/admin/team" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; background: #fff; border: 1px solid #ddd; border-radius: 50px; color: #555; font-weight: 600; transition: all 0.2s;">
+                            <i class="ph-bold ph-arrow-left"></i> Volver
+                        </a>
+                    </div>
+                </div>
+
+                <div class="publish-container">
+                    
+                    <%- include('../partials/alerts') %>
+
+                    <form action="/admin/add-agent" method="POST" class="publish-form" id="agentForm">
+                        
+                        <div class="form-section">
+                            <h3 class="section-title"><i class="ph-bold ph-identification-card"></i> Información Personal</h3>
+                            
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label>Nombre Completo</label>
+                                    <input type="text" id="nameInput" name="name" placeholder="Ej: Juan Pérez" required 
+                                           value="<%= typeof formData !== 'undefined' ? formData.name : '' %>">
+                                    <small style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">Solo letras y espacios.</small>
+                                </div>
+                                
+                                <div class="input-group">
+                                    <label>Correo Electrónico (Acceso)</label>
+                                    <input type="email" name="email" placeholder="usuario@cygnus.cl" required
+                                           value="<%= typeof formData !== 'undefined' ? formData.email : '' %>">
+                                </div>
+
+                                <div class="input-group">
+                                    <label>Teléfono</label>
+                                    <div class="phone-input-wrapper" style="display: flex; align-items: center; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background: white;">
+                                        <span style="background: #f8fafc; padding: 12px; color: #64748b; font-weight: 600; border-right: 1px solid #ddd;">+56</span>
+                                        <input type="text" id="phoneInput" name="phone" placeholder="9 1234 5678" style="border: none; box-shadow: none;"
+                                               value="<%= typeof formData !== 'undefined' ? formData.phone : '' %>" maxlength="11">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h3 class="section-title"><i class="ph-bold ph-shield-check"></i> Acceso y Rol</h3>
+                           
+                            <div class="form-grid">
+                                <div class="input-group">
+                                    <label>Cargo / Puesto</label>
+                                    <input type="text" name="position" placeholder="Ej: Agente Inmobiliario Senior" required
+                                           value="<%= typeof formData !== 'undefined' ? formData.position : '' %>">
+                                </div>
+
+                                <div class="input-group">
+                                    <label>Rol en Sistema</label>
+                                    <select name="role" required style="cursor: pointer;">
+                                        <option value="agent" <%= (typeof formData !== 'undefined' && formData.role === 'agent') ? 'selected' : '' %>>Corredor de Propiedades</option>
+                                        <option value="admin" <%= (typeof formData !== 'undefined' && formData.role === 'admin') ? 'selected' : '' %>>Administrador</option>
+                                    </select>
+                                </div>
+
+                                <div class="input-group full-width">
+                                    <label>Contraseña Inicial</label>
+                                    <div class="password-wrapper">
+                                        <input type="password" id="passwordInput" name="password" placeholder="Crear una contraseña segura" required minlength="6">
+                                        <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility()">
+                                            <i class="ph-bold ph-eye" id="eyeIcon"></i>
+                                        </button>
+                                    </div>
+                                    <small style="color: #64748b; margin-top: 5px; display: block;">Mínimo 6 caracteres.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions" style="margin-top: 2rem; display: flex; justify-content: center;">
+                            <button type="submit" class="btn-publish-submit" style="padding: 14px 60px; font-size: 1.1rem; border-radius: 50px;">
+                                <i class="ph-bold ph-check"></i> Registrar Agente
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // 1. Validación de Nombre (Solo letras y espacios)
+        const nameInput = document.getElementById('nameInput');
+        nameInput.addEventListener('input', function(e) {
+            // Reemplaza cualquier caracter que NO sea letra o espacio
+            this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+        });
+
+        // 2. Formato de Teléfono (9 xxxx xxxx)
+        const phoneInput = document.getElementById('phoneInput');
+        phoneInput.addEventListener('input', function(e) {
+            // Eliminar todo lo que no sea número
+            let numbers = this.value.replace(/\D/g, '');
+            
+            // Limitar a 9 dígitos
+            if (numbers.length > 9) numbers = numbers.substring(0, 9);
+            
+            // Aplicar formato visual solo si hay números
+            if (numbers.length > 0) {
+                // Formato: X XXXX XXXX
+                // Grupos: (1 digito) (4 digitos) (4 digitos)
+                let formatted = numbers;
+                if (numbers.length > 1) {
+                    formatted = numbers.substring(0, 1) + ' ' + numbers.substring(1);
+                }
+                if (numbers.length > 5) {
+                    formatted = formatted.substring(0, 6) + ' ' + formatted.substring(6);
+                }
+                this.value = formatted;
+            } else {
+                this.value = '';
+            }
+        });
+
+        // 3. Toggle Password (Ojito)
+        function togglePasswordVisibility() {
+            const passInput = document.getElementById('passwordInput');
+            const icon = document.getElementById('eyeIcon');
+            
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                icon.classList.remove('ph-eye');
+                icon.classList.add('ph-eye-slash');
+            } else {
+                passInput.type = 'password';
+                icon.classList.remove('ph-eye-slash');
+                icon.classList.add('ph-eye');
+            }
+        }
+    </script>
+</body>
+</html>

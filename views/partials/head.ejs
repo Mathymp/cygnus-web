@@ -1,0 +1,127 @@
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title><%= typeof title !== 'undefined' ? title : 'Cygnus Group | Gestión Inmobiliaria' %></title>
+<link rel="icon" type="image/png" href="/img/fav.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet">
+
+<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<link rel="stylesheet" href="/css/style.css">
+
+<% if (typeof path !== 'undefined' && (path === '/dashboard' || path.includes('/admin'))) { %>
+    <link rel="stylesheet" href="/css/sidebar.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+<% } else if (typeof path !== 'undefined' && path === '/login') { %>
+    <link rel="stylesheet" href="/css/login.css">
+<% } else if (typeof activePage !== 'undefined' && activePage === 'propiedades') { %>
+    <link rel="stylesheet" href="/css/property-detail.css">
+<% } else { %>
+    <link rel="stylesheet" href="/css/index.css">
+<% } %>
+
+<style>
+    /* Tipografía Global */
+    body {
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        color: #0f172a;
+    }
+    
+    h1, h2, h3, h4, h5, h6, .price-main, .prop-price, .nav-menu-items a {
+        font-family: 'Satoshi', sans-serif;
+        letter-spacing: -0.02em;
+    }
+
+    /* Animación de entrada suave */
+    body { opacity: 0; animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes fadeIn { to { opacity: 1; } }
+    
+    img { max-width: 100%; height: auto; }
+
+    /* =========================================
+       FIX DEFINITIVO SWEETALERT 2 (ICONOS)
+       ========================================= */
+    
+    /* 1. Arreglo fundamental: Box Sizing
+       Esto evita que los iconos se vean ovalados o cortados */
+    .swal2-icon,
+    .swal2-icon div,
+    .swal2-icon span,
+    .swal2-icon::before,
+    .swal2-icon::after {
+        box-sizing: content-box !important;
+    }
+
+    /* 2. Estilo del Modal (Redondeado y Fuente) */
+    div:where(.swal2-container) div:where(.swal2-popup) {
+        border-radius: 20px !important;
+        font-family: 'Inter', system-ui, sans-serif !important;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25) !important;
+        padding: 2em !important;
+    }
+
+    /* 3. Títulos y Texto */
+    div:where(.swal2-container) .swal2-title {
+        color: #0f172a !important;
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+    }
+    div:where(.swal2-container) .swal2-html-container {
+        color: #64748b !important;
+    }
+
+    /* 4. Botones Modernos */
+    div:where(.swal2-container) .swal2-confirm {
+        background-color: #2563EB !important; /* Azul Cygnus */
+        box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3) !important;
+        border-radius: 8px !important;
+        padding: 12px 28px !important;
+        font-weight: 600 !important;
+        transition: transform 0.1s !important;
+    }
+    div:where(.swal2-container) .swal2-confirm:active {
+        transform: scale(0.98) !important;
+    }
+
+    div:where(.swal2-container) .swal2-cancel {
+        background-color: #f1f5f9 !important;
+        color: #64748b !important;
+        border-radius: 8px !important;
+        padding: 12px 24px !important;
+        font-weight: 600 !important;
+    }
+
+    /* 5. Ajuste de Colores de Iconos (Sin romper la geometría) */
+    .swal2-icon.swal2-success {
+        border-color: #10b981 !important;
+        color: #10b981 !important;
+    }
+    .swal2-icon.swal2-error {
+        border-color: #ef4444 !important;
+        color: #ef4444 !important;
+    }
+    .swal2-icon.swal2-info {
+        border-color: #3b82f6 !important;
+        color: #3b82f6 !important;
+    }
+    .swal2-icon.swal2-warning {
+        border-color: #f59e0b !important;
+        color: #f59e0b !important;
+    }
+
+    /* Eliminar borde de foco feo en botones */
+    button:focus { outline: none !important; box-shadow: none !important; }
+</style>

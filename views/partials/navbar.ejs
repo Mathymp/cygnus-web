@@ -1,0 +1,180 @@
+<nav class="navbar-modern" id="mainNavbar">
+    <div class="nav-container">
+        <a href="/" class="nav-brand">
+            <img src="/img/logo.png" alt="Cygnus Group">
+        </a>
+
+        <div class="nav-links">
+            <a href="/" class="<%= typeof activePage !== 'undefined' && activePage === 'home' ? 'active' : '' %>">Inicio</a>
+            
+            <a href="/propiedades" class="<%= typeof activePage !== 'undefined' && activePage === 'propiedades' ? 'active' : '' %>">Propiedades</a>
+            <a href="/nosotros" class="<%= typeof activePage !== 'undefined' && activePage === 'nosotros' ? 'active' : '' %>">Nosotros</a>
+            <a href="/contacto" class="<%= typeof activePage !== 'undefined' && activePage === 'contacto' ? 'active' : '' %>">Contacto</a>
+        </div>
+
+        <div class="nav-actions">
+            <a href="https://wa.me/56923830830" target="_blank" class="btn-whatsapp-nav">
+                <i class="ph-bold ph-whatsapp-logo"></i> <span>Hablemos</span>
+            </a>
+        
+            <a href="/login" class="btn-agent-access" title="Intranet Agentes">
+                <i class="ph-bold ph-user"></i>
+            </a>
+            <button class="mobile-toggle" onclick="toggleMobileMenu()">
+                <i class="ph-bold ph-list"></i>
+            </button>
+        </div>
+    </div>
+    
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="/">Inicio</a>
+        <a href="/propiedades">Propiedades</a>
+        <a href="/nosotros">Nosotros</a>
+        <a href="/contacto">Contacto</a>
+        <a href="/login" class="highlight">Acceso Agentes</a>
+    </div>
+</nav>
+
+<script>
+    // Efecto Scroll Glassmorphism
+    window.addEventListener('scroll', () => {
+        const nav = document.getElementById('mainNavbar');
+        if (window.scrollY > 10) nav.classList.add('scrolled');
+        else nav.classList.remove('scrolled');
+    });
+
+    // Toggle Móvil
+    function toggleMobileMenu() {
+        const menu = document.getElementById('mobileMenu');
+        menu.classList.toggle('open');
+    }
+</script>
+
+<style>
+    /* --- Navbar Modern Styles (Mantenidos) --- */
+    .navbar-modern {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        height: 80px;
+        display: flex;
+        align-items: center;
+    }
+
+    .navbar-modern.scrolled {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 4px 30px rgba(0,0,0,0.03);
+        height: 70px;
+    }
+
+    .nav-container {
+        width: 100%;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .nav-brand img {
+        height: 48px;
+        width: auto;
+        transition: height 0.3s;
+    }
+    .navbar-modern.scrolled .nav-brand img { height: 40px; }
+
+    .nav-links {
+        display: flex;
+        gap: 40px;
+    }
+
+    .nav-links a {
+        text-decoration: none;
+        color: #64748b;
+        font-weight: 500;
+        font-size: 0.95rem;
+        position: relative;
+        transition: color 0.2s;
+    }
+
+    .nav-links a:hover, .nav-links a.active {
+        color: #0f172a;
+        font-weight: 600;
+    }
+    
+    .nav-links a::after {
+        content: '';
+        position: absolute;
+        width: 0; height: 2px;
+        bottom: -4px; left: 0;
+        background: #2563EB;
+        transition: width 0.3s;
+    }
+    .nav-links a:hover::after, .nav-links a.active::after { width: 100%; }
+
+    .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .btn-whatsapp-nav {
+        background: #0f172a;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: transform 0.2s, background 0.2s;
+    }
+    .btn-whatsapp-nav:hover {
+        background: #2563EB;
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .btn-agent-access {
+        width: 40px; height: 40px;
+        display: flex;
+        align-items: center; justify-content: center;
+        border-radius: 50%;
+        color: #64748b;
+        background: #f1f5f9;
+        font-size: 1.2rem;
+        transition: 0.2s;
+    }
+    .btn-agent-access:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+
+    /* Mobile */
+    .mobile-toggle { display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #0f172a; }
+    .mobile-menu {
+        position: absolute;
+        top: 100%; left: 0; width: 100%;
+        background: white; border-top: 1px solid #eee;
+        flex-direction: column; padding: 20px; gap: 15px;
+        display: none;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { text-decoration: none; color: #334155; font-weight: 600; font-size: 1rem; padding: 10px 0; border-bottom: 1px solid #f8fafc; }
+
+    @media(max-width: 900px) {
+        .nav-links { display: none; }
+        .btn-whatsapp-nav span { display: none; }
+        .btn-whatsapp-nav { padding: 10px; border-radius: 50%; width: 40px; height: 40px; justify-content: center; }
+        .mobile-toggle { display: block; }
+    }
+</style>

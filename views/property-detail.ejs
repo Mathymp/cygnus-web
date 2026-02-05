@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('partials/head') %>
+    <title><%= prop.title %> | Cygnus Group</title>
+    <link rel="stylesheet" href="/css/property-detail.css">
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* FIX PARA SUBÍNDICES Y SUPERÍNDICES EN DESCRIPCIÓN */
+        .desc-text sup { vertical-align: super; font-size: smaller; }
+        .desc-text sub { vertical-align: sub; font-size: smaller; }
+        .desc-text sup, .desc-text sub { line-height: 0; position: relative; vertical-align: baseline; }
+        .desc-text sup { top: -0.5em; }
+        .desc-text sub { bottom: -0.25em; }
+
+        /* =========================================
+           CORRECCIONES VISUALES (V6 - FINAL)
+           ========================================= */
+
+        /* 1. TARJETA DE PRECIO Y ELEMENTOS FLOTANTES */
+        .sticky-widget {
+            position: sticky;
+            top: 20px;
+            position: relative !important; 
+            padding-top: 50px !important; /* Espacio para las etiquetas superiores */
+        }
+
+        /* Badge UF (Sutil y pequeño) */
+        .uf-corner-badge {
+            position: absolute;
+            top: 25px; /* Despegado del borde */
+            right: 25px; /* Despegado del borde */
+            font-size: 0.65rem; 
+            color: #94a3b8;
+            font-weight: 700;
+            background: transparent;
+            padding: 0;
+            z-index: 100;
+            letter-spacing: 0.5px;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .uf-corner-badge i { font-size: 0.6rem; color: #cbd5e1; }
+
+        /* Píldora de Estado (Izquierda) - CORREGIDO ESPACIO */
+        .status-pill-widget {
+            position: absolute;
+            top: 25px; /* Más espacio desde el borde */
+            left: 25px; /* Más espacio desde el borde */
+            font-size: 0.65rem; /* Un pelín más pequeño para que no ocupe tanto */
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            z-index: 100;
+            letter-spacing: 0.5px;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* 2. ESTADO EN LA FOTO (SOLO PARA NO DISPONIBLES) */
+        .status-overlay-center {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            align-items: center; justify-content: center;
+            z-index: 40; 
+            pointer-events: none;
+            background: transparent;
+        }
+
+        /* Tarjeta Central "Glassmorphism" REAL */
+        .status-glass-card {
+            transform: rotate(-6deg);
+            padding: 12px 35px;
+            border-radius: 8px; 
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.4); /* Efecto Vidrio más pronunciado */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Colores SEMI TRANSPARENTES (Vidrio) */
+        .glass-sold { background: rgb(255, 0, 0); }    /* Rojo Transparente */
+        .glass-rented { background: #0044ffed; }  /* Naranja Transparente */
+        .glass-reserved { background: rgba(255, 176, 5, 0.945); } /* Azul Transparente */
+        .glass-inactive { background: rgba(71, 85, 105, 0.60); } /* Gris Transparente */
+
+        /* Colores Sólidos para la Píldora Pequeña */
+        .bg-sold { background: #ff0000; color: white; }
+        .bg-rented { background: #0044ff; color: white; }
+        .bg-reserved { background: #ff9d09; color: white; }
+        .bg-inactive { background: #475569; color: white; }
+        
+        /* Disponible (Sutil) */
+        .bg-available { 
+            background: #d1fae5;
+            color: #059669; 
+            border: 1px solid #a7f3d0;
+            box-shadow: none;
+        }
+
+        /* Ajustes menores */
+        .specs-section { margin-bottom: 20px !important; }
+        .h-line { display: none; }
+        .info-section { margin-top: 0; }
+        .price-header { margin-top: 5px; } 
+
+        /* Agente Styles Fix */
+        .agent-role-small {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 600;
+            display: block;
+            margin-top: 1px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <%- include('partials/navbar') %>
+
+    <% 
+        // --- PROCESAMIENTO DE IMÁGENES ---
+        let images = [];
+        try {
+            if (typeof prop.images === 'string') images = JSON.parse(prop.images);
+            else if (Array.isArray(prop.images)) images = prop.images;
+        } catch(e) {}
+        if(!images || images.length === 0) images = [{url: '/img/logo.png'}];
+        images = images.map(img => img.url ? img.url : img);
+
+        // --- PROCESAMIENTO DE PRECIOS E INDICADORES ---
+        const fmtCLP = (valor) => '$ ' + Number(valor).toLocaleString('es-CL', { maximumFractionDigits: 0 });
+        const fmtUF = (valor) => 'UF ' + Number(valor).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        
+        let ufVal = 39000;
+        if (typeof indicators !== 'undefined' && indicators.uf) ufVal = indicators.uf;
+        else if (typeof ufValue !== 'undefined') ufVal = ufValue;
+        
+        let price = parseFloat(prop.price) || 0;
+        let currency = prop.currency || 'UF';
+        let isRent = (prop.operation_type && prop.operation_type.toLowerCase().includes('arriendo'));
+        let rentSuffix = isRent ? '<span class="period">/mes</span>' : '';
+
+        let mainPriceDisplay, subPriceDisplay;
+        if (currency === 'UF') {
+            mainPriceDisplay = fmtUF(price);
+            subPriceDisplay = fmtCLP(price * ufVal);
+        } else {
+            mainPriceDisplay = fmtCLP(price);
+            subPriceDisplay = fmtUF(price / ufVal);
+        }
+
+        // --- LÓGICA DE ESTADO CORREGIDA (FIX) ---
+        let statusRaw = (prop.status || prop.state || 'disponible').toLowerCase().trim();
+        
+        // CORRECCIÓN: Se agrega 'publicado' (masculino) que es el valor de la BD
+        const activeKeywords = ['disponible', 'publicada', 'publicado', 'activa', 'activo', 'en venta', 'en arriendo'];
+        
+        let isAvailable = activeKeywords.some(s => statusRaw.includes(s));
+
+        // Si el estado contiene palabras de cierre, forzamos isAvailable a false
+        if (statusRaw.includes('vend') || statusRaw.includes('arrendad') || statusRaw.includes('reserv') || statusRaw.includes('borrador')) {
+            isAvailable = false;
+        }
+
+        // Configuración Inicial (Disponible)
+        let statusConfig = { 
+            text: 'DISPONIBLE', 
+            glassClass: '', 
+            solidClass: 'bg-available',
+            showOverlay: false // Por defecto false, no muestra nada en la imagen
+        };
+
+        if (!isAvailable) {
+            statusConfig.showOverlay = true; // Solo activa overlay si NO está disponible
+            
+            if (statusRaw.includes('vend')) {
+                statusConfig.text = 'VENDIDA';
+                statusConfig.glassClass = 'glass-sold';
+                statusConfig.solidClass = 'bg-sold';
+            } else if (statusRaw.includes('arrend')) {
+                statusConfig.text = 'ARRENDADA';
+                statusConfig.glassClass = 'glass-rented';
+                statusConfig.solidClass = 'bg-rented';
+            } else if (statusRaw.includes('reserv')) {
+                statusConfig.text = 'RESERVADA';
+                statusConfig.glassClass = 'glass-reserved';
+                statusConfig.solidClass = 'bg-reserved';
+            } else {
+                // Si llegamos aquí es inactiva/pausada
+                statusConfig.text = 'NO DISPONIBLE';
+                statusConfig.glassClass = 'glass-inactive';
+                statusConfig.solidClass = 'bg-inactive';
+            }
+        }
+        
+        // --- LÓGICA DE CARACTERÍSTICAS ---
+        let featureGroups = {};
+        let hasFeatures = false;
+        try {
+            if (prop.features && typeof prop.features === 'object') {
+                Object.entries(prop.features).forEach(([groupKey, groupData]) => {
+                    if (typeof groupData === 'object' && groupData !== null) {
+                        let activeItems = [];
+                        Object.entries(groupData).forEach(([key, val]) => {
+                            if (val === true || val === 'on' || val === 1) {
+                                let label = key.replace(/_/g, ' ');
+                                label = label.charAt(0).toUpperCase() + label.slice(1);
+                                activeItems.push(label);
+                            }
+                        });
+                        if (activeItems.length > 0) {
+                            let title = groupKey.replace(/_/g, ' ').replace(/features/i, '').trim();
+                            if(title.toLowerCase().includes('indoor') || title.toLowerCase().includes('interior')) title = 'Interiores';
+                            else if(title.toLowerCase().includes('outdoor') || title.toLowerCase().includes('exterior')) title = 'Exteriores';
+                            else if(title.toLowerCase().includes('security') || title.toLowerCase().includes('seguridad')) title = 'Seguridad';
+                            else if(title.toLowerCase().includes('general')) title = 'General';
+                            else title = title.charAt(0).toUpperCase() + title.slice(1);
+                            featureGroups[title] = activeItems;
+                            hasFeatures = true;
+                        }
+                    }
+                });
+            }
+        } catch(e) {}
+
+        const joinAddr = (...parts) => parts.filter(p => p && p.toString().trim().length > 0).join(', ');
+        const hasSurface = (prop.surface_util > 0 || prop.surface_total > 0 || prop.surface_terrace > 0);
+        const hasDistrib = (prop.bedrooms > 0 || prop.bathrooms > 0 || prop.parking > 0 || prop.storage_units > 0);
+        const hasDetails = (prop.condition || prop.orientation || (prop.property_age && prop.property_age > 0));
+        const showSpecsSection = (hasSurface || hasDistrib || hasDetails);
+
+        // --- LÓGICA AGENTE (FOTO SIEMPRE LOGO) ---
+        // Limpiador de emojis para el título
+        const cleanTitle = prop.title.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
+        
+        let contactInfo = {
+            displayName: 'Cygnus Group Propiedades', // Nombre a mostrar en negrita
+            role: 'Corredor de Propiedades', // Texto pequeño abajo
+            photo: '/img/logo.png', // SIEMPRE LOGO
+            phone: '+56923830830',
+            email: 'contacto@cygnusgroup.cl',
+            wspNumber: '56923830830'
+        };
+
+        if (prop.agent && prop.agent.name) {
+            let phoneClean = prop.agent.phone ? prop.agent.phone.replace(/\D/g,'') : '56923830830';
+            
+            contactInfo.displayName = prop.agent.name; // Nombre del agente
+            contactInfo.subtitle = 'Cygnus Group Propiedades'; // Empresa fija
+            contactInfo.role = 'Corredor Inmobiliario'; // Cargo fijo
+            contactInfo.phone = prop.agent.phone || '+56923830830';
+            contactInfo.email = prop.agent.email || 'contacto@cygnusgroup.cl';
+            contactInfo.wspNumber = phoneClean;
+        }
+    %>
+
+    <div class="main-container">
+        <div class="content-grid">
+            <div class="col-left">
+                
+                <header class="prop-header">
+                    <h1 class="prop-title"><%= prop.title %></h1>
+                    <div class="address-inline">
+                        <i class="fas fa-map-marker-alt map-icon"></i>
+                        <% if(prop.show_exact_address) { %>
+                            <span class="addr-tag exact">Exacta</span>
+                            <span class="addr-text">
+                                <%= prop.address_street %> #<%= prop.address_number %>, 
+                                <%= joinAddr(prop.address_commune, prop.city, prop.address_region || prop.region) %>
+                            </span>
+                        <% } else { %>
+                            <span class="addr-tag approx">Referencial</span>
+                            <span class="addr-text">
+                                <%= joinAddr(prop.address_street, prop.address_commune, prop.city, prop.address_region || prop.region) %>
+                            </span>
+                        <% } %>
+                    </div>
+                </header>
+
+                <div class="gallery-container">
+                    <div class="main-stage" id="mainStage" onclick="toggleZoom(event)">
+                        
+                        <% if(statusConfig.showOverlay) { %>
+                            <div class="status-overlay-center">
+                                <div class="status-glass-card <%= statusConfig.glassClass %>">
+                                    <%= statusConfig.text %>
+                                </div>
+                            </div>
+                        <% } %>
+
+                        <div class="img-overlay-left">
+                            <span class="badge op-badge <%= isRent ? 'rent' : 'sale' %>">
+                                <%= prop.operation_type || 'Venta' %>
+                            </span>
+                            <span class="badge cat-badge">
+                                <%= prop.category || 'Propiedad' %>
+                            </span>
+                        </div>
+                        <div class="img-overlay-right">
+                            <span class="ref-pill">REF: <%= prop.id %></span>
+                        </div>
+                        <img id="stageImg" src="<%= images[0] %>" alt="Foto Principal">
+                        <button class="nav-btn prev" onclick="event.stopPropagation(); moveSlide(-1)"><i class="fas fa-chevron-left"></i></button>
+                        <button class="nav-btn next" onclick="event.stopPropagation(); moveSlide(1)"><i class="fas fa-chevron-right"></i></button>
+                        <div class="photo-badge">
+                            <i class="fas fa-camera"></i> <span id="photoCount">1 / <%= images.length %></span>
+                        </div>
+                    </div>
+                    <div class="thumb-scroll-wrapper">
+                        <button class="thumb-nav left" onclick="scrollThumbs('left')"><i class="fas fa-chevron-left"></i></button>
+                        <div class="thumb-track" id="thumbTrack">
+                            <% images.forEach((img, i) => { %>
+                                <div class="thumb <%= i===0?'active':'' %>" onclick="setSlide(<%= i %>)">
+                                    <img src="<%= img %>" loading="lazy">
+                                </div>
+                            <% }) %>
+                        </div>
+                        <button class="thumb-nav right" onclick="scrollThumbs('right')"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <% if(showSpecsSection) { %>
+                <div class="specs-section compact">
+                    <% if(hasSurface) { %>
+                    <div class="specs-row">
+                        <h4 class="specs-title">Superficie</h4>
+                        <div class="specs-grid">
+                            <% if(prop.surface_util > 0) { %>
+                            <div class="spec-card">
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.surface_util %> m²</strong>
+                                    <span class="spec-label">Útil</span>
+                                </div>
+                            </div>
+                            <% } %>
+                            <% if(prop.surface_total > 0) { %>
+                            <div class="spec-card">
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.surface_total %> m²</strong>
+                                    <span class="spec-label">Total</span>
+                                </div>
+                            </div>
+                            <% } %>
+                            <% if(prop.surface_terrace > 0) { %>
+                            <div class="spec-card">
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.surface_terrace %> m²</strong>
+                                    <span class="spec-label">Terraza</span>
+                                </div>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% } %>
+
+                    <% if(hasSurface && hasDistrib) { %> <div style="height: 1px; background: #e2e8f0; margin: 20px 0; opacity: 0.6;"></div> <% } %>
+
+                    <% if(hasDistrib) { %>
+                    <div class="specs-row">
+                        <h4 class="specs-title">Distribución</h4>
+                        <div class="specs-grid">
+                            <div class="spec-card">
+                                <i class="fas fa-bed spec-icon"></i>
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.bedrooms || 0 %></strong>
+                                    <span class="spec-label">Dorms</span>
+                                </div>
+                            </div>
+                            <div class="spec-card">
+                                <i class="fas fa-bath spec-icon"></i>
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.bathrooms || 0 %></strong>
+                                    <span class="spec-label">Baños</span>
+                                </div>
+                            </div>
+                            <% if(prop.parking > 0) { %>
+                            <div class="spec-card">
+                                <i class="fas fa-car spec-icon"></i>
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.parking %></strong>
+                                    <span class="spec-label">Estac.</span>
+                                </div>
+                            </div>
+                            <% } %>
+                            <% if(prop.storage_units > 0) { %>
+                            <div class="spec-card">
+                                <i class="fas fa-box spec-icon"></i>
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.storage_units %></strong>
+                                    <span class="spec-label">Bodegas</span>
+                                </div>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% } %>
+
+                    <% if((hasSurface || hasDistrib) && hasDetails) { %> <div style="height: 1px; background: #e2e8f0; margin: 20px 0; opacity: 0.6;"></div> <% } %>
+
+                    <% if(hasDetails) { %>
+                    <div class="specs-row">
+                        <h4 class="specs-title">Detalles</h4>
+                        <div class="specs-grid">
+                            <% if(prop.condition) { %>
+                            <div class="spec-card wide">
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.condition %></strong>
+                                    <span class="spec-label">Estado</span>
+                                </div>
+                            </div>
+                            <% } %>
+                            <% if(prop.orientation) { %>
+                            <div class="spec-card wide">
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.orientation %></strong>
+                                    <span class="spec-label">Orientación</span>
+                                </div>
+                            </div>
+                            <% } %>
+                            <% if(prop.property_age > 0) { %>
+                            <div class="spec-card">
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.property_age %> Años</strong>
+                                    <span class="spec-label">Antigüedad</span>
+                                </div>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% } %>
+                </div>
+                <% } %>
+                
+                <div class="specs-section">
+                    <h3 style="font-size: 1.4rem; color: #0f172a; margin-bottom: 20px; font-weight: 800;">Descripción</h3>
+                    <div class="desc-text">
+                        <%- prop.description %>
+                    </div>
+                </div>
+
+                <section class="info-section">
+                    <h3 style="font-size: 1.4rem; color: #0f172a; margin-bottom: 20px; font-weight: 800;">Ubicación</h3>
+                    <div class="map-frame">
+                        <div id="google-map"></div>
+                        <% if(!prop.show_exact_address) { %>
+                            <div class="map-warning"><i class="fas fa-info-circle"></i> Ubicación aproximada</div>
+                        <% } %>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-right">
+                
+                <div class="sticky-widget">
+                    
+                    <div class="status-pill-widget <%= statusConfig.solidClass %>">
+                        <%= statusConfig.text %>
+                    </div>
+
+                    <div class="uf-corner-badge" title="Valor UF Actualizado">
+                        UF <%= fmtCLP(ufVal).replace('$ ', '$') %>
+                    </div>
+                    
+                    <div class="price-header">
+                        <span class="lbl-op">Valor de <%= prop.operation_type || 'Venta' %></span>
+                        <div class="price-main"><%= mainPriceDisplay %> <%- rentSuffix %></div>
+                        <div class="price-pill-container">
+                            <span class="price-pill-small">Aprox. <%= subPriceDisplay %></span>
+                        </div>
+                    </div>
+
+                    <% if(prop.common_expenses > 0 || prop.contributions > 0) { %>
+                    <div class="extra-costs">
+                        <% if(prop.common_expenses > 0) { %>
+                            <div class="cost-item"><span>Gastos Comunes</span> <strong><%= fmtCLP(prop.common_expenses) %></strong></div>
+                        <% } %>
+                        <% if(prop.contributions > 0) { %>
+                            <div class="cost-item"><span>Contribuciones</span> <strong><%= fmtCLP(prop.contributions) %></strong></div>
+                        <% } %>
+                    </div>
+                    <% } %>
+                    
+                    <div class="h-line-soft"></div>
+                    
+                    <div class="agent-row">
+                        <div class="agent-img-wrap"><img src="<%= contactInfo.photo %>" alt="Empresa"></div>
+                        <div class="agent-txt">
+                            <span class="tiny-lbl">Publicado por</span>
+                            <h4><%= contactInfo.displayName %></h4>
+                            <span class="agent-sub"><%= contactInfo.subtitle %></span>
+                            <span class="agent-role-small"><%= contactInfo.role %></span>
+                        </div>
+                    </div>
+                    
+                    <div class="action-btns">
+                        <a href="#" id="btnWsp" target="_blank" class="btn btn-whatsapp">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </a>
+                        <a href="tel:<%= contactInfo.phone %>" class="btn btn-call"><i class="fas fa-phone-alt"></i> Llamar</a>
+                        <a href="mailto:<%= contactInfo.email %>?subject=Consulta propiedad <%= cleanTitle %>&body=Hola, estoy interesado en la propiedad..." class="btn btn-email"><i class="far fa-envelope"></i> Enviar Correo</a>
+                    </div>
+                </div>
+
+                <% if(hasFeatures) { %>
+                    <div class="features-widget">
+                        <div class="fw-header">
+                            <h3 class="fw-title">Características</h3>
+                        </div>
+                        <% Object.keys(featureGroups).forEach(groupTitle => { %>
+                            <div class="fw-group">
+                                <h4 class="fw-cat-title"><i class="fas fa-layer-group"></i> <%= groupTitle %></h4>
+                                <ul class="fw-list">
+                                    <% featureGroups[groupTitle].forEach(item => { %>
+                                        <li class="fw-item">
+                                            <i class="fas fa-circle-check"></i>
+                                            <span><%= item %></span>
+                                        </li>
+                                    <% }) %>
+                                </ul>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } %>
+            </div>
+        </div> 
+    </div>
+
+    <%- include('partials/footer') %>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg&callback=initMap" async defer></script>
+    <script>
+        // --- WHATSAPP DYNAMIC LINK ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentUrl = window.location.href;
+            const titleClean = "<%= cleanTitle %>";
+            const ref = "<%= prop.id %>";
+            const wspNum = "<%= contactInfo.wspNumber %>";
+            const text = `Hola, vi la propiedad ${titleClean} en: ${currentUrl}`;
+            const link = `https://wa.me/${wspNum}?text=${encodeURIComponent(text)}`;
+            
+            document.getElementById('btnWsp').href = link;
+        });
+
+        // --- GALERÍA LOGIC ---
+        const images = <%- JSON.stringify(images) %>;
+        let currentIdx = 0;
+        const stageImg = document.getElementById('stageImg');
+        const count = document.getElementById('photoCount');
+        const thumbs = document.querySelectorAll('.thumb');
+        const thumbTrack = document.getElementById('thumbTrack');
+        const mainStage = document.getElementById('mainStage');
+
+        function toggleZoom(e) {
+            if(e.target.closest('.nav-btn')) return;
+            mainStage.classList.toggle('zoomed');
+            if(mainStage.classList.contains('zoomed')) moveMagnifier(e);
+            else setTimeout(() => { stageImg.style.transformOrigin = 'center center'; }, 250);
+        }
+        function moveMagnifier(e) {
+            if(!mainStage.classList.contains('zoomed')) return;
+            const rect = mainStage.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+            let xPercent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+            let yPercent = Math.max(0, Math.min(100, (y / rect.height) * 100));
+            stageImg.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+        }
+        mainStage.addEventListener('mousemove', moveMagnifier);
+        mainStage.addEventListener('mouseleave', () => { if(mainStage.classList.contains('zoomed')) toggleZoom({target: mainStage}); });
+
+        function scrollThumbs(dir) {
+            const amount = 150;
+            thumbTrack.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
+        }
+        function setSlide(idx) {
+            if(mainStage.classList.contains('zoomed')) toggleZoom({target: mainStage});
+            currentIdx = idx;
+            stageImg.style.opacity = 0.5;
+            setTimeout(() => { stageImg.src = images[currentIdx]; stageImg.style.opacity = 1; }, 150);
+            count.innerText = `${currentIdx + 1} / ${images.length}`;
+            thumbs.forEach(t => t.classList.remove('active'));
+            if(thumbs[currentIdx]) {
+                thumbs[currentIdx].classList.add('active');
+                thumbs[currentIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+        function moveSlide(dir) {
+            let next = currentIdx + dir;
+            if(next >= images.length) next = 0;
+            if(next < 0) next = images.length - 1;
+            setSlide(next);
+        }
+        document.addEventListener('keydown', e => {
+            if(e.key === 'ArrowRight') moveSlide(1);
+            if(e.key === 'ArrowLeft') moveSlide(-1);
+            if(e.key === 'Escape' && mainStage.classList.contains('zoomed')) toggleZoom({target: mainStage});
+        });
+
+        function initMap() {
+            const lat = <%= prop.latitude || -33.44889 %>;
+            const lng = <%= prop.longitude || -70.669265 %>;
+            const isExact = <%= prop.show_exact_address ? 'true' : 'false' %>;
+            const map = new google.maps.Map(document.getElementById("google-map"), { zoom: 15, center: {lat, lng}, disableDefaultUI: false, mapTypeId: 'roadmap' });
+            if(isExact) new google.maps.Marker({position:{lat,lng}, map});
+            else new google.maps.Circle({ strokeColor: "#2563eb", fillColor: "#2563eb", fillOpacity: 0.15, map, center: {lat,lng}, radius: 300 });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('./partials/head') %>
+    <link rel="stylesheet" href="/css/login.css">
+    <title>Acceso Agentes | Cygnus</title>
+</head>
+<body>
+
+    <div class="bg-architect"></div>
+    <div class="bg-overlay"></div>
+
+    <main class="login-container">
+        <div class="glass-card">
+            
+            <div class="login-header">
+                <div class="logo-circle">
+                    <img src="/img/logo.png" alt="Cygnus Logo" class="logo-img"
+                         onerror="this.src='https://ui-avatars.com/api/?name=Cygnus&background=transparent&color=0f172a&size=128&bold=true'">
+                </div>
+                <h1>Bienvenido</h1>
+                <p>Sistema de Gestión Inmobiliaria</p>
+            </div>
+
+            <div class="alert-box">
+                <%- include('./partials/alerts') %>
+            </div>
+
+            <form action="/login" method="POST" id="loginForm" class="login-form">
+                
+                <div class="input-group">
+                    <label for="email">Correo Corporativo</label>
+                    <div class="input-wrapper">
+                        <i class="ph-fill ph-envelope-simple icon-left"></i>
+                        <input type="email" id="email" name="email" placeholder="agente@cygnus.cl" required autocomplete="email">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Contraseña</label>
+                    <div class="input-wrapper">
+                        <i class="ph-fill ph-lock-key icon-left"></i>
+                        <input type="password" id="passwordInput" name="password" placeholder="••••••••" required>
+                        
+                        <button type="button" class="btn-toggle-pass" id="togglePass" tabindex="-1">
+                            <i class="ph-fill ph-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <span class="btn-text">Iniciar Sesión</span>
+                    <div class="loader"></div>
+                </button>
+
+            </form>
+
+            <div class="login-footer">
+                <p>© 2026 Cygnus Group</p>
+                <div class="secure-badge">
+                    <i class="ph-fill ph-shield-check"></i> Plataforma Segura
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Ver/Ocultar Contraseña
+        const toggleBtn = document.getElementById('togglePass');
+        const passInput = document.getElementById('passwordInput');
+        if (toggleBtn && passInput) {
+            toggleBtn.addEventListener('click', () => {
+                const isPass = passInput.type === 'password';
+                passInput.type = isPass ? 'text' : 'password';
+                toggleBtn.querySelector('i').className = isPass ? 'ph-fill ph-eye-slash' : 'ph-fill ph-eye';
+            });
+        }
+
+        // Animación de Carga
+        const form = document.getElementById('loginForm');
+        const btn = document.getElementById('submitBtn');
+        if (form && btn) {
+            form.addEventListener('submit', () => {
+                if (form.checkValidity()) btn.classList.add('loading');
+            });
+        }
+    </script>
+
+</body>
+</html>

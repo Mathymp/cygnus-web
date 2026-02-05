@@ -1,0 +1,157 @@
+/* components.css - Estilos de Componentes UI */
+
+/* --- TARJETA DE PRODUCTO --- */
+.product-card {
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-color);
+}
+
+.product-image-placeholder {
+  width: 100%;
+  height: 120px;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 2rem;
+}
+
+.product-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.product-price {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.product-stock {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: auto; /* Empuja hacia abajo */
+  padding-top: var(--spacing-sm);
+}
+
+/* --- ITEM DEL CARRITO --- */
+.cart-item {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-primary);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-sm);
+  border: 1px solid var(--bg-tertiary);
+}
+
+.cart-item-info {
+  flex: 1;
+  margin-left: var(--spacing-sm);
+}
+
+.cart-item-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: block;
+}
+
+.cart-item-price {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.cart-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+}
+
+.btn-qty {
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+}
+.btn-qty:hover { background-color: rgba(255,255,255,0.1); }
+
+/* --- INPUTS Y BARRAS DE BÚSQUEDA --- */
+.search-bar {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-lg); /* Redondeado tipo píldora */
+  width: 300px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.search-bar:focus {
+  border-color: var(--accent-color);
+}
+
+/* --- BOTONES Y RESUMEN --- */
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.summary-row.total {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border-top: 1px solid var(--bg-tertiary);
+  padding-top: var(--spacing-md);
+}
+
+.btn-checkout {
+  width: 100%;
+  padding: var(--spacing-md);
+  background-color: var(--accent-color);
+  color: var(--accent-text);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-checkout:hover {
+  background-color: var(--accent-hover);
+}
