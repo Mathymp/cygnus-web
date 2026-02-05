@@ -8,7 +8,15 @@ const cron = require('node-cron');
 const axios = require('axios');
 require('dotenv').config();
 
+// --- NUEVOS REQUERIMIENTOS PARA SESIONES EN VERCEL ---
+const pgSession = require('connect-pg-simple')(session);
+const { Pool } = require('pg');
+
 const app = express();
+
+// --- IMPORTANTE PARA VERCEL (PROXY) ---
+// Vercel usa un proxy (HTTPS). Sin esto, las cookies seguras fallan.
+app.set('trust proxy', 1);
 
 // --- Configuraciones ---
 app.set('view engine', 'ejs');
@@ -22,13 +30,26 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(methodOverride('_method'));
 app.use(cookieParser());
 
-// Configuración de Sesión
+// --- CONFIGURACIÓN BASE DE DATOS PARA SESIONES ---
+const pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL, // Debe estar en tus variables de entorno
+    ssl: { rejectUnauthorized: false } // Necesario para Supabase/Vercel
+});
+
+// --- CONFIGURACIÓN DE SESIÓN (MODIFICADO) ---
 app.use(session({
+    store: new pgSession({
+        pool: pgPool,                // Usar conexión a Supabase
+        tableName: 'session',        // La tabla que creamos en SQL
+        createTableIfMissing: true   // Intento de seguridad por si no existe
+    }),
     secret: process.env.SESSION_SECRET || 'cygnus_secret_key',
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: false, // true si usas HTTPS en producción
+        secure: process.env.NODE_ENV === 'production', // true en Vercel, false en Local
+        httpOnly: true, // Seguridad contra XSS
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Necesario para cross-site en prod
         maxAge: 1000 * 60 * 60 * 24 // 1 día
     } 
 }));
@@ -126,11 +147,9 @@ function logIndicators() {
 }
 
 // 1. Ejecutar al inicio (Arrancar servidor)
-// IMPORTANTE PARA VERCEL: Esto asegura que al "despertar" la función serverless, intente cargar datos frescos.
 updateEconomicIndicators();
 
 // 2. Programar actualización automática (CRON LOCAL)
-// Esto funciona si corres en local o un VPS, pero Vercel lo ignora.
 cron.schedule('0 2 * * *', () => {
     console.log('⏰ [CRON LOCAL] Ejecutando actualización programada (02:00 AM)...');
     updateEconomicIndicators();
@@ -139,7 +158,6 @@ cron.schedule('0 2 * * *', () => {
 });
 
 // 3. RUTA ESPECIAL PARA VERCEL CRON
-// Esta ruta será llamada por el Cron Job de Vercel (definido en vercel.json)
 app.get('/api/cron-update', async (req, res) => {
     console.log('⏰ [VERCEL CRON] Ejecutando actualización solicitada...');
     try {
@@ -167,10 +185,9 @@ app.use((req, res, next) => {
     // --- INYECCIÓN SEGURA DE INDICADORES ---
     const current = app.locals.indicators || BACKUP_INDICATORS;
 
-    // Pasamos el objeto completo
     res.locals.indicators = current;
     
-    // ALIAS (Para que tu Dashboard y Vistas no fallen)
+    // ALIAS
     res.locals.ufValue = current.uf || BACKUP_INDICATORS.uf;
     res.locals.dolarValue = current.usd || BACKUP_INDICATORS.usd;
     res.locals.utmValue = current.utm || BACKUP_INDICATORS.utm;
@@ -194,7 +211,6 @@ app.use((err, req, res, next) => {
         });
     }
 
-    // Renderizar página de error amigable
     res.status(500).render('index', { 
         title: 'Error del Servidor',
         activePage: 'home',
@@ -214,13 +230,10 @@ app.use((req, res) => {
 // --- Iniciar Servidor (COMPATIBLE VERCEL + LOCAL) ---
 const PORT = process.env.PORT || 3000;
 
-// Si el archivo se ejecuta directamente (Local), inicia el servidor.
-// Si es importado por Vercel, exporta la app.
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`✅ Servidor Cygnus listo en http://localhost:${PORT}`);
     });
 }
 
-// Exportamos 'app' para que Vercel pueda manejarlo como Serverless Function
 module.exports = app;
