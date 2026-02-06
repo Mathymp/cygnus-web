@@ -48,17 +48,17 @@ router.get('/logout', authController.logout);
 // ==========================================
 //              ÁREA PRIVADA (ADMIN)
 // ==========================================
-// CORREGIDO: .viewDashboard -> .getDashboard
 router.get('/dashboard', requireAuth, dashboardController.getDashboard);
 
 // --- INVENTARIO DE PROPIEDADES ---
-// CORREGIDO: .manageInventory -> .getInventory
 router.get('/admin/propiedades', requireAuth, inventoryController.getInventory);
 
+// --- PUBLICAR PROPIEDAD ---
+// 1. Mostrar el formulario
 router.get('/admin/publicar', requireAuth, propertiesController.renderPublish);
 
-// CORREGIDO: .publishProperty -> .createProperty
-router.post('/admin/publicar', requireAuth, upload.array('images'), propertiesController.createProperty);
+// 2. Recibir los datos (CORREGIDO: Ahora coincide con el fetch de tu javascript)
+router.post('/api/propiedades/crear', requireAuth, upload.array('imagenes'), propertiesController.createProperty);
 
 // --- EDICIÓN DE PROPIEDADES ---
 router.get('/admin/propiedades/editar/:id', requireAuth, editPropertyController.renderEdit);
