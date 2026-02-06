@@ -20,64 +20,84 @@ const requireAuth = (req, res, next) => {
     next();
 };
 
-// --- RUTAS PÚBLICAS ---
+// ==========================================
+//              RUTAS PÚBLICAS
+// ==========================================
 router.get('/', mainController.home);
 router.get('/propiedades', mainController.propertiesPage);
 router.get('/nosotros', mainController.about);
-// Contacto: GET para ver formulario, POST para enviar
+
+// Contacto
 router.get('/contacto', mainController.contact);
 router.post('/contacto', mainController.sendContactEmail); 
 
+// Agentes (Público)
 router.get('/agentes', userController.listAgents);
+
+// Detalle y PDF
 router.get('/propiedad/:id', mainController.propertyDetail);
 router.get('/propiedad/:id/descargar-pdf', pdfController.generatePropertyPDF);
 
-// --- AUTH ---
-router.get('/login', authController.loginForm); 
+// ==========================================
+//              AUTENTICACIÓN
+// ==========================================
+router.get('/login', authController.loginForm);
 router.post('/login', authController.login);
-router.get('/logout', (req, res) => {
-    req.session.destroy();
-    res.redirect('/');
-});
+router.get('/logout', authController.logout);
 
-// --- DASHBOARD ---
+// ==========================================
+//              ÁREA PRIVADA (ADMIN)
+// ==========================================
+// CORREGIDO: .viewDashboard -> .getDashboard
 router.get('/dashboard', requireAuth, dashboardController.getDashboard);
 
-// --- GESTIÓN PROPIEDADES (CRUD) ---
-router.get('/admin/propiedades', inventoryController.getInventory);
+// --- INVENTARIO DE PROPIEDADES ---
+// CORREGIDO: .manageInventory -> .getInventory
+router.get('/admin/propiedades', requireAuth, inventoryController.getInventory);
 
-// Publicar
 router.get('/admin/publicar', requireAuth, propertiesController.renderPublish);
-router.post('/api/propiedades/crear', requireAuth, upload.array('imagenes'), propertiesController.createProperty);
 
-// Editar
-router.get('/admin/editar-propiedad/:id', requireAuth, editPropertyController.renderEdit);
+// CORREGIDO: .publishProperty -> .createProperty
+router.post('/admin/publicar', requireAuth, upload.array('images'), propertiesController.createProperty);
+
+// --- EDICIÓN DE PROPIEDADES ---
+router.get('/admin/propiedades/editar/:id', requireAuth, editPropertyController.renderEdit);
 router.post('/admin/propiedades/actualizar/:id', requireAuth, upload.array('new_images'), editPropertyController.updateProperty);
 
-// Acciones Rápidas
+// --- ACCIONES RÁPIDAS (Estado, Eliminar, Reasignar) ---
 router.post('/admin/propiedades/estado', requireAuth, propertiesController.changeStatus);
 router.delete('/admin/propiedades/eliminar/:id', requireAuth, propertiesController.deleteProperty);
 router.post('/admin/propiedades/reasignar', requireAuth, inventoryController.reassignAgent);
 
-// --- EQUIPO ---
+// ==========================================
+//           GESTIÓN DE EQUIPO (AGENTS)
+// ==========================================
+// Panel de equipo
 router.get('/admin/team', requireAuth, userController.manageTeam);
-router.get('/admin/add-agent', requireAuth, userController.showCreateForm);
-router.post('/admin/add-agent', requireAuth, userController.createAgent);
-router.get('/admin/edit-agent/:id', requireAuth, userController.showEditForm);
-router.post('/admin/edit-agent/:id', requireAuth, userController.updateAgent);
-router.post('/admin/delete-agent/:id', requireAuth, userController.deleteAgent);
 
-// --- CONFIGURACIÓN DEL SITIO ---
+// Crear Agente
+router.get('/admin/add-agent', requireAuth, userController.addAgentForm);
+router.post('/admin/agents/create', requireAuth, userController.addAgent);
+
+// Editar Agente
+router.get('/admin/edit-agent/:id', requireAuth, userController.editAgentForm);
+router.post('/admin/agents/edit', requireAuth, userController.updateAgent);
+
+// Perfil y Eliminación
+router.get('/admin/agents/profile/:id', requireAuth, userController.agentProfile);
+router.post('/admin/agents/delete/:id', requireAuth, userController.deleteAgent);
+
+// ==========================================
+//           CONFIGURACIÓN Y MARCA
+// ==========================================
 router.get('/admin/configuracion', requireAuth, mainController.configPage);
 router.post('/admin/configuracion/update', requireAuth, upload.array('new_banners', 5), mainController.updateConfig);
 
-// --- CENTRO DE MARCA ---
 router.get('/admin/marca', requireAuth, (req, res) => {
     res.render('admin/marca', {
-        title: 'Centro de Marca | Cygnus Group',
-        user: req.session.user,
-        activePage: 'marca', 
-        path: '/admin/marca'
+        title: 'Centro de Marca',
+        page: 'marca',
+        user: req.session.user
     });
 });
 
