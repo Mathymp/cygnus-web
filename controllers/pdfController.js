@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const supabase = require('../config/supabaseClient'); 
 
-// Configuración opcional para gráficos en Vercel (mejora rendimiento)
+// Configuración obligatoria para Vercel
 chromium.setGraphicsMode = false;
 
 const loadCss = (filename) => {
@@ -25,9 +25,9 @@ exports.generatePropertyPDF = async (req, res) => {
     let browser = null;
 
     try {
-        // ==========================================
-        // 1. OBTENCIÓN DE DATOS
-        // ==========================================
+        console.log("📄 Iniciando generación de PDF para:", id);
+
+        // 1. DATA
         const { data: prop, error } = await supabase
             .from('properties')
             .select('*, agent:users ( name, email, phone, photo_url )') 
@@ -36,7 +36,7 @@ exports.generatePropertyPDF = async (req, res) => {
 
         if (error || !prop) return res.status(404).send("Propiedad no encontrada");
 
-        // 2. PROCESAMIENTO DE IMÁGENES
+        // 2. IMÁGENES (Lógica Galería)
         let safeImages = [];
         try {
             if (typeof prop.images === 'string') safeImages = JSON.parse(prop.images);
@@ -47,7 +47,7 @@ exports.generatePropertyPDF = async (req, res) => {
         const mainImage = allImages.length > 0 ? allImages[0] : null;
         const subImages = allImages.length > 1 ? allImages.slice(1, 3) : []; 
 
-        // 3. DATOS DEL AGENTE
+        // 3. AGENTE
         let contactInfo = {
             displayName: 'Cygnus Group Propiedades',
             role: 'Corredora de Propiedades',
@@ -63,7 +63,7 @@ exports.generatePropertyPDF = async (req, res) => {
             contactInfo.email = prop.agent.email || contactInfo.email;
         }
 
-        // 4. FORMATO DE DIRECCIÓN
+        // 4. DIRECCIÓN
         let addressDisplay = "";
         const region = prop.region || prop.address_region || '';
         const comuna = prop.address_commune || '';
@@ -77,7 +77,7 @@ exports.generatePropertyPDF = async (req, res) => {
             addressDisplay += " (Ubicación Referencial)";
         }
 
-        // 5. MAPA GOOGLE
+        // 5. MAPA
         const gmapsKey = process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'; 
         const lat = prop.latitude || -33.44889;
         const lng = prop.longitude || -70.669265;
@@ -132,28 +132,20 @@ exports.generatePropertyPDF = async (req, res) => {
             priceSecond = fmtUF(price / ufValue);
         }
 
-        // 8. RENDERIZADO HTML (EJS)
+        // 8. RENDERIZADO
         const styles = `
             ${loadCss('theme.css')}
-            @page { 
-                size: Legal; 
-                margin: 0;
-                background-color: #ffffff; 
-            }
-            html, body { 
-                -webkit-print-color-adjust: exact; 
-                background-color: #ffffff !important; 
-                margin: 0; padding: 0; 
-            }
+            @page { size: Legal; margin: 0; background-color: #ffffff; }
+            html, body { -webkit-print-color-adjust: exact; background-color: #ffffff !important; margin: 0; padding: 0; }
         `;
 
         const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = req.get('host');
         const imgBase = `${protocol}://${host}`;
-
         const templateName = type === 'orden' ? 'pdf-visit-order' : 'pdf-brochure';
         const templatePath = path.join(__dirname, `../views/pdf/${templateName}.ejs`);
         
+        console.log("🖌️ Renderizando HTML...");
         const htmlContent = await ejs.renderFile(templatePath, {
             prop,
             cleanData: {
@@ -166,41 +158,39 @@ exports.generatePropertyPDF = async (req, res) => {
             css: styles, imgBase
         });
 
-        // =========================================================
-        // 9. CONFIGURACIÓN DE NAVEGADOR (CRÍTICO PARA VERCEL)
-        // =========================================================
+        // ==========================================================
+        // 9. LANZAMIENTO DEL NAVEGADOR (LÓGICA A PRUEBA DE FALLOS)
+        // ==========================================================
         
-        // Detectamos si estamos en Producción (Vercel) o Local
-        const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
-
-        if (isProduction) {
-            // --- MODO VERCEL (Nube) ---
-            // Usa el Chromium ligero especial para AWS Lambda/Vercel
+        console.log("🚀 Intentando detectar ruta de Chromium...");
+        let executablePath = await chromium.executablePath();
+        
+        if (executablePath) {
+            console.log(`✅ Chromium encontrado en: ${executablePath} (Modo Vercel)`);
             browser = await puppeteer.launch({
-                args: chromium.args,
+                args: [...chromium.args, '--hide-scrollbars', '--disable-web-security'],
                 defaultViewport: chromium.defaultViewport,
-                executablePath: await chromium.executablePath(),
+                executablePath: executablePath,
                 headless: chromium.headless,
                 ignoreHTTPSErrors: true
             });
         } else {
-            // --- MODO LOCAL (Tu PC) ---
-            // Usa tu Google Chrome instalado o el Puppeteer estándar
+            console.log("⚠️ No se encontró Chromium de Vercel. Intentando usar Chrome local...");
+            // LÓGICA LOCAL (Tu PC)
             browser = await puppeteer.launch({
-                channel: 'chrome', // Intenta forzar el uso del Chrome instalado
+                channel: 'chrome', 
                 headless: 'new',
                 args: ['--no-sandbox', '--disable-setuid-sandbox']
             });
         }
 
+        console.log("✅ Navegador lanzado. Creando página...");
         const page = await browser.newPage();
         
-        // Aumentamos tiempo de espera a 60 segundos por si la red está lenta
-        await page.setContent(htmlContent, { 
-            waitUntil: ['load', 'networkidle0'], 
-            timeout: 60000 
-        });
+        // Aumentamos timeout a 60s
+        await page.setContent(htmlContent, { waitUntil: ['load', 'networkidle0'], timeout: 60000 });
 
+        console.log("🖨️ Generando buffer PDF...");
         const pdfBuffer = await page.pdf({
             format: 'Legal', 
             printBackground: true,
@@ -210,14 +200,18 @@ exports.generatePropertyPDF = async (req, res) => {
         const safeTitle = sanitizeFilename(prop.title).substring(0, 30);
         const fileName = type === 'orden' ? `Orden_${prop.id}.pdf` : `Ficha_${safeTitle}.pdf`;
         
+        console.log("📤 Enviando PDF al cliente.");
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
         res.end(pdfBuffer);
 
     } catch (err) {
-        console.error("PDF ERROR:", err);
+        console.error("🔥 PDF CRITICAL ERROR:", err);
         if (!res.headersSent) res.status(500).send("Error generando PDF: " + err.message);
     } finally {
-        if (browser) await browser.close();
+        if (browser) {
+            console.log("🔒 Cerrando navegador.");
+            await browser.close();
+        }
     }
 };
