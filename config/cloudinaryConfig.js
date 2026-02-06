@@ -14,10 +14,8 @@ const storage = new CloudinaryStorage({
     params: {
         folder: 'propiedades',
         allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
-        // resource_type: 'auto' permite que Cloudinary detecte el tipo y optimice la recepción
         resource_type: 'auto',
-        // Opcional: Esto asegura que Cloudinary no guarde imagenes innecesariamente gigantes
-        // Las redimensiona a un máximo de 1920px de ancho si son mayores
+        // Mantenemos esta transformación de seguridad por si acaso
         transformation: [{ width: 1920, crop: "limit", quality: "auto" }] 
     }
 });
@@ -25,8 +23,10 @@ const storage = new CloudinaryStorage({
 const upload = multer({ 
     storage: storage,
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB por archivo (límite de seguridad)
-        files: 10 // Máximo 10 fotos por subida para proteger la RAM
+        // Aumentamos el límite individual a 50MB (antes 10MB)
+        fileSize: 50 * 1024 * 1024, 
+        // ¡ELIMINADO EL LÍMITE DE CANTIDAD! 
+        // Ahora puedes subir las que quieras (files: Infinity por defecto)
     }
 });
 
