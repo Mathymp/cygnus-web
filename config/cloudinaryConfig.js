@@ -12,17 +12,22 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'cygnus_propiedades',
+        folder: 'propiedades',
         allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
-        // Cloudinary aceptará el archivo tal cual venga
-        resource_type: 'auto' 
+        // resource_type: 'auto' permite que Cloudinary detecte el tipo y optimice la recepción
+        resource_type: 'auto',
+        // Opcional: Esto asegura que Cloudinary no guarde imagenes innecesariamente gigantes
+        // Las redimensiona a un máximo de 1920px de ancho si son mayores
+        transformation: [{ width: 1920, crop: "limit", quality: "auto" }] 
     }
 });
 
-// CORRECCIÓN: Aumentado a 50MB para coincidir con app.js y evitar el error "File too large"
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // 50MB por archivo
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB por archivo (límite de seguridad)
+        files: 10 // Máximo 10 fotos por subida para proteger la RAM
+    }
 });
 
 module.exports = upload;

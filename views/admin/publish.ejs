@@ -402,7 +402,7 @@
                                             <label class="feature-check"><input type="checkbox" name="f_pieza_serv"><span>Pieza Servicio</span></label>
                                             <label class="feature-check"><input type="checkbox" name="f_bano_visita"><span>Baño Visita</span></label>
                                         </div>
-                                        
+                                    
                                         <h4 class="sub-section-title mt-3">Pisos</h4>
                                         <div class="features-grid-dense">
                                             <label class="feature-check"><input type="checkbox" name="f_pisos_madera"><span>Madera</span></label>
@@ -760,22 +760,35 @@
             const industrial = ['Industrial'];
             const land = ['Terreno', 'Parcela'];
             ['sec-interior', 'sec-exterior', 'sec-comunidad', 'sec-industrial', 'sec-agricola'].forEach(id => {
-                document.getElementById(id).style.display = 'none';
+                const el = document.getElementById(id);
+                if(el) el.style.display = 'none';
             });
             if(residential.includes(cat) || commercial.includes(cat) || cat === 'Parcela') {
-                document.getElementById('sec-interior').style.display = 'block';
-                if(cat !== 'Oficina' && cat !== 'Local' && cat !== 'Departamento') document.getElementById('sec-exterior').style.display = 'block';
-                if(cat === 'Departamento' || cat === 'Oficina') document.getElementById('sec-exterior').style.display = 'block';
+                const secInt = document.getElementById('sec-interior');
+                if(secInt) secInt.style.display = 'block';
+                
+                const secExt = document.getElementById('sec-exterior');
+                if(secExt) {
+                    if(cat !== 'Oficina' && cat !== 'Local' && cat !== 'Departamento') secExt.style.display = 'block';
+                    if(cat === 'Departamento' || cat === 'Oficina') secExt.style.display = 'block';
+                }
             }
             if(['Departamento', 'Oficina', 'Local', 'Casa'].includes(cat)) {
-                document.getElementById('sec-comunidad').style.display = 'block';
+                const secCom = document.getElementById('sec-comunidad');
+                if(secCom) secCom.style.display = 'block';
             }
-            if(industrial.includes(cat)) document.getElementById('sec-industrial').style.display = 'block';
-            if(land.includes(cat)) document.getElementById('sec-agricola').style.display = 'block';
+            if(industrial.includes(cat)) {
+                const secInd = document.getElementById('sec-industrial');
+                if(secInd) secInd.style.display = 'block';
+            }
+            if(land.includes(cat)) {
+                const secAgr = document.getElementById('sec-agricola');
+                if(secAgr) secAgr.style.display = 'block';
+            }
             const programCard = document.getElementById('program-card');
             
             // Ficha técnica siempre visible, pero adaptada
-            programCard.style.display = 'block';
+            if(programCard) programCard.style.display = 'block';
         }
 
         // 3. PRECIO
@@ -838,7 +851,42 @@
         function updateCovers() { document.querySelectorAll('.img-card-wide').forEach((el,i) => el.classList.toggle('is-cover', i===0));
         }
 
-        // 5. SUBMIT
+        // --- 5. OPTIMIZADOR INTELIGENTE (LA CLAVE PARA EL ÉXITO EN RENDER) ---
+        // Esto toma tu foto gigante (20MB) y la "prepara" en el navegador para que pese 500KB
+        // manteniendo calidad HD (1920px). Así subes lo que quieras y el servidor no explota.
+        const smartOptimize = (file) => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1920; 
+                        const MAX_HEIGHT = 1920;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                        } else {
+                            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        canvas.toBlob((blob) => {
+                            resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                        }, 'image/jpeg', 0.85); // Calidad 85% (Indistinguible pero ligero)
+                    };
+                };
+            });
+        };
+
+        // 6. SUBMIT (MEJORADO CON OPTIMIZACIÓN)
         window.validateAndSubmit = async () => {
             document.getElementById('hiddenDesc').value = quill.root.innerHTML;
             const form = document.getElementById('publishForm');
@@ -863,30 +911,49 @@
                 return;
             }
 
-            const formData = new FormData(form);
-            formData.delete('imagenes');
-            document.querySelectorAll('.img-card-wide').forEach(el => {
-                const file = uploadedFiles.find(f => f.uid === el.dataset.uid);
-                if(file) formData.append('imagenes', file);
-            });
-            ['precio','gastos_comunes','contribuciones'].forEach(k=> {
-                let v = formData.get(k);
-                if(v) formData.set(k, v.replace(/\./g,''));
-            });
             Swal.fire({
                 html: `
                     <div class="loader-container">
                         <div class="loader-spinner"></div>
-                        <h3>Publicando...</h3>
-                        <p>Guardando información en la nube</p>
+                        <h3>Procesando...</h3>
+                        <p>Optimizando imágenes para la web</p>
                     </div>
                 `,
                 showConfirmButton: false,
                 allowOutsideClick: false,
                 customClass: { popup: 'swal-glass' }
             });
+
+            const formData = new FormData(form);
+            formData.delete('imagenes'); // Limpiamos para insertar las optimizadas
+            
+            // PROCESO DE OPTIMIZACIÓN (Iteramos y comprimimos antes de enviar)
+            const domImages = document.querySelectorAll('.img-card-wide');
+            for (const el of domImages) {
+                const originalFile = uploadedFiles.find(f => f.uid === el.dataset.uid);
+                if(originalFile) {
+                    try {
+                        // Aquí ocurre la magia: optimizamos antes de enviar
+                        const optimizedFile = await smartOptimize(originalFile);
+                        formData.append('imagenes', optimizedFile);
+                    } catch (err) {
+                        console.warn('Fallo optimización, enviando original', err);
+                        formData.append('imagenes', originalFile);
+                    }
+                }
+            }
+
+            ['precio','gastos_comunes','contribuciones'].forEach(k=> {
+                let v = formData.get(k);
+                if(v) formData.set(k, v.replace(/\./g,''));
+            });
+            
             try {
                 const res = await fetch('/api/propiedades/crear', { method:'POST', body:formData });
+                // Si el servidor devuelve 520, es crash. Si es 413, es muy grande.
+                if(res.status === 520 || res.status === 413) {
+                    throw new Error("El servidor está saturado. Intenta subir menos fotos a la vez.");
+                }
                 const d = await res.json();
                 
                 if(d.success) {
@@ -902,7 +969,7 @@
 
         toggleFeatures('');
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg&libraries=places&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg&libraries=places&loading=async&callback=initMap" async defer></script>
 </body>
 </html>
 <style>
@@ -970,7 +1037,7 @@
     .swal2-icon.swal2-success { border-color: #10b981 !important; color: #10b981 !important; }
     .swal2-icon.swal2-success [class^='swal2-success-line'] { background-color: #10b981 !important; }
     .swal2-icon.swal2-success .swal2-success-ring { border: .25em solid rgba(16, 185, 129, 0.2) !important; }
-    
+     
     /* Error (Rojo) */
     .swal2-icon.swal2-error { border-color: #ef4444 !important; color: #ef4444 !important; }
     .swal2-icon.swal2-error [class^='swal2-x-mark-line'] { background-color: #ef4444 !important; }
