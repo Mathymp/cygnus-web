@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const supabase = require('../config/supabaseClient'); 
 
-// Configuración opcional para gráficos en Vercel
+// Configuración opcional para gráficos en Vercel (mejora rendimiento)
 chromium.setGraphicsMode = false;
 
 const loadCss = (filename) => {
@@ -25,7 +25,9 @@ exports.generatePropertyPDF = async (req, res) => {
     let browser = null;
 
     try {
-        // 1. DATA
+        // ==========================================
+        // 1. OBTENCIÓN DE DATOS
+        // ==========================================
         const { data: prop, error } = await supabase
             .from('properties')
             .select('*, agent:users ( name, email, phone, photo_url )') 
@@ -34,21 +36,18 @@ exports.generatePropertyPDF = async (req, res) => {
 
         if (error || !prop) return res.status(404).send("Propiedad no encontrada");
 
-        // 2. IMÁGENES (Lógica Galería)
+        // 2. PROCESAMIENTO DE IMÁGENES
         let safeImages = [];
         try {
             if (typeof prop.images === 'string') safeImages = JSON.parse(prop.images);
             else if (Array.isArray(prop.images)) safeImages = prop.images;
         } catch(e) {}
         
-        // Filtrar URLs válidas
         const allImages = safeImages.map(img => (img && img.url) ? img.url : img).filter(u => typeof u === 'string');
-        
-        // Separar Principal y Secundarias (para el mosaico)
         const mainImage = allImages.length > 0 ? allImages[0] : null;
-        const subImages = allImages.length > 1 ? allImages.slice(1, 3) : []; // Tomamos hasta 2 fotos extra
+        const subImages = allImages.length > 1 ? allImages.slice(1, 3) : []; 
 
-        // 3. AGENTE
+        // 3. DATOS DEL AGENTE
         let contactInfo = {
             displayName: 'Cygnus Group Propiedades',
             role: 'Corredora de Propiedades',
@@ -64,7 +63,7 @@ exports.generatePropertyPDF = async (req, res) => {
             contactInfo.email = prop.agent.email || contactInfo.email;
         }
 
-        // 4. DIRECCIÓN
+        // 4. FORMATO DE DIRECCIÓN
         let addressDisplay = "";
         const region = prop.region || prop.address_region || '';
         const comuna = prop.address_commune || '';
@@ -78,7 +77,7 @@ exports.generatePropertyPDF = async (req, res) => {
             addressDisplay += " (Ubicación Referencial)";
         }
 
-        // 5. MAPA HD
+        // 5. MAPA GOOGLE
         const gmapsKey = process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'; 
         const lat = prop.latitude || -33.44889;
         const lng = prop.longitude || -70.669265;
@@ -89,7 +88,6 @@ exports.generatePropertyPDF = async (req, res) => {
         if (prop.show_exact_address) {
             mapStaticUrl = `${mapBase}&zoom=15&markers=color:red%7C${lat},${lng}`;
         } else {
-            // Círculo Azul Sólido (Mejor visualización)
             mapStaticUrl = `${mapBase}&zoom=14&markers=icon:http://chart.apis.google.com/chart?chst=d_map_pin_letter%26chld=%E2%80%A2|2563eb|${lat},${lng}`;
         }
 
@@ -110,11 +108,6 @@ exports.generatePropertyPDF = async (req, res) => {
                         });
                         if (activeItems.length > 0) {
                             let title = groupKey.replace(/_/g, ' ').replace(/features/i, '').trim();
-                            if(title.toLowerCase().includes('indoor')) title = 'Interiores';
-                            else if(title.toLowerCase().includes('outdoor')) title = 'Exteriores';
-                            else if(title.toLowerCase().includes('security')) title = 'Seguridad';
-                            else if(title.toLowerCase().includes('general')) title = 'General';
-                            else title = title.charAt(0).toUpperCase() + title.slice(1);
                             featureGroups[title] = activeItems;
                             hasFeatures = true;
                         }
@@ -139,7 +132,7 @@ exports.generatePropertyPDF = async (req, res) => {
             priceSecond = fmtUF(price / ufValue);
         }
 
-        // 8. RENDERIZADO
+        // 8. RENDERIZADO HTML (EJS)
         const styles = `
             ${loadCss('theme.css')}
             @page { 
@@ -164,50 +157,49 @@ exports.generatePropertyPDF = async (req, res) => {
         const htmlContent = await ejs.renderFile(templatePath, {
             prop,
             cleanData: {
-                mainImage,
-                subImages, 
-                featureGroups,
-                hasFeatures,
-                priceMain,
-                priceSecond,
-                addressDisplay,
-                contactInfo,
+                mainImage, subImages, featureGroups, hasFeatures,
+                priceMain, priceSecond, addressDisplay, contactInfo,
                 mapUrl: mapStaticUrl,
                 todayDate: new Date().toLocaleDateString('es-CL'),
                 clientName: cName || '', clientRut: cRut || ''
             },
-            css: styles,
-            imgBase
+            css: styles, imgBase
         });
 
-        // 9. PUPPETEER (MODIFICADO PARA VERCEL)
-        let executablePath = await chromium.executablePath();
+        // =========================================================
+        // 9. CONFIGURACIÓN DE NAVEGADOR (CRÍTICO PARA VERCEL)
+        // =========================================================
         
-        // Fallback para LOCALHOST (Windows/Mac/Linux)
-        if (!executablePath) {
-            // Si estamos en local, usamos el Chrome del sistema o Puppeteer full si estuviera instalado
-            const platform = process.platform;
-            if (platform === 'win32') {
-                executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-            } else if (platform === 'darwin') {
-                executablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-            } else {
-                executablePath = '/usr/bin/google-chrome-stable';
-            }
-        }
+        // Detectamos si estamos en Producción (Vercel) o Local
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
 
-        browser = await puppeteer.launch({
-            args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
-            executablePath: executablePath,
-            headless: chromium.headless,
-            ignoreHTTPSErrors: true
-        });
+        if (isProduction) {
+            // --- MODO VERCEL (Nube) ---
+            // Usa el Chromium ligero especial para AWS Lambda/Vercel
+            browser = await puppeteer.launch({
+                args: chromium.args,
+                defaultViewport: chromium.defaultViewport,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless,
+                ignoreHTTPSErrors: true
+            });
+        } else {
+            // --- MODO LOCAL (Tu PC) ---
+            // Usa tu Google Chrome instalado o el Puppeteer estándar
+            browser = await puppeteer.launch({
+                channel: 'chrome', // Intenta forzar el uso del Chrome instalado
+                headless: 'new',
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            });
+        }
 
         const page = await browser.newPage();
         
-        // Aumentamos timeout a 60s por si la red de Vercel está lenta
-        await page.setContent(htmlContent, { waitUntil: ['load', 'networkidle0'], timeout: 60000 });
+        // Aumentamos tiempo de espera a 60 segundos por si la red está lenta
+        await page.setContent(htmlContent, { 
+            waitUntil: ['load', 'networkidle0'], 
+            timeout: 60000 
+        });
 
         const pdfBuffer = await page.pdf({
             format: 'Legal', 
