@@ -1,9 +1,13 @@
 /* controllers/pdfController.js */
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 const ejs = require('ejs');
 const path = require('path');
 const fs = require('fs');
 const supabase = require('../config/supabaseClient'); 
+
+// Configuración opcional para gráficos en Vercel
+chromium.setGraphicsMode = false;
 
 const loadCss = (filename) => {
     try {
@@ -75,7 +79,7 @@ exports.generatePropertyPDF = async (req, res) => {
         }
 
         // 5. MAPA HD
-        const gmapsKey = 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'; 
+        const gmapsKey = process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'; 
         const lat = prop.latitude || -33.44889;
         const lng = prop.longitude || -70.669265;
         let mapStaticUrl = '';
@@ -139,7 +143,7 @@ exports.generatePropertyPDF = async (req, res) => {
         const styles = `
             ${loadCss('theme.css')}
             @page { 
-                size: Legal; /* HOJA MÁS LARGA = MENOS CORTES */
+                size: Legal; 
                 margin: 0;
                 background-color: #ffffff; 
             }
@@ -161,7 +165,7 @@ exports.generatePropertyPDF = async (req, res) => {
             prop,
             cleanData: {
                 mainImage,
-                subImages, // Pasamos las fotos extra
+                subImages, 
                 featureGroups,
                 hasFeatures,
                 priceMain,
@@ -176,17 +180,37 @@ exports.generatePropertyPDF = async (req, res) => {
             imgBase
         });
 
-        // 9. PUPPETEER
+        // 9. PUPPETEER (MODIFICADO PARA VERCEL)
+        let executablePath = await chromium.executablePath();
+        
+        // Fallback para LOCALHOST (Windows/Mac/Linux)
+        if (!executablePath) {
+            // Si estamos en local, usamos el Chrome del sistema o Puppeteer full si estuviera instalado
+            const platform = process.platform;
+            if (platform === 'win32') {
+                executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+            } else if (platform === 'darwin') {
+                executablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+            } else {
+                executablePath = '/usr/bin/google-chrome-stable';
+            }
+        }
+
         browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: executablePath,
+            headless: chromium.headless,
+            ignoreHTTPSErrors: true
         });
 
         const page = await browser.newPage();
-        await page.setContent(htmlContent, { waitUntil: ['load', 'networkidle2'], timeout: 60000 });
+        
+        // Aumentamos timeout a 60s por si la red de Vercel está lenta
+        await page.setContent(htmlContent, { waitUntil: ['load', 'networkidle0'], timeout: 60000 });
 
         const pdfBuffer = await page.pdf({
-            format: 'Legal', // Importante para que coincida con el CSS
+            format: 'Legal', 
             printBackground: true,
             displayHeaderFooter: false 
         });
@@ -200,7 +224,7 @@ exports.generatePropertyPDF = async (req, res) => {
 
     } catch (err) {
         console.error("PDF ERROR:", err);
-        if (!res.headersSent) res.status(500).send("Error PDF: " + err.message);
+        if (!res.headersSent) res.status(500).send("Error generando PDF: " + err.message);
     } finally {
         if (browser) await browser.close();
     }
