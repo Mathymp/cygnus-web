@@ -18,7 +18,8 @@ const userController = {
                 title: 'Gestión de Equipo',
                 page: 'equipo',
                 user: req.session.user,
-                users: users || []
+                // CORRECCIÓN AQUÍ: La vista espera 'agents', no 'users'
+                agents: users || [] 
             });
         } catch (error) {
             console.error("Error cargando equipo:", error);
@@ -37,7 +38,7 @@ const userController = {
         });
     },
 
-    // --- CREAR AGENTE (CORREGIDO: NO CIERRA SESIÓN ADMIN) ---
+    // --- CREAR AGENTE (NO CIERRA SESIÓN ADMIN) ---
     addAgent: async (req, res) => {
         try {
             const { name, email, password, phone, position, role } = req.body;
@@ -46,8 +47,6 @@ const userController = {
             const finalEmail = email.trim().toLowerCase();
 
             // 2. CLIENTE TEMPORAL (Truco para no desloguear al Admin)
-            // Usamos las mismas credenciales del entorno pero en una instancia nueva
-            // Esto permite crear el usuario en Auth sin afectar la sesión actual del request
             const tempSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
             // 3. Crear usuario en Auth (Supabase) usando el cliente temporal
@@ -59,8 +58,7 @@ const userController = {
             if (authError) throw authError;
 
             if (authData.user) {
-                // 4. Crear registro en tabla pública 'users'
-                // Aquí SÍ usamos el cliente principal 'supabase' que tiene la sesión admin activa (o service role implícito)
+                // 4. Crear registro en tabla pública 'users' (Usamos cliente principal)
                 const { error: dbError } = await supabase
                     .from('users')
                     .insert([{
@@ -68,14 +66,13 @@ const userController = {
                         name: name,
                         email: finalEmail,
                         phone: phone,
-                        role: role || 'agent', // Permitir elegir rol si viene del form
+                        role: role || 'agent', 
                         position: position || 'Agente Inmobiliario',
                         created_at: new Date()
                     }]);
                 
                 if (dbError) {
                     console.error("Error DB, rollback auth...", dbError);
-                    // Opcional: Podrías intentar borrar el usuario de Auth si falla la BD
                 }
             }
 
@@ -84,13 +81,12 @@ const userController = {
 
         } catch (error) {
             console.error("Error creando agente:", error);
-            // Si falla, volvemos al formulario mostrando el error y los datos previos
             res.render('admin/add-agent', {
                 title: 'Nuevo Agente',
                 page: 'equipo',
                 user: req.session.user,
                 error: "Error al crear: " + error.message,
-                formData: req.body // Mantiene lo que escribió
+                formData: req.body 
             });
         }
     },
@@ -124,7 +120,6 @@ const userController = {
     updateAgent: async (req, res) => {
         try {
             const { id, name, phone, position } = req.body; 
-            // Nota: No actualizamos email/pass aquí por simplicidad y seguridad
 
             const { error } = await supabase
                 .from('users')
@@ -177,7 +172,6 @@ const userController = {
             const { id } = req.params;
 
             // 1. Reasignar propiedades al Admin o Cuenta Corporativa antes de borrar
-            // Buscamos un usuario admin (o podrías definir un ID fijo)
             const { data: adminUser } = await supabase
                 .from('users')
                 .select('id')
@@ -200,13 +194,6 @@ const userController = {
 
             if (dbError) throw dbError;
 
-            // 3. Eliminar de Auth (Supabase)
-            // Esto solo funciona si tienes la 'service_role key' configurada en un admin client separado.
-            // Con el cliente público/anon, no puedes borrar usuarios de Auth por seguridad.
-            // Al borrar de la tabla 'users', el usuario pierde acceso efectivo a la app.
-            
-            // Si quisieras borrar de Auth, necesitarías: supabaseAdmin.auth.admin.deleteUser(id)
-
             res.json({ success: true });
 
         } catch (error) {
@@ -221,7 +208,7 @@ const userController = {
             const { data: agents } = await supabase
                 .from('users')
                 .select('*')
-                .eq('role', 'agent'); // Solo mostrar agentes, no admins
+                .eq('role', 'agent'); 
 
             res.render('agents', {
                 title: 'Nuestros Agentes',
