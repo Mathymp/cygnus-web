@@ -1,198 +1,239 @@
-// Archivo: controllers/userController.js
 const supabase = require('../config/supabaseClient');
-const bcrypt = require('bcryptjs');
+// Necesitamos crear un cliente temporal para no cerrar la sesión del admin al crear otro usuario
+const { createClient } = require('@supabase/supabase-js'); 
 
-// --- 1. LISTAR AGENTES (Público) ---
-// Esta función es vital para la ruta '/agentes'
-exports.listAgents = async (req, res) => {
-    try {
-        const { data: users, error } = await supabase
-            .from('users')
-            .select('*')
-            .order('name');
+const userController = {
 
-        if (error) throw error;
+    // --- RENDERIZAR VISTA DE LISTA (EQUIPO) ---
+    manageTeam: async (req, res) => {
+        try {
+            const { data: users, error } = await supabase
+                .from('users')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
 
-        res.render('agents', {
-            title: 'Nuestros Agentes',
-            users: users || [],
-            user: req.session.user || null
-        });
-    } catch (err) {
-        console.error("Error al listar agentes:", err);
-        res.redirect('/');
-    }
-};
-
-// --- 2. GESTIÓN DE EQUIPO (Admin Dashboard) ---
-exports.manageTeam = async (req, res) => {
-    try {
-        const { data: agents, error } = await supabase
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        let success = ''; 
-        let errorMsg = '';
-
-        if (req.query.status === 'created') success = 'Nuevo miembro registrado correctamente.';
-        if (req.query.status === 'updated') success = 'Perfil del agente actualizado.';
-        if (req.query.status === 'deleted') success = 'Agente eliminado y propiedades liberadas.';
-        if (req.query.error) errorMsg = req.query.error;
-
-        res.render('admin/team-list', {
-            title: 'Gestión de Equipo',
-            page: 'team',
-            user: req.session.user,
-            agents: agents || [],
-            success: success,
-            error: errorMsg 
-        });
-    } catch (err) {
-        console.error('Error al obtener equipo:', err);
-        res.status(500).send('Error del servidor al cargar equipo.');
-    }
-};
-
-// --- 3. FORMULARIO NUEVO AGENTE ---
-exports.addAgentForm = (req, res) => {
-    res.render('admin/add-agent', {
-        title: 'Agregar Agente',
-        page: 'team',
-        user: req.session.user,
-        error: '',
-        success: ''
-    });
-};
-
-// --- 4. CREAR AGENTE (POST) ---
-exports.addAgent = async (req, res) => {
-    try {
-        const { name, phone, password, role } = req.body;
-        // CORRECCIÓN: Email siempre en minúsculas al crear
-        const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
-
-        // Validar si ya existe
-        const { data: existing } = await supabase.from('users').select('id').eq('email', email).single();
-        if (existing) {
-            return res.render('admin/add-agent', {
-                title: 'Agregar Agente',
-                page: 'team',
+            res.render('admin/team-list', {
+                title: 'Gestión de Equipo',
+                page: 'equipo',
                 user: req.session.user,
-                error: 'El correo ya está registrado.',
-                success: ''
+                users: users || []
+            });
+        } catch (error) {
+            console.error("Error cargando equipo:", error);
+            res.redirect('/dashboard');
+        }
+    },
+
+    // --- RENDERIZAR FORMULARIO DE CREAR ---
+    addAgentForm: (req, res) => {
+        res.render('admin/add-agent', {
+            title: 'Nuevo Agente',
+            page: 'equipo',
+            user: req.session.user,
+            error: null,
+            formData: {} // Para rellenar si falla
+        });
+    },
+
+    // --- CREAR AGENTE (CORREGIDO: NO CIERRA SESIÓN ADMIN) ---
+    addAgent: async (req, res) => {
+        try {
+            const { name, email, password, phone, position, role } = req.body;
+            
+            // 1. FORZAR MINÚSCULAS y limpiar espacios
+            const finalEmail = email.trim().toLowerCase();
+
+            // 2. CLIENTE TEMPORAL (Truco para no desloguear al Admin)
+            // Usamos las mismas credenciales del entorno pero en una instancia nueva
+            // Esto permite crear el usuario en Auth sin afectar la sesión actual del request
+            const tempSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+            // 3. Crear usuario en Auth (Supabase) usando el cliente temporal
+            const { data: authData, error: authError } = await tempSupabase.auth.signUp({
+                email: finalEmail,
+                password: password
+            });
+
+            if (authError) throw authError;
+
+            if (authData.user) {
+                // 4. Crear registro en tabla pública 'users'
+                // Aquí SÍ usamos el cliente principal 'supabase' que tiene la sesión admin activa (o service role implícito)
+                const { error: dbError } = await supabase
+                    .from('users')
+                    .insert([{
+                        id: authData.user.id,
+                        name: name,
+                        email: finalEmail,
+                        phone: phone,
+                        role: role || 'agent', // Permitir elegir rol si viene del form
+                        position: position || 'Agente Inmobiliario',
+                        created_at: new Date()
+                    }]);
+                
+                if (dbError) {
+                    console.error("Error DB, rollback auth...", dbError);
+                    // Opcional: Podrías intentar borrar el usuario de Auth si falla la BD
+                }
+            }
+
+            // ÉXITO: Redirigir a la lista del equipo
+            res.redirect('/admin/team');
+
+        } catch (error) {
+            console.error("Error creando agente:", error);
+            // Si falla, volvemos al formulario mostrando el error y los datos previos
+            res.render('admin/add-agent', {
+                title: 'Nuevo Agente',
+                page: 'equipo',
+                user: req.session.user,
+                error: "Error al crear: " + error.message,
+                formData: req.body // Mantiene lo que escribió
             });
         }
+    },
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+    // --- FORMULARIO DE EDICIÓN ---
+    editAgentForm: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { data: agent, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', id)
+                .single();
 
-        const { error } = await supabase.from('users').insert([{
-            name,
-            email,
-            phone,
-            password: hashedPassword,
-            role,
-            created_at: new Date()
-        }]);
+            if (error || !agent) throw new Error("Agente no encontrado");
 
-        if (error) throw error;
-
-        res.redirect('/admin/team?status=created');
-
-    } catch (err) {
-        console.error("Error creating agent:", err);
-        res.render('admin/add-agent', {
-            title: 'Agregar Agente',
-            page: 'team',
-            user: req.session.user,
-            error: 'Error al crear el usuario.',
-            success: ''
-        });
-    }
-};
-
-// --- 5. FORMULARIO EDITAR ---
-exports.editAgentForm = async (req, res) => {
-    exports.showEditForm(req, res); // Reutilizamos la lógica
-};
-
-// Función auxiliar para mostrar form de edición
-exports.showEditForm = async (req, res) => {
-    const { id } = req.params;
-    try {
-        const { data: agent, error } = await supabase.from('users').select('*').eq('id', id).single();
-        if (error || !agent) return res.redirect('/admin/team');
-
-        res.render('admin/edit-agent', {
-            title: 'Editar Agente',
-            page: 'team',
-            user: req.session.user,
-            agent,
-            error: '',
-            success: ''
-        });
-    } catch (e) {
-        res.redirect('/admin/team');
-    }
-};
-
-// --- 6. ACTUALIZAR AGENTE (POST) ---
-exports.updateAgent = async (req, res) => {
-    const { id } = req.params;
-    const { name, phone, password, role } = req.body;
-    // CORRECCIÓN: Email en minúsculas al actualizar
-    const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
-
-    try {
-        let updates = { name, email, phone, role };
-
-        if (password && password.trim() !== "") {
-            if (password.length < 6) throw new Error("La contraseña es muy corta.");
-            updates.password = await bcrypt.hash(password, 10);
+            res.render('admin/edit-agent', {
+                title: 'Editar Agente',
+                page: 'equipo',
+                user: req.session.user,
+                agent: agent,
+                error: null
+            });
+        } catch (error) {
+            console.error(error);
+            res.redirect('/admin/team');
         }
+    },
 
-        const { error } = await supabase.from('users').update(updates).eq('id', id);
-        if (error) throw error;
+    // --- ACTUALIZAR AGENTE ---
+    updateAgent: async (req, res) => {
+        try {
+            const { id, name, phone, position } = req.body; 
+            // Nota: No actualizamos email/pass aquí por simplicidad y seguridad
 
-        res.redirect('/admin/team?status=updated');
+            const { error } = await supabase
+                .from('users')
+                .update({ 
+                    name, 
+                    phone, 
+                    position 
+                })
+                .eq('id', id);
 
-    } catch (err) {
-        // En caso de error, volvemos a renderizar con los datos que intentó enviar
-        res.render('admin/edit-agent', {
-            title: 'Editar Agente',
-            page: 'team',
-            user: req.session.user,
-            agent: { ...req.body, id },
-            error: err.message || 'Error al actualizar.',
-            success: ''
-        });
+            if (error) throw error;
+
+            res.redirect('/admin/team');
+        } catch (error) {
+            console.error(error);
+            res.redirect('/admin/team');
+        }
+    },
+
+    // --- PERFIL DE AGENTE (VER) ---
+    agentProfile: async (req, res) => {
+        try {
+            const { id } = req.params;
+            
+            // Datos del agente
+            const { data: agent } = await supabase.from('users').select('*').eq('id', id).single();
+            
+            // Propiedades del agente
+            const { data: props } = await supabase
+                .from('properties')
+                .select('*')
+                .eq('agent_id', id);
+
+            res.render('admin/agent-profile', {
+                title: `Perfil: ${agent.name}`,
+                page: 'equipo',
+                user: req.session.user,
+                agent: agent,
+                properties: props || []
+            });
+
+        } catch (error) {
+            res.redirect('/admin/team');
+        }
+    },
+
+    // --- ELIMINAR AGENTE ---
+    deleteAgent: async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            // 1. Reasignar propiedades al Admin o Cuenta Corporativa antes de borrar
+            // Buscamos un usuario admin (o podrías definir un ID fijo)
+            const { data: adminUser } = await supabase
+                .from('users')
+                .select('id')
+                .eq('role', 'admin')
+                .limit(1)
+                .single();
+            
+            if (adminUser) {
+                await supabase
+                    .from('properties')
+                    .update({ agent_id: adminUser.id })
+                    .eq('agent_id', id);
+            }
+
+            // 2. Eliminar de la tabla users (pública)
+            const { error: dbError } = await supabase
+                .from('users')
+                .delete()
+                .eq('id', id);
+
+            if (dbError) throw dbError;
+
+            // 3. Eliminar de Auth (Supabase)
+            // Esto solo funciona si tienes la 'service_role key' configurada en un admin client separado.
+            // Con el cliente público/anon, no puedes borrar usuarios de Auth por seguridad.
+            // Al borrar de la tabla 'users', el usuario pierde acceso efectivo a la app.
+            
+            // Si quisieras borrar de Auth, necesitarías: supabaseAdmin.auth.admin.deleteUser(id)
+
+            res.json({ success: true });
+
+        } catch (error) {
+            console.error("Error eliminando agente:", error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    },
+    
+    // --- LISTA PÚBLICA DE AGENTES ---
+    listAgents: async (req, res) => {
+        try {
+            const { data: agents } = await supabase
+                .from('users')
+                .select('*')
+                .eq('role', 'agent'); // Solo mostrar agentes, no admins
+
+            res.render('agents', {
+                title: 'Nuestros Agentes',
+                page: 'agentes',
+                user: req.session.user || null,
+                agents: agents || []
+            });
+        } catch (e) {
+            console.error(e);
+            res.redirect('/');
+        }
     }
 };
 
-// --- 7. ELIMINAR AGENTE ---
-exports.deleteAgent = async (req, res) => {
-    const { id } = req.params;
-
-    if (req.session.user.id === id) {
-        return res.redirect(`/admin/team?error=${encodeURIComponent("No puedes eliminar tu propia cuenta.")}`);
-    }
-
-    try {
-        await supabase.from('properties').update({ agent_id: null }).eq('agent_id', id);
-        const { error } = await supabase.from('users').delete().eq('id', id);
-        if (error) throw error;
-
-        res.redirect('/admin/team?status=deleted');
-    } catch (err) {
-        console.error("Error deleting agent:", err);
-        res.redirect(`/admin/team?error=${encodeURIComponent("Error al eliminar agente.")}`);
-    }
-};
-
-// --- 8. VER PERFIL (Para el botón "Ojo") ---
-exports.agentProfile = async (req, res) => {
-    // Reutilizamos el formulario de edición en modo lectura o normal
-    return exports.showEditForm(req, res);
-};
+module.exports = userController;

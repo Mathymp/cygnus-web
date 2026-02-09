@@ -54,10 +54,8 @@ router.get('/dashboard', requireAuth, dashboardController.getDashboard);
 router.get('/admin/propiedades', requireAuth, inventoryController.getInventory);
 
 // --- PUBLICAR PROPIEDAD ---
-// 1. Mostrar el formulario
 router.get('/admin/publicar', requireAuth, propertiesController.renderPublish);
-
-// 2. Recibir los datos (CORREGIDO: Ahora coincide con el fetch de tu javascript)
+// Ruta API para crear propiedad (coincide con frontend fetch)
 router.post('/api/propiedades/crear', requireAuth, upload.array('imagenes'), propertiesController.createProperty);
 
 // --- EDICIÓN DE PROPIEDADES ---
@@ -77,6 +75,7 @@ router.get('/admin/team', requireAuth, userController.manageTeam);
 
 // Crear Agente
 router.get('/admin/add-agent', requireAuth, userController.addAgentForm);
+// RUTA CORREGIDA PARA CREAR AGENTE:
 router.post('/admin/agents/create', requireAuth, userController.addAgent);
 
 // Editar Agente
@@ -85,7 +84,8 @@ router.post('/admin/agents/edit', requireAuth, userController.updateAgent);
 
 // Perfil y Eliminación
 router.get('/admin/agents/profile/:id', requireAuth, userController.agentProfile);
-router.post('/admin/agents/delete/:id', requireAuth, userController.deleteAgent);
+// Usamos DELETE si es fetch, POST si es form normal, aquí mantengo DELETE para fetch
+router.delete('/admin/agents/delete/:id', requireAuth, userController.deleteAgent);
 
 // ==========================================
 //           CONFIGURACIÓN Y MARCA

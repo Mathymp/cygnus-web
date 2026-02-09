@@ -82,8 +82,14 @@
                     
                     <%- include('../partials/alerts') %>
 
-                    <form action="/admin/add-agent" method="POST" class="publish-form" id="agentForm">
+                    <form action="/admin/agents/create" method="POST" class="publish-form" id="agentForm">
                         
+                        <% if (locals.error) { %>
+                            <div style="background: #fef2f2; color: #ef4444; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fecaca; font-size: 0.9rem;">
+                                <i class="ph-bold ph-warning-circle"></i> <%= error %>
+                            </div>
+                        <% } %>
+
                         <div class="form-section">
                             <h3 class="section-title"><i class="ph-bold ph-identification-card"></i> Información Personal</h3>
                             
@@ -114,7 +120,7 @@
 
                         <div class="form-section">
                             <h3 class="section-title"><i class="ph-bold ph-shield-check"></i> Acceso y Rol</h3>
-                           
+                            
                             <div class="form-grid">
                                 <div class="input-group">
                                     <label>Cargo / Puesto</label>
@@ -176,7 +182,6 @@
             // Aplicar formato visual solo si hay números
             if (numbers.length > 0) {
                 // Formato: X XXXX XXXX
-                // Grupos: (1 digito) (4 digitos) (4 digitos)
                 let formatted = numbers;
                 if (numbers.length > 1) {
                     formatted = numbers.substring(0, 1) + ' ' + numbers.substring(1);
