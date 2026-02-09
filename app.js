@@ -6,6 +6,7 @@ const methodOverride = require('method-override');
 const cookieParser = require('cookie-parser');
 const cron = require('node-cron');
 const axios = require('axios');
+const multer = require('multer'); // Necesario para detectar errores de upload
 require('dotenv').config();
 
 // --- NUEVOS REQUERIMIENTOS PARA SESIONES EN VERCEL ---
@@ -14,17 +15,17 @@ const { Pool } = require('pg');
 
 const app = express();
 
-// --- IMPORTANTE PARA VERCEL (PROXY) ---
-// Vercel usa un proxy (HTTPS). Sin esto, las cookies seguras fallan.
+// --- IMPORTANTE PARA VERCEL/RENDER (PROXY) ---
 app.set('trust proxy', 1);
 
 // --- Configuraciones ---
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// --- Middlewares ---
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// --- Middlewares de Parseo (AUMENTADOS A 100MB) ---
+// Esto es para JSON y URL-Encoded. Multer maneja el Multipart (archivos).
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(methodOverride('_method'));
@@ -32,36 +33,34 @@ app.use(cookieParser());
 
 // --- CONFIGURACIÓN BASE DE DATOS PARA SESIONES ---
 const pgPool = new Pool({
-    connectionString: process.env.DATABASE_URL, // Debe estar en tus variables de entorno
-    ssl: { rejectUnauthorized: false } // Necesario para Supabase/Vercel
+    connectionString: process.env.DATABASE_URL, 
+    ssl: { rejectUnauthorized: false } 
 });
 
-// --- CONFIGURACIÓN DE SESIÓN (MODIFICADO) ---
+// --- CONFIGURACIÓN DE SESIÓN ---
 app.use(session({
     store: new pgSession({
-        pool: pgPool,                // Usar conexión a Supabase
-        tableName: 'session',        // La tabla que creamos en SQL
-        createTableIfMissing: true   // Intento de seguridad por si no existe
+        pool: pgPool,                
+        tableName: 'session',        
+        createTableIfMissing: true   
     }),
     secret: process.env.SESSION_SECRET || 'cygnus_secret_key',
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: process.env.NODE_ENV === 'production', // true en Vercel, false en Local
-        httpOnly: true, // Seguridad contra XSS
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Necesario para cross-site en prod
+        secure: process.env.NODE_ENV === 'production', 
+        httpOnly: true, 
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', 
         maxAge: 1000 * 60 * 60 * 24 // 1 día
     } 
 }));
 
-// Sistema de Alertas Flash
 app.use(flash());
 
 // =========================================================
-// --- SISTEMA DE INDICADORES ECONÓMICOS (MULTINIVEL) ---
+// --- SISTEMA DE INDICADORES ECONÓMICOS ---
 // =========================================================
 
-// NIVEL 3: VALORES DE RESPALDO (POR SI TODO FALLA)
 const BACKUP_INDICATORS = {
     uf: 39700,      
     usd: 975,       
@@ -71,27 +70,18 @@ const BACKUP_INDICATORS = {
     date: new Date()
 };
 
-// Inicializamos la memoria con el respaldo de inmediato
 app.locals.indicators = { ...BACKUP_INDICATORS };
 
-/**
- * Función auxiliar para esperar (Delay)
- */
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-/**
- * LÓGICA DE ACTUALIZACIÓN INTELIGENTE
- */
 const updateEconomicIndicators = async () => {
-    console.log('🔄 [ECONOMÍA] Iniciando ciclo de actualización de indicadores...');
+    console.log('🔄 [ECONOMÍA] Iniciando ciclo de actualización...');
 
-    // --- INSTANCIA 1: API PRINCIPAL (mindicador.cl) ---
+    // INSTANCIA 1: mindicador.cl
     for (let i = 1; i <= 4; i++) {
         try {
-            console.log(`   👉 Intento ${i}/4 con API Principal (mindicador.cl)...`);
             const response = await axios.get('https://mindicador.cl/api', { timeout: 5000 });
             const data = response.data;
-
             if (data && data.uf) {
                 app.locals.indicators = {
                     uf: data.uf.valor,
@@ -103,22 +93,18 @@ const updateEconomicIndicators = async () => {
                 };
                 console.log('✅ [ECONOMÍA] Éxito con API Principal.');
                 logIndicators();
-                return; // ¡Éxito! Salimos de la función.
+                return; 
             }
         } catch (error) {
-            console.warn(`   ⚠️ Falló intento ${i}: ${error.message}`);
-            if (i < 4) await wait(2000); // Esperar 2 seg antes de reintentar
+            console.warn(`   ⚠️ Intento ${i} fallido.`);
+            if (i < 4) await wait(2000); 
         }
     }
 
-    console.warn('⚠️ [ECONOMÍA] API Principal falló 4 veces. Pasando a INSTANCIA 2...');
-
-    // --- INSTANCIA 2: API SECUNDARIA (findic.cl) ---
+    // INSTANCIA 2: findic.cl
     try {
-        console.log('   👉 Intentando con API Secundaria (findic.cl)...');
         const response2 = await axios.get('https://findic.cl/api/', { timeout: 5000 });
         const data2 = response2.data;
-
         if (data2 && data2.uf) {
             app.locals.indicators = {
                 uf: parseFloat(data2.uf.valor),
@@ -133,48 +119,32 @@ const updateEconomicIndicators = async () => {
             return;
         }
     } catch (error) {
-        console.error(`   ❌ API Secundaria también falló: ${error.message}`);
+        console.error(`   ❌ Fallo total indicadores.`);
     }
-
-    // --- INSTANCIA 3: RESPALDO FINAL ---
-    console.error('❌ [ECONOMÍA] FALLA TOTAL DE RED. Manteniendo valores de respaldo/memoria.');
-    app.locals.indicators.source = 'Modo Respaldo (Sin conexión)';
+    app.locals.indicators.source = 'Modo Respaldo';
 };
 
-// Función para imprimir valores en consola
 function logIndicators() {
-    console.log(`   📊 UF: $${app.locals.indicators.uf} | USD: $${app.locals.indicators.usd} | UTM: $${app.locals.indicators.utm} | IPC: ${app.locals.indicators.ipc}%`);
+    console.log(`   📊 UF: $${app.locals.indicators.uf} | USD: $${app.locals.indicators.usd}`);
 }
 
-// 1. Ejecutar al inicio (Arrancar servidor)
 updateEconomicIndicators();
 
-// 2. Programar actualización automática (CRON LOCAL)
 cron.schedule('0 2 * * *', () => {
-    console.log('⏰ [CRON LOCAL] Ejecutando actualización programada (02:00 AM)...');
     updateEconomicIndicators();
-}, {
-    timezone: "America/Santiago"
-});
+}, { timezone: "America/Santiago" });
 
-// 3. RUTA ESPECIAL PARA VERCEL CRON
 app.get('/api/cron-update', async (req, res) => {
-    console.log('⏰ [VERCEL CRON] Ejecutando actualización solicitada...');
     try {
         await updateEconomicIndicators();
-        res.json({ 
-            success: true, 
-            message: 'Indicadores actualizados correctamente', 
-            data: app.locals.indicators 
-        });
+        res.json({ success: true, data: app.locals.indicators });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-
 // =========================================================
-// --- Middleware Global (Variables para TODAS las vistas) ---
+// --- Middleware Global ---
 // =========================================================
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
@@ -182,12 +152,8 @@ app.use((req, res, next) => {
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');
     
-    // --- INYECCIÓN SEGURA DE INDICADORES ---
     const current = app.locals.indicators || BACKUP_INDICATORS;
-
     res.locals.indicators = current;
-    
-    // ALIAS
     res.locals.ufValue = current.uf || BACKUP_INDICATORS.uf;
     res.locals.dolarValue = current.usd || BACKUP_INDICATORS.usd;
     res.locals.utmValue = current.utm || BACKUP_INDICATORS.utm;
@@ -200,9 +166,28 @@ app.use((req, res, next) => {
 const webRoutes = require('./routes/webRoutes');
 app.use('/', webRoutes);
 
-// --- Manejador de Errores Global ---
+// =========================================================
+// --- MANEJADOR DE ERRORES (DETECCIÓN DE 413/MULTER) ---
+// =========================================================
 app.use((err, req, res, next) => {
-    console.error("🔥 Error detectado:", err.stack);
+    console.error("🔥 Error detectado:", err);
+
+    // Detección específica de errores de Multer (Tamaño)
+    if (err instanceof multer.MulterError) {
+        console.error("📸 Error de Multer:", err.code);
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ success: false, message: 'El archivo es demasiado grande (Máx 100MB).' });
+        }
+        if (err.code === 'LIMIT_FIELD_VALUE' || err.code === 'LIMIT_FIELD_SIZE') {
+            return res.status(413).json({ success: false, message: 'La descripción o los datos de texto son demasiado largos.' });
+        }
+        return res.status(500).json({ success: false, message: `Error de subida: ${err.message}` });
+    }
+
+    // Error 413 Genérico (Body Parser o Nginx)
+    if (err.type === 'entity.too.large' || err.statusCode === 413) {
+        return res.status(413).json({ success: false, message: 'La solicitud es demasiado pesada para el servidor.' });
+    }
 
     if (req.url.startsWith('/api') || req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
         return res.status(500).json({ 
@@ -227,7 +212,6 @@ app.use((req, res) => {
     });
 });
 
-// --- Iniciar Servidor (COMPATIBLE VERCEL + LOCAL) ---
 const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {
