@@ -18,7 +18,7 @@ const userController = {
                 title: 'Gestión de Equipo',
                 page: 'equipo',
                 user: req.session.user,
-                // CORRECCIÓN AQUÍ: La vista espera 'agents', no 'users'
+                // IMPORTANTE: La vista espera 'agents', así evitamos el error "agents is not defined"
                 agents: users || [] 
             });
         } catch (error) {
@@ -38,7 +38,7 @@ const userController = {
         });
     },
 
-    // --- CREAR AGENTE (NO CIERRA SESIÓN ADMIN) ---
+    // --- CREAR AGENTE ---
     addAgent: async (req, res) => {
         try {
             const { name, email, password, phone, position, role } = req.body;
@@ -58,21 +58,24 @@ const userController = {
             if (authError) throw authError;
 
             if (authData.user) {
-                // 4. Crear registro en tabla pública 'users' (Usamos cliente principal)
+                // 4. Crear registro en tabla pública 'users'
+                // CORRECCIÓN DB: Agregamos el campo 'password' porque tu tabla lo exige (NOT NULL)
                 const { error: dbError } = await supabase
                     .from('users')
                     .insert([{
                         id: authData.user.id,
                         name: name,
                         email: finalEmail,
+                        password: password, // <--- AQUÍ ESTÁ LA SOLUCIÓN AL ERROR 23502
                         phone: phone,
-                        role: role || 'agent', 
+                        role: role || 'agent',
                         position: position || 'Agente Inmobiliario',
                         created_at: new Date()
                     }]);
                 
                 if (dbError) {
                     console.error("Error DB, rollback auth...", dbError);
+                    // Opcional: Podrías intentar borrar el usuario de Auth si falla la BD
                 }
             }
 
