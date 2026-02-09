@@ -18,42 +18,69 @@
                     <img src="/img/logo.png" alt="Cygnus Logo" class="logo-img"
                          onerror="this.src='https://ui-avatars.com/api/?name=Cygnus&background=transparent&color=0f172a&size=128&bold=true'">
                 </div>
-                <h1>Bienvenido</h1>
-                <p>Sistema de Gestión Inmobiliaria</p>
+                <h1 id="cardTitle">Bienvenido</h1>
+                <p id="cardSubtitle">Sistema de Gestión Inmobiliaria</p>
             </div>
 
             <div class="alert-box">
                 <%- include('./partials/alerts') %>
             </div>
 
-            <form action="/login" method="POST" id="loginForm" class="login-form">
-                
-                <div class="input-group">
-                    <label for="email">Correo Corporativo</label>
-                    <div class="input-wrapper">
-                        <i class="ph-fill ph-envelope-simple icon-left"></i>
-                        <input type="email" id="email" name="email" placeholder="agente@cygnus.cl" required autocomplete="email">
+            <div id="loginSection" class="form-container">
+                <form action="/login" method="POST" id="loginForm">
+                    
+                    <div class="input-group">
+                        <label>Correo Corporativo</label>
+                        <div class="input-wrapper">
+                            <i class="ph-fill ph-envelope-simple"></i>
+                            <input type="email" name="email" placeholder="usuario@cygnus.cl" required>
+                        </div>
                     </div>
-                </div>
 
-                <div class="input-group">
-                    <label for="password">Contraseña</label>
-                    <div class="input-wrapper">
-                        <i class="ph-fill ph-lock-key icon-left"></i>
-                        <input type="password" id="passwordInput" name="password" placeholder="••••••••" required>
-                        
-                        <button type="button" class="btn-toggle-pass" id="togglePass" tabindex="-1">
-                            <i class="ph-fill ph-eye"></i>
-                        </button>
+                    <div class="input-group">
+                        <label>Contraseña</label>
+                        <div class="input-wrapper">
+                            <i class="ph-fill ph-lock-key"></i>
+                            <input type="password" id="passwordInput" name="password" placeholder="••••••••" required>
+                            <button type="button" class="btn-toggle-pass" id="togglePass">
+                                <i class="ph-fill ph-eye"></i>
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <button type="submit" class="btn-primary" id="submitBtn">
-                    <span class="btn-text">Iniciar Sesión</span>
-                    <div class="loader"></div>
-                </button>
+                    <div class="forgot-pass">
+                        <span class="link-text" onclick="showRecovery()">¿Olvidaste tu contraseña?</span>
+                    </div>
 
-            </form>
+                    <button type="submit" class="btn-primary">
+                        Iniciar Sesión
+                    </button>
+                </form>
+            </div>
+
+            <div id="recoverySection" class="form-container hidden">
+                <form action="/recover-password" method="POST">
+                    <p style="margin-bottom: 20px; font-size: 0.9rem; color: #475569;">
+                        Ingresa tu correo y te enviaremos un enlace mágico para restablecer tu acceso.
+                    </p>
+
+                    <div class="input-group">
+                        <label>Correo Registrado</label>
+                        <div class="input-wrapper">
+                            <i class="ph-fill ph-envelope-simple"></i>
+                            <input type="email" name="email" placeholder="usuario@cygnus.cl" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        Enviar Enlace
+                    </button>
+
+                    <div style="margin-top: 20px;">
+                        <span class="link-text" onclick="showLogin()">Volver al inicio de sesión</span>
+                    </div>
+                </form>
+            </div>
 
             <div class="login-footer">
                 <p>© 2026 Cygnus Group</p>
@@ -65,6 +92,26 @@
     </main>
 
     <script>
+        // Lógica para cambiar entre Login y Recuperar
+        const loginSection = document.getElementById('loginSection');
+        const recoverySection = document.getElementById('recoverySection');
+        const title = document.getElementById('cardTitle');
+        const subtitle = document.getElementById('cardSubtitle');
+
+        function showRecovery() {
+            loginSection.classList.add('hidden');
+            recoverySection.classList.remove('hidden');
+            title.innerText = "Recuperar Acceso";
+            subtitle.innerText = "No te preocupes, nos pasa a todos.";
+        }
+
+        function showLogin() {
+            recoverySection.classList.add('hidden');
+            loginSection.classList.remove('hidden');
+            title.innerText = "Bienvenido";
+            subtitle.innerText = "Sistema de Gestión Inmobiliaria";
+        }
+
         // Ver/Ocultar Contraseña
         const toggleBtn = document.getElementById('togglePass');
         const passInput = document.getElementById('passwordInput');
@@ -75,16 +122,6 @@
                 toggleBtn.querySelector('i').className = isPass ? 'ph-fill ph-eye-slash' : 'ph-fill ph-eye';
             });
         }
-
-        // Animación de Carga
-        const form = document.getElementById('loginForm');
-        const btn = document.getElementById('submitBtn');
-        if (form && btn) {
-            form.addEventListener('submit', () => {
-                if (form.checkValidity()) btn.classList.add('loading');
-            });
-        }
     </script>
-
 </body>
 </html>
