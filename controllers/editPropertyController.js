@@ -1,5 +1,5 @@
 const supabase = require('../config/supabaseClient');
-const axios = require('axios');
+const logActivity = require('../helpers/logger'); // Agregamos logger para registrar cambios
 
 const editPropertyController = {
 
@@ -7,15 +7,18 @@ const editPropertyController = {
     renderEdit: async (req, res) => {
         try {
             const { id } = req.params;
+            const user = req.session.user;
 
             // Validación básica de ID
             if (!id || id.length < 5) {
                 return res.redirect('/admin/propiedades');
             }
 
+            // CORRECCIÓN 1: Traemos también los datos del agente (agent:users)
+            // Esto evita que la vista falle si intenta mostrar el nombre del creador
             const { data: prop, error } = await supabase
                 .from('properties')
-                .select('*')
+                .select('*, agent:users ( name, id, email )')
                 .eq('id', id)
                 .single();
 
@@ -24,13 +27,19 @@ const editPropertyController = {
                 return res.redirect('/admin/propiedades');
             }
 
-            // Renderizamos la vista usando el diseño de Publish
+            // CORRECCIÓN 2: Validación de Permisos (SEGURIDAD)
+            // Si NO es admin Y el ID del agente de la propiedad NO coincide con el usuario actual -> FUERA
+            if (user.role !== 'admin' && prop.agent_id !== user.id) {
+                console.error(`Acceso denegado: Agente ${user.name} intentó editar propiedad de otro.`);
+                return res.redirect('/admin/propiedades');
+            }
+
+            // Renderizamos la vista
             res.render('admin/edit-property', {
-                title: `Editar Propiedad`, // Título genérico limpio
+                title: `Editar Propiedad`,
                 page: 'propiedades',
-                user: req.session.user,
+                user: user,
                 prop: prop,
-                // Usamos la API Key del entorno o una por defecto si falla
                 googleMapsKey: process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'
             });
 
@@ -46,11 +55,27 @@ const editPropertyController = {
             const { id } = req.params;
             const body = req.body;
             const newFiles = req.files || [];
+            const user = req.session.user;
 
-            // 1. MANEJO DE IMÁGENES
+            // 1. SEGURIDAD PREVIA: Verificar que la propiedad pertenece al usuario (si no es admin)
+            const { data: existingProp, error: findError } = await supabase
+                .from('properties')
+                .select('agent_id, title')
+                .eq('id', id)
+                .single();
+
+            if (findError || !existingProp) {
+                return res.status(404).json({ success: false, message: "Propiedad no encontrada." });
+            }
+
+            if (user.role !== 'admin' && existingProp.agent_id !== user.id) {
+                return res.status(403).json({ success: false, message: "No tienes permiso para editar esta propiedad." });
+            }
+
+            // 2. MANEJO DE IMÁGENES
             let finalImages = [];
             
-            // a) Imágenes antiguas conservadas (Ya vienen ordenadas desde el front)
+            // a) Imágenes antiguas conservadas
             if (body.kept_images) {
                 try {
                     finalImages = JSON.parse(body.kept_images);
@@ -66,16 +91,16 @@ const editPropertyController = {
                 is_cover: false 
             }));
 
-            // c) Unir: Primero las antiguas (en su nuevo orden), luego las nuevas
+            // c) Unir y ordenar
             finalImages = [...finalImages, ...newImagesProcessed];
 
-            // d) Asegurar Portada: La primera de la lista final será la portada
+            // d) Asegurar Portada
             if (finalImages.length > 0) {
                 finalImages.forEach(img => img.is_cover = false);
                 finalImages[0].is_cover = true;
             }
 
-            // 2. FEATURES (Lógica idéntica a create)
+            // 3. FEATURES (Lógica idéntica)
             const check = (val) => val === 'on';
             const features = {
                 interior: {
@@ -288,7 +313,7 @@ const editPropertyController = {
                 contributions: cleanPrice(body.contribuciones),
 
                 features: features,
-                images: finalImages, // Guardamos la lista mezclada y ordenada
+                images: finalImages, 
                 updated_at: new Date()
             };
 
@@ -298,6 +323,15 @@ const editPropertyController = {
                 .eq('id', id);
 
             if (error) throw error;
+
+            // Log de actividad (Ahora sí lo registramos)
+            await logActivity(
+                req.session.user.id,
+                req.session.user.name,
+                'update',
+                'propiedad',
+                `Actualizó propiedad: ${body.titulo}`
+            );
 
             res.json({ success: true, id: id });
 

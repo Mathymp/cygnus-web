@@ -6,15 +6,20 @@ const propertiesController = {
     // --- 1. LISTAR PROPIEDADES (DASHBOARD) ---
     getAllProperties: async (req, res) => {
         try {
+            // 1. Traemos TODAS las propiedades ordenadas por fecha (más nuevas primero)
             let query = supabase
                 .from('properties')
                 .select(`*, agent:users ( name, id )`)
                 .order('created_at', { ascending: false });
 
-            // Filtro para agentes (ven solo lo suyo) vs Admins (ven todo)
+            // NOTA: Quitamos el filtro estricto de agente para cumplir con:
+            // "listar primero las mías y luego las de otros".
+            // Si quisieras que el agente NO vea las de otros, descomenta esto:
+            /*
             if (req.session.user.role !== 'admin') {
                 query = query.eq('agent_id', req.session.user.id);
             }
+            */
 
             const { data: properties, error } = await query;
 
@@ -23,14 +28,30 @@ const propertiesController = {
                 throw error;
             }
 
-            let agentsList = [];
-            if (req.session.user.role === 'admin') {
-                const { data: agents } = await supabase
-                    .from('users')
-                    .select('id, name')
-                    .neq('role', 'admin'); 
-                agentsList = agents || [];
+            // 2. ORDENAMIENTO PERSONALIZADO (Lógica solicitada)
+            // Primero las del usuario logueado, luego el resto.
+            // Dentro de cada grupo, se respeta el orden de fecha (que ya viene de la BD).
+            const userId = req.session.user.id;
+            
+            if (properties && properties.length > 0) {
+                properties.sort((a, b) => {
+                    const aIsMine = a.agent_id === userId;
+                    const bIsMine = b.agent_id === userId;
+
+                    if (aIsMine && !bIsMine) return -1; // La mía va antes
+                    if (!aIsMine && bIsMine) return 1;  // La del otro va después
+                    return 0; // Si ambas son mías o ambas ajenas, mantener orden de fecha
+                });
             }
+
+            // 3. Lista de agentes para filtros (Solo Admin ve lista completa para filtrar)
+            let agentsList = [];
+            // Opcional: Si quieres que todos puedan filtrar por agente, quita el 'if admin'
+            const { data: agents } = await supabase
+                .from('users')
+                .select('id, name')
+                .neq('role', 'admin'); 
+            agentsList = agents || [];
 
             res.render('admin/propiedades', { 
                 title: 'Inventario de Propiedades', 
@@ -59,7 +80,7 @@ const propertiesController = {
             title: 'Nueva Propiedad',
             page: 'publicar',
             user: req.session.user,
-            googleMapsKey: 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'
+            googleMapsKey: process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'
         });
     },
 
@@ -71,8 +92,12 @@ const propertiesController = {
             const user = req.session.user;
 
             let finalAgentId = null; 
+            // Si es agente, forzamos su ID.
             if (user && user.role !== 'admin') {
                 finalAgentId = user.id;
+            } else if (user.role === 'admin' && body.assigned_agent_id) {
+                // Si es admin y eligió un agente en el form
+                finalAgentId = body.assigned_agent_id;
             }
             
             const processedImages = files.map((file, index) => ({
@@ -336,12 +361,14 @@ const propertiesController = {
     renderEdit: async (req, res) => {
         try {
             const { id } = req.params;
-            
+            const user = req.session.user; 
+
             if (!id || id.length < 5) return res.status(404).send("ID no válido");
 
+            // Traemos también al agente para que la vista no falle
             const { data: prop, error } = await supabase
                 .from('properties')
-                .select('*')
+                .select('*, agent:users ( name, id )') 
                 .eq('id', id)
                 .single();
 
@@ -356,12 +383,18 @@ const propertiesController = {
                 });
             }
 
+            // --- SEGURIDAD: VERIFICAR SI ES DUEÑO O ADMIN ---
+            if (user.role !== 'admin' && prop.agent_id !== user.id) {
+                // Si intenta editar por URL directa, lo devolvemos
+                return res.redirect('/admin/propiedades');
+            }
+
             res.render('admin/edit-property', {
                 title: `Editar: ${prop.title}`,
                 page: 'propiedades',
                 user: req.session.user,
                 prop: prop,
-                googleMapsKey: 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'
+                googleMapsKey: process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'
             });
 
         } catch (error) {
@@ -376,6 +409,15 @@ const propertiesController = {
             const { id } = req.params;
             const body = req.body;
             const newFiles = req.files || [];
+            const user = req.session.user;
+
+            // --- SEGURIDAD: VERIFICAR DUEÑO ANTES DE ACTUALIZAR ---
+            if (user.role !== 'admin') {
+                const { data: propCheck } = await supabase.from('properties').select('agent_id').eq('id', id).single();
+                if (!propCheck || propCheck.agent_id !== user.id) {
+                    return res.status(403).json({ success: false, message: "No autorizado para editar esta propiedad." });
+                }
+            }
 
             // 1. MANEJO DE IMÁGENES
             let finalImages = [];
@@ -638,6 +680,16 @@ const propertiesController = {
     changeStatus: async (req, res) => {
         try {
             const { propertyId, status } = req.body;
+            const user = req.session.user;
+
+            // --- SEGURIDAD: VERIFICAR DUEÑO ANTES DE CAMBIAR ESTADO ---
+            if (user.role !== 'admin') {
+                const { data: propCheck } = await supabase.from('properties').select('agent_id').eq('id', propertyId).single();
+                if (!propCheck || propCheck.agent_id !== user.id) {
+                    return res.status(403).json({ success: false, message: "No autorizado." });
+                }
+            }
+
             let dbStatus = status;
             if(status === 'pausado') dbStatus = 'borrador'; 
 
@@ -671,6 +723,16 @@ const propertiesController = {
     deleteProperty: async (req, res) => {
         try {
             const { id } = req.params;
+            const user = req.session.user;
+
+            // --- SEGURIDAD: VERIFICAR DUEÑO ANTES DE BORRAR ---
+            if (user.role !== 'admin') {
+                const { data: propCheck } = await supabase.from('properties').select('agent_id').eq('id', id).single();
+                if (!propCheck || propCheck.agent_id !== user.id) {
+                    return res.status(403).json({ success: false, message: "No autorizado para eliminar esta propiedad." });
+                }
+            }
+
             const { error } = await supabase
                 .from('properties')
                 .delete()
@@ -699,6 +761,11 @@ const propertiesController = {
         try {
             const { propertyId, newAgentId } = req.body;
             
+            // Seguridad: Solo admin puede reasignar
+            if (req.session.user.role !== 'admin') {
+                return res.redirect('/admin/propiedades');
+            }
+
             const { error } = await supabase
                 .from('properties')
                 .update({ agent_id: newAgentId })
