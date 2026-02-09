@@ -1,20 +1,23 @@
 // Archivo: controllers/authController.js
 const supabase = require('../config/supabaseClient');
-const bcrypt = require('bcryptjs');
 const logActivity = require('../helpers/logger');
 
 const authController = {
+    
     // 1. Formulario de Login (GET)
     loginForm: (req, res) => {
         if (req.session.user) {
             return res.redirect('/dashboard');
         }
-        res.render('login', { title: 'Login | Cygnus' });
+        res.render('login', { 
+            title: 'Iniciar Sesión | Cygnus',
+            error: null // El error se maneja principalmente por flash, pero esto asegura compatibilidad
+        });
     },
 
     // 2. Procesar Login (POST)
     login: async (req, res) => {
-        // CORRECCIÓN: Convertir a minúsculas y quitar espacios
+        // Corrección: Forzar minúsculas y limpiar espacios para evitar errores de tipeo
         const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
         const { password } = req.body;
 
@@ -24,56 +27,69 @@ const authController = {
         }
 
         try {
-            // Buscamos el usuario por email (en minúsculas)
-            const { data: user, error } = await supabase
+            // PASO 1: Autenticar con Supabase Auth (La fuente de verdad)
+            // Esto verifica la contraseña real encriptada en el sistema de Auth
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (authError) {
+                console.error("Error Auth Supabase:", authError.message);
+                req.flash('error', 'Credenciales incorrectas o usuario no registrado.');
+                return res.redirect('/login');
+            }
+
+            // PASO 2: Si el login es correcto, buscamos los datos del perfil en la tabla pública 'users'
+            const { data: user, error: dbError } = await supabase
                 .from('users')
                 .select('*')
-                .eq('email', email)
+                .eq('id', authData.user.id)
                 .single();
 
-            if (error || !user) {
-                req.flash('error', 'Usuario no encontrado o credenciales inválidas.');
+            if (dbError || !user) {
+                // Caso raro: Existe en Auth pero se borró de la tabla users
+                await supabase.auth.signOut(); // Cerramos la sesión de Auth
+                req.flash('error', 'Usuario autenticado pero sin perfil activo. Contacte soporte.');
                 return res.redirect('/login');
             }
 
-            // Verificar contraseña
-            const isMatch = await bcrypt.compare(password, user.password);
-            if (!isMatch) {
-                req.flash('error', 'Contraseña incorrecta.');
-                return res.redirect('/login');
-            }
-
-            // Crear sesión (Mantenemos la estructura exacta para no romper otras páginas)
+            // PASO 3: Crear la sesión del servidor
+            // Mantenemos toda la estructura de datos que usas en tu app
             req.session.user = {
                 id: user.id,
                 email: user.email,
                 name: user.name,
                 role: user.role,
-                photo: user.photo_url
+                photo: user.photo_url || null,
+                position: user.position || 'Agente'
             };
 
-            // Registrar actividad
+            // PASO 4: Registrar actividad
             try {
                 await logActivity(user.id, user.name, 'login', 'sesion', 'Inició sesión en el sistema');
             } catch (logErr) {
                 console.error("Error logging activity:", logErr);
             }
 
+            // PASO 5: Redirección exitosa
             req.flash('success', `Bienvenido, ${user.name}`);
             res.redirect('/dashboard');
 
         } catch (err) {
-            console.error("Login Error:", err);
-            req.flash('error', 'Ocurrió un error en el servidor.');
+            console.error("Login Controller Error:", err);
+            req.flash('error', 'Ocurrió un error interno. Intenta más tarde.');
             res.redirect('/login');
         }
     },
 
     // 3. Logout
-    logout: (req, res) => {
+    logout: async (req, res) => {
+        // Cerramos sesión en Supabase y destruimos la del servidor
+        await supabase.auth.signOut();
         req.session.destroy((err) => {
             if (err) console.error("Logout Error:", err);
-            res.redirect('/');
+            res.redirect('/login');
         });
     }
 };
