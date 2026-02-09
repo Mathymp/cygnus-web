@@ -1,5 +1,5 @@
 const supabase = require('../config/supabaseClient');
-const logActivity = require('../helpers/logger'); // Agregamos logger para registrar cambios
+const logActivity = require('../helpers/logger'); // Importamos logger para registrar cambios
 
 const editPropertyController = {
 
@@ -14,8 +14,8 @@ const editPropertyController = {
                 return res.redirect('/admin/propiedades');
             }
 
-            // CORRECCIÓN 1: Traemos también los datos del agente (agent:users)
-            // Esto evita que la vista falle si intenta mostrar el nombre del creador
+            // CORRECCIÓN CLAVE: Traemos también los datos del agente (agent:users)
+            // Esto evita el error "agent is undefined" cuando el admin edita propiedades ajenas.
             const { data: prop, error } = await supabase
                 .from('properties')
                 .select('*, agent:users ( name, id, email )')
@@ -27,8 +27,8 @@ const editPropertyController = {
                 return res.redirect('/admin/propiedades');
             }
 
-            // CORRECCIÓN 2: Validación de Permisos (SEGURIDAD)
-            // Si NO es admin Y el ID del agente de la propiedad NO coincide con el usuario actual -> FUERA
+            // SEGURIDAD: Validación de Permisos
+            // Si NO es admin Y la propiedad NO es suya -> Lo expulsamos
             if (user.role !== 'admin' && prop.agent_id !== user.id) {
                 console.error(`Acceso denegado: Agente ${user.name} intentó editar propiedad de otro.`);
                 return res.redirect('/admin/propiedades');
@@ -57,7 +57,8 @@ const editPropertyController = {
             const newFiles = req.files || [];
             const user = req.session.user;
 
-            // 1. SEGURIDAD PREVIA: Verificar que la propiedad pertenece al usuario (si no es admin)
+            // 1. SEGURIDAD PREVIA: Verificar permisos antes de guardar
+            // Buscamos quién es el dueño actual de la propiedad en la BD
             const { data: existingProp, error: findError } = await supabase
                 .from('properties')
                 .select('agent_id, title')
@@ -68,6 +69,7 @@ const editPropertyController = {
                 return res.status(404).json({ success: false, message: "Propiedad no encontrada." });
             }
 
+            // Si NO es admin Y intenta editar algo que no es suyo -> Error 403
             if (user.role !== 'admin' && existingProp.agent_id !== user.id) {
                 return res.status(403).json({ success: false, message: "No tienes permiso para editar esta propiedad." });
             }
@@ -100,7 +102,7 @@ const editPropertyController = {
                 finalImages[0].is_cover = true;
             }
 
-            // 3. FEATURES (Lógica idéntica)
+            // 3. FEATURES (Mapeo idéntico al crear)
             const check = (val) => val === 'on';
             const features = {
                 interior: {
@@ -324,7 +326,7 @@ const editPropertyController = {
 
             if (error) throw error;
 
-            // Log de actividad (Ahora sí lo registramos)
+            // Log de actividad (Ahora sí lo registramos correctamente)
             await logActivity(
                 req.session.user.id,
                 req.session.user.name,
