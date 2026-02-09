@@ -5,13 +5,14 @@
     <link rel="stylesheet" href="/css/publish.css">
     <link rel="stylesheet" href="/css/team.css">
     <style>
+        /* Estilos para el campo de contraseña y ojito */
         .password-wrapper {
             position: relative;
             display: flex;
             align-items: center;
         }
         .password-wrapper input {
-            padding-right: 40px;
+            padding-right: 40px; /* Espacio para el icono */
         }
         .btn-toggle-pass {
             position: absolute;
@@ -25,14 +26,37 @@
             align-items: center;
             justify-content: center;
             transition: color 0.2s;
-            z-index: 2; /* Asegura que esté sobre el input */
+            z-index: 2;
         }
         .btn-toggle-pass:hover {
             color: #0f172a;
         }
+
+        /* Ajustes del contenedor */
         .publish-container {
             max-width: 800px;
             margin: 2rem auto;
+        }
+        
+        /* Botón de guardar mejorado */
+        .btn-publish-submit {
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+            padding: 14px 60px; 
+            font-size: 1.1rem; 
+            border-radius: 50px;
+        }
+        .btn-publish-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+            background: #1d4ed8;
         }
     </style>
 </head>
@@ -45,12 +69,12 @@
                 
                 <div class="dash-top-bar">
                     <div class="welcome-text">
-                        <h1>Editar Perfil</h1>
-                        <p>Actualizando datos de <strong><%= agent.name %></strong></p>
+                        <h1>Editar Agente</h1>
+                        <p>Modificando perfil de: <strong><%= agent.name %></strong></p>
                     </div>
                     <div>
                         <a href="/admin/team" class="btn-secondary" style="text-decoration: none; padding: 10px 20px; background: #fff; border: 1px solid #ddd; border-radius: 50px; color: #555; font-weight: 600; transition: all 0.2s;">
-                            <i class="ph-bold ph-arrow-left"></i> Cancelar
+                            <i class="ph-bold ph-arrow-left"></i> Volver
                         </a>
                     </div>
                 </div>
@@ -59,67 +83,64 @@
                     
                     <%- include('../partials/alerts') %>
 
-                    <form action="/admin/edit-agent/<%= agent.id %>" method="POST" class="publish-form" id="editAgentForm">
+                    <form action="/admin/agents/edit" method="POST" class="publish-form" id="editAgentForm">
+                        <input type="hidden" name="id" value="<%= agent.id %>">
                         
+                        <% if (locals.error) { %>
+                            <div style="background: #fef2f2; color: #ef4444; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fecaca; font-size: 0.9rem;">
+                                <i class="ph-bold ph-warning-circle"></i> <%= error %>
+                            </div>
+                        <% } %>
+
                         <div class="form-section">
-                            <h3 class="section-title"><i class="ph-bold ph-identification-card"></i> Información Básica</h3>
+                            <h3 class="section-title"><i class="ph-bold ph-user"></i> Datos Personales</h3>
                             
                             <div class="form-grid">
                                 <div class="input-group">
                                     <label>Nombre Completo</label>
-                                    <input type="text" id="nameInput" name="name" value="<%= agent.name %>" required>
-                                    <small style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px;">Solo letras y espacios.</small>
+                                    <input type="text" name="name" value="<%= agent.name %>" required>
                                 </div>
                                 
                                 <div class="input-group">
-                                    <label>Correo Electrónico</label>
-                                    <input type="email" name="email" value="<%= agent.email %>" required>
+                                    <label>Correo Electrónico (No editable)</label>
+                                    <input type="email" value="<%= agent.email %>" disabled style="background: #f1f5f9; cursor: not-allowed; color: #64748b;">
                                 </div>
 
                                 <div class="input-group">
                                     <label>Teléfono</label>
                                     <div class="phone-input-wrapper" style="display: flex; align-items: center; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; background: white;">
                                         <span style="background: #f8fafc; padding: 12px; color: #64748b; font-weight: 600; border-right: 1px solid #ddd;">+56</span>
-                                        <input type="text" id="phoneInput" name="phone" value="<%= agent.phone || '' %>" style="border: none; box-shadow: none;" maxlength="11">
+                                        <input type="text" id="phoneInput" name="phone" value="<%= agent.phone %>" style="border: none; box-shadow: none;" maxlength="11">
                                     </div>
+                                </div>
+
+                                <div class="input-group">
+                                    <label>Cargo / Puesto</label>
+                                    <input type="text" name="position" value="<%= agent.position %>">
                                 </div>
                             </div>
                         </div>
 
-                        <div class="form-section">
-                            <h3 class="section-title"><i class="ph-bold ph-shield-check"></i> Seguridad y Permisos</h3>
+                        <div class="form-section" style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px;">
+                            <h3 class="section-title" style="color: #ea580c;"><i class="ph-bold ph-lock-key"></i> Seguridad</h3>
+                            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">Deja este campo vacío si NO quieres cambiar la contraseña actual.</p>
                             
                             <div class="form-grid">
-                                <div class="input-group">
-                                    <label>Cargo / Puesto</label>
-                                    <input type="text" name="position" value="<%= agent.position || '' %>" placeholder="Ej: Agente Senior">
-                                </div>
-
-                                <div class="input-group">
-                                    <label>Rol en Sistema</label>
-                                    <select name="role" required style="cursor: pointer;">
-                                        <option value="agent" <%= agent.role === 'agent' ? 'selected' : '' %>>Corredor de Propiedades</option>
-                                        <option value="admin" <%= agent.role === 'admin' ? 'selected' : '' %>>Administrador</option>
-                                    </select>
-                                </div>
-
-                                <div class="input-group full-width" style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px dashed #cbd5e1;">
-                                    <label style="color: #475569;">Cambiar Contraseña (Opcional)</label>
-                                    
+                                <div class="input-group full-width">
+                                    <label>Nueva Contraseña</label>
                                     <div class="password-wrapper">
-                                        <input type="password" id="passwordInput" name="password" placeholder="Dejar en blanco para mantener la actual">
+                                        <input type="password" id="passwordInput" name="password" placeholder="Escribe para cambiar la contraseña" minlength="6">
                                         <button type="button" class="btn-toggle-pass" onclick="togglePasswordVisibility(event)">
                                             <i class="ph-bold ph-eye" id="eyeIcon"></i>
                                         </button>
                                     </div>
-
-                                    <small style="color: #64748b; margin-top: 5px; display: block;">Solo rellena este campo si deseas cambiar la clave.</small>
+                                    <small style="color: #64748b; margin-top: 5px; display: block;">Mínimo 6 caracteres.</small>
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-actions" style="margin-top: 2rem; display: flex; justify-content: center;">
-                            <button type="submit" class="btn-publish-submit" style="padding: 14px 60px; font-size: 1.1rem; border-radius: 50px;">
+                            <button type="submit" class="btn-publish-submit">
                                 <i class="ph-bold ph-floppy-disk"></i> Guardar Cambios
                             </button>
                         </div>
@@ -132,13 +153,7 @@
     </div>
 
     <script>
-        // 1. Validación de Nombre
-        const nameInput = document.getElementById('nameInput');
-        nameInput.addEventListener('input', function(e) {
-            this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
-        });
-
-        // 2. Formato de Teléfono
+        // 1. Formateador de Teléfono (9 xxxx xxxx)
         const phoneInput = document.getElementById('phoneInput');
         
         function formatPhone(input) {
@@ -155,16 +170,17 @@
             }
         }
 
-        phoneInput.addEventListener('input', function() { formatPhone(this); });
-        
-        // Formatear al cargar la página si ya viene con datos
-        document.addEventListener("DOMContentLoaded", () => {
-            if(phoneInput.value) formatPhone(phoneInput);
-        });
+        if (phoneInput) {
+            phoneInput.addEventListener('input', function() { formatPhone(this); });
+            // Formatear al cargar la página si ya viene con datos
+            document.addEventListener("DOMContentLoaded", () => {
+                if(phoneInput.value) formatPhone(phoneInput);
+            });
+        }
 
-        // 3. Toggle Password (Ojito)
+        // 2. Toggle Password (Ojito)
         function togglePasswordVisibility(e) {
-            // Prevenir que el botón haga submit del form
+            // Prevenir que el botón haga submit del form si está dentro del form
             if(e) e.preventDefault();
             
             const passInput = document.getElementById('passwordInput');
