@@ -9,6 +9,7 @@ const { createClient } = require('@supabase/supabase-js');
 const BASE_URL = 'https://www.cygnusgroup.cl';
 
 // Cliente Admin de Supabase (Necesario para generar links, gestionar usuarios y auto-reparar perfiles)
+// Este cliente tiene permisos totales, úsalo con cuidado.
 const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY 
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
     : null;
@@ -19,8 +20,10 @@ const authController = {
     // 1. VISTA LOGIN (GET)
     // =========================================================================
     loginForm: (req, res) => {
+        // Si ya hay sesión, mandamos al dashboard directamente
         if (req.session.user) return res.redirect('/dashboard');
-        // Pasamos variables explícitas para evitar errores en la vista
+        
+        // Renderizamos la vista con variables limpias para evitar errores EJS
         res.render('login', { 
             title: 'Acceso Agentes | Cygnus', 
             error: null, 
@@ -29,28 +32,30 @@ const authController = {
     },
 
     // =========================================================================
-    // 2. PROCESAR LOGIN (AJAX - JSON) - ¡BLINDADO!
+    // 2. PROCESAR LOGIN (AJAX - JSON) - ¡CON AUTO-REPARACIÓN!
     // =========================================================================
     login: async (req, res) => {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
-        const { password } = req.body;
+        const { password } = req.body; // <--- AQUÍ CAPTURAMOS LA CONTRASEÑA REAL
 
         // Función auxiliar para responder errores en formato JSON
         const returnError = (field, msg) => {
             return res.status(400).json({ success: false, field, message: msg });
         };
 
+        // Validaciones básicas
         if (!email) return returnError('email', 'Por favor, ingresa tu correo.');
         if (!password) return returnError('password', 'Por favor, ingresa tu contraseña.');
 
         try {
-            // A. Intentar Login con Supabase Auth (Credenciales)
+            // A. Intentar Login con Supabase Auth (Credenciales de seguridad)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
                 email, 
                 password 
             });
 
             if (authError) {
+                // Si falla aquí, es que la contraseña está mal o el usuario no existe en Auth
                 return returnError('password', 'Credenciales incorrectas o usuario no registrado.');
             }
 
@@ -61,23 +66,28 @@ const authController = {
                 .eq('id', authData.user.id)
                 .single();
 
-            // --- LÓGICA DE AUTO-REPARACIÓN (BLINDAJE) ---
-            // Si el usuario autenticó bien, pero no tiene perfil en la tabla 'users', lo creamos AHORA.
+            // =================================================================
+            // --- INICIO: LÓGICA DE BLINDAJE (AUTO-CREACIÓN) ---
+            // =================================================================
+            // Si el usuario autenticó bien en Auth, pero NO tiene perfil en la tabla 'users',
+            // significa que hubo un error al crearlo. Lo arreglamos aquí mismo.
             if (!user) {
-                console.warn(`⚠️ Usuario ${email} autenticado pero sin perfil. Iniciando auto-creación...`);
+                console.warn(`⚠️ ALERTA: Usuario ${email} autenticado en Auth pero sin perfil en DB. Iniciando auto-reparación...`);
                 
-                // Datos para el nuevo perfil
+                // Creamos el objeto del perfil nuevo
                 const newProfile = {
                     id: authData.user.id,
                     email: email,
-                    // Intentamos sacar el nombre de los metadatos o usamos la parte del correo antes del @
+                    // Intentamos obtener el nombre de los metadatos de Auth, o usamos el correo
                     name: authData.user.user_metadata?.name || email.split('@')[0], 
-                    role: 'corredor', // Rol por defecto seguro
+                    role: 'corredor', // Rol seguro por defecto
+                    // ¡IMPORTANTE! Usamos la contraseña REAL que acabamos de recibir
+                    password: password, 
                     photo_url: null,
                     created_at: new Date()
                 };
 
-                // Usamos supabaseAdmin si existe para saltarnos restricciones (RLS)
+                // Usamos el cliente Admin si está disponible para saltarnos restricciones RLS
                 const clientToUse = supabaseAdmin || supabase;
                 
                 const { error: insertError } = await clientToUse
@@ -85,17 +95,21 @@ const authController = {
                     .insert(newProfile);
 
                 if (insertError) {
-                    console.error("❌ Falló la auto-creación del perfil:", insertError);
+                    console.error("❌ ERROR CRÍTICO: Falló la auto-creación del perfil:", insertError);
+                    // Cerramos la sesión de Auth porque el sistema no está consistente
                     await supabase.auth.signOut();
-                    return returnError('email', 'Error de cuenta: No se pudo generar tu perfil. Contacta a soporte.');
+                    return returnError('email', 'Error de integridad: Tu cuenta existe pero no tiene perfil de datos. Contacta al administrador.');
                 }
 
-                // Si funcionó, asignamos el nuevo perfil a la variable user para continuar
-                console.log("✅ Perfil creado automáticamente.");
+                // Si funcionó, asignamos el nuevo perfil a la variable 'user' para que el login continúe
+                console.log("✅ ÉXITO: Perfil creado y reparado automáticamente.");
                 user = newProfile;
             }
+            // =================================================================
+            // --- FIN LÓGICA DE BLINDAJE ---
+            // =================================================================
 
-            // C. Crear la sesión del usuario
+            // C. Crear la sesión del usuario en el servidor (Express Session)
             req.session.user = {
                 id: user.id,
                 email: user.email,
@@ -105,11 +119,11 @@ const authController = {
                 position: user.position || 'Agente Inmobiliario'
             };
 
-            // D. Registrar actividad (Log silencioso)
+            // D. Registrar actividad (Log silencioso para no frenar la respuesta)
             logActivity(user.id, user.name, 'login', 'sesion', 'Inició sesión exitosamente')
                 .catch(err => console.error('Error guardando log:', err));
 
-            // E. Respuesta exitosa (Frontend redirige)
+            // E. Respuesta exitosa (El frontend redirigirá)
             return res.json({ 
                 success: true, 
                 redirect: '/dashboard' 
@@ -132,16 +146,16 @@ const authController = {
         }
 
         try {
-            // 1. Verificar si el usuario existe (opcional, para obtener nombre)
+            // 1. Verificar si el usuario existe en DB pública (para obtener su nombre)
             const { data: user } = await supabase
                 .from('users')
                 .select('name')
                 .eq('email', email)
                 .single();
             
-            // Si no existe en DB, simulamos éxito por seguridad
+            // Si no existe en DB, simulamos éxito por seguridad (para no revelar correos)
             if (!user) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Pausa de seguridad
                 return res.json({ 
                     success: true, 
                     message: 'Si el correo está registrado, recibirás las instrucciones.' 
@@ -153,8 +167,8 @@ const authController = {
                 return res.status(500).json({ success: false, message: 'Error de configuración del servidor.' });
             }
 
-            // 2. Generar Link Mágico
-            // Forzamos redirectTo a tu dominio real para evitar errores
+            // 2. Generar Link Mágico (Token de un solo uso)
+            // Forzamos redirectTo a tu dominio real
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
                 type: 'recovery',
                 email: email,
@@ -165,20 +179,20 @@ const authController = {
 
             if (linkError) throw linkError;
 
-            // 3. Mensaje HTML
+            // 3. Preparar mensaje HTML bonito
             const htmlMessage = `
                 <p>Hola <strong>${user.name}</strong>,</p>
                 <p>Hemos recibido una solicitud para restablecer tu contraseña.</p>
                 <p>Este enlace es seguro y de un solo uso.</p>
             `;
             
-            // 4. Enviar correo
+            // 4. Enviar correo usando tu helper
             await sendEmail(
                 email, 
                 'Restablecer Contraseña 🔒', 
                 'Recuperación de Acceso', 
                 htmlMessage,
-                'Crear Nueva Contraseña', 
+                'Crear Nueva Clave', 
                 linkData.properties.action_link
             );
 
@@ -194,6 +208,8 @@ const authController = {
     // 4. VISTA ACTUALIZAR CONTRASEÑA (GET)
     // =========================================================================
     showUpdatePassword: (req, res) => {
+        // Renderizamos la vista 'update-password.ejs'
+        // Pasamos las credenciales públicas para que el frontend pueda validar el hash
         res.render('update-password', { 
             title: 'Nueva Contraseña | Cygnus', 
             supabaseUrl: process.env.SUPABASE_URL,
@@ -206,6 +222,7 @@ const authController = {
     // =========================================================================
     updatePassword: async (req, res) => {
         const { password, accessToken } = req.body;
+        
         const sendError = (msg) => res.status(400).json({ success: false, message: msg });
 
         if (!password || password.length < 6) return sendError('La contraseña es muy corta (mínimo 6 caracteres).');
@@ -216,29 +233,27 @@ const authController = {
             const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
 
             if (userError || !user) {
-                return sendError('El enlace de seguridad ha expirado. Solicita uno nuevo.');
+                return sendError('El enlace de seguridad ha expirado. Por favor solicita uno nuevo.');
             }
 
-            // 2. Actualizar la contraseña (Usamos Admin si existe para máxima autoridad)
+            // 2. Actualizar la contraseña en AUTH
+            // Usamos Admin si existe para evitar bloqueos
             if (supabaseAdmin) {
                 await supabaseAdmin.auth.admin.updateUserById(user.id, { password: password });
             } else {
                 await supabase.auth.updateUser({ password: password });
             }
 
-            // 3. Sincronizar tabla pública 'users' (Opcional, pero recomendado para consistencia)
-            // Usamos Admin o Cliente según disponibilidad
+            // 3. Sincronizar tabla pública 'users'
+            // IMPORTANTE: Aquí también guardamos la contraseña real para mantener consistencia
             const clientToUse = supabaseAdmin || supabase;
             
             const { error: dbError } = await clientToUse
                 .from('users')
-                .update({ password: password }) // Si guardas hash o flag
+                .update({ password: password }) 
                 .eq('id', user.id);
             
-            // Si la sincronización falla porque el usuario no existe en 'users', 
-            // no lanzamos error aquí. El próximo Login usará la "Auto-Reparación" que programamos arriba.
-
-            // 4. Cerrar sesión global
+            // 4. Cerrar sesión globalmente y limpiar sesión del servidor
             await supabase.auth.signOut();
             req.session.destroy();
 
