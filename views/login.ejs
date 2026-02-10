@@ -6,181 +6,164 @@
     <title>Acceso Agentes | Cygnus</title>
     
     <style>
-        /* --- 0. RESET CRÍTICO (Evita que los bordes se descuadren) --- */
+        /* --- RESET & BASE --- */
         * { box-sizing: border-box; outline: none; }
-
-        /* --- 1. ESTRUCTURA Y FONDO --- */
+        
         body {
             margin: 0; padding: 0;
             height: 100vh; width: 100%;
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background-color: #0f172a;
-            /* Imagen optimizada */
-            background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1920&auto=format&fit=crop');
+            /* Imagen de fondo de alta calidad */
+            background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden; /* Evita scroll innecesario */
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
         }
 
-        /* Capa oscura (Overlay) */
+        /* Capa oscura para contraste */
         .bg-overlay {
             position: absolute; inset: 0;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 58, 138, 0.8) 100%);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 58, 138, 0.85) 100%);
             z-index: 1;
         }
 
-        /* --- 2. TARJETA FLOTANTE (Glassmorphism Optimizado) --- */
+        /* --- CONTENEDOR CENTRAL --- */
         .login-wrapper {
             position: relative; z-index: 10;
-            width: 100%; max-width: 400px;
+            width: 100%; 
+            max-width: 480px; /* Ancho aumentado para que no se vea "achicado" */
             padding: 20px;
         }
 
+        /* Tarjeta Blanca Limpia */
         .glass-card {
-            background: #ffffff; /* Fondo sólido blanco para máxima nitidez y velocidad */
-            border-radius: 20px;
-            padding: 40px 35px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 48px 40px; /* Más padding interno */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             text-align: center;
             position: relative;
         }
 
-        /* Botón Volver (Estilo Pastilla) */
-        .back-btn {
-            position: absolute; top: -60px; left: 0;
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 50px;
-            color: white; text-decoration: none; font-size: 0.9rem; font-weight: 500;
-            backdrop-filter: blur(4px);
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
-        .back-btn:hover { background: rgba(255, 255, 255, 0.25); transform: translateX(-3px); }
-
-        /* Cabecera */
+        /* --- LOGO (CORREGIDO: Sin círculo restrictivo) --- */
         .logo-area {
-            width: 64px; height: 64px;
-            background: #f1f5f9; border-radius: 50%;
-            margin: 0 auto 15px;
-            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60px; /* Altura fija para evitar saltos */
         }
-        .logo-area img { height: 32px; width: auto; }
         
-        h1 { margin: 0; font-size: 1.5rem; color: #0f172a; font-weight: 700; }
-        .subtitle { margin: 5px 0 25px; color: #64748b; font-size: 0.9rem; }
+        .logo-img {
+            max-height: 100%; /* Se adapta a la altura */
+            max-width: 240px; /* Ancho máximo generoso */
+            width: auto;
+            object-fit: contain;
+            display: block;
+        }
 
-        /* --- 3. INPUTS (Corrección del Halo) --- */
-        .form-group { margin-bottom: 20px; text-align: left; }
+        /* Títulos */
+        h1 { margin: 0; font-size: 1.75rem; color: #0f172a; font-weight: 700; letter-spacing: -0.5px; }
+        .subtitle { margin: 8px 0 32px; color: #64748b; font-size: 0.95rem; }
+
+        /* --- INPUTS MODERNOS --- */
+        .form-group { margin-bottom: 24px; text-align: left; }
         
         .form-group label {
-            display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 6px;
+            display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 8px;
         }
 
-        /* Contenedor del Input (Este recibe el borde y el halo) */
         .input-box {
             position: relative;
             display: flex; align-items: center;
-            width: 100%; height: 48px;
+            width: 100%; 
+            height: 52px; /* Input más alto y cómodo */
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 0 12px;
-            transition: all 0.2s ease-in-out; /* Animación suave */
+            border-radius: 12px;
+            padding: 0 16px;
+            transition: all 0.2s ease-in-out;
         }
 
-        /* Icono */
-        .input-box i { font-size: 1.2rem; color: #94a3b8; margin-right: 10px; }
+        .input-box i { font-size: 1.3rem; color: #94a3b8; margin-right: 12px; }
 
-        /* Input Real (Transparente y sin bordes propios) */
         .input-box input {
             flex: 1; width: 100%; height: 100%;
             border: none; background: transparent;
-            font-size: 0.95rem; color: #1e293b;
-            padding: 0; margin: 0;
+            font-size: 1rem; color: #1e293b;
+            padding: 0;
         }
         .input-box input::placeholder { color: #cbd5e1; }
 
-        /* ESTADO FOCUS (El Halo Correcto) */
+        /* Foco Azul Pro */
         .input-box:focus-within {
             border-color: #2563eb;
-            background: #fff;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); /* Halo suave y centrado */
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         }
 
-        /* Botón Ojo */
-        .toggle-pass {
-            background: none; border: none; padding: 5px; cursor: pointer; color: #94a3b8; display: flex;
-        }
-        .toggle-pass:hover { color: #2563eb; }
-
-        /* --- 4. ESTADOS DE ERROR (Rojo y Vibración) --- */
+        /* Error Rojo */
         .input-box.error {
             border-color: #ef4444 !important;
-            background-color: #fef2f2 !important;
+            background-color: #fff1f2 !important;
             animation: shake 0.3s ease-in-out;
         }
         .input-box.error i { color: #ef4444 !important; }
-        .input-box.error:focus-within {
-            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15); /* Halo rojo */
-        }
-
-        .err-text {
-            display: none; color: #dc2626; font-size: 0.75rem; margin-top: 5px; font-weight: 500; margin-left: 4px;
-        }
+        .err-text { display: none; color: #dc2626; font-size: 0.8rem; margin-top: 6px; font-weight: 500; }
         .err-text.show { display: block; }
-
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
-        /* --- 5. BOTONES Y LINKS --- */
-        .forgot-link {
-            text-align: right; margin-bottom: 20px; font-size: 0.85rem;
-        }
-        .forgot-link span {
-            color: #2563eb; cursor: pointer; font-weight: 500; text-decoration: none;
-        }
-        .forgot-link span:hover { text-decoration: underline; }
-
+        /* --- BOTONES --- */
         .btn-main {
-            width: 100%; height: 48px;
+            width: 100%; height: 52px;
             background: #2563eb; color: white;
-            border: none; border-radius: 10px;
+            border: none; border-radius: 12px;
             font-size: 1rem; font-weight: 600;
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
-            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
         }
-        .btn-main:hover { background: #1d4ed8; }
-        .btn-main:active { transform: scale(0.98); }
-
-        /* Spinner dentro del botón */
-        .btn-main.loading { color: transparent !important; pointer-events: none; }
+        .btn-main:hover { background: #1d4ed8; transform: translateY(-1px); }
+        .btn-main:active { transform: translateY(0); }
+        
+        .btn-main.loading { color: transparent !important; pointer-events: none; position: relative; }
         .btn-main.loading::after {
-            content: ""; position: absolute;
-            width: 20px; height: 20px;
+            content: ""; position: absolute; left: 50%; top: 50%;
+            width: 20px; height: 20px; margin: -10px;
             border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
             border-radius: 50%; animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* --- 6. ALERTAS y FOOTER --- */
-        .alert-box {
-            padding: 10px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem; display: none;
+        /* Links */
+        .forgot-link { text-align: right; margin-bottom: 24px; font-size: 0.9rem; }
+        .forgot-link span { color: #2563eb; cursor: pointer; font-weight: 500; }
+        .forgot-link span:hover { text-decoration: underline; }
+
+        .back-btn {
+            position: absolute; top: -50px; left: 0;
+            display: inline-flex; align-items: center; gap: 8px;
+            color: rgba(255,255,255,0.8); text-decoration: none;
+            font-size: 0.9rem; font-weight: 500;
+            padding: 8px 16px; border-radius: 20px;
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(4px);
+            transition: all 0.2s;
         }
+        .back-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        /* Alertas */
+        .alert-box { padding: 12px; border-radius: 8px; margin-bottom: 24px; font-size: 0.9rem; display: none; }
         .alert-box.visible { display: block; }
         .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
 
-        .footer { margin-top: 30px; font-size: 0.75rem; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
-        .secure-badge { display: inline-flex; align-items: center; gap: 4px; color: #10b981; margin-left: 5px; }
-
-        /* Utilidad ocultar */
+        .footer { margin-top: 32px; font-size: 0.8rem; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
         .hidden { display: none !important; }
+        .toggle-pass { background:none; border:none; cursor:pointer; color:#94a3b8; padding:5px; display:flex; }
+        .toggle-pass:hover { color:#2563eb; }
     </style>
 </head>
 <body>
@@ -188,14 +171,12 @@
     <div class="bg-overlay"></div>
 
     <div class="login-wrapper">
-        <a href="/" class="back-btn">
-            <i class="ph-bold ph-arrow-left"></i> Volver
-        </a>
+        <a href="/" class="back-btn"><i class="ph-bold ph-arrow-left"></i> Volver al Inicio</a>
 
         <div class="glass-card">
             
             <div class="logo-area">
-                <img src="/img/logo.png" alt="Logo" onerror="this.style.display='none'">
+                <img src="/img/logo.png" alt="Cygnus" class="logo-img" onerror="this.style.display='none'">
             </div>
 
             <h1 id="titleText">Bienvenido</h1>
@@ -212,7 +193,7 @@
                         <i class="ph-fill ph-envelope-simple"></i>
                         <input type="email" id="email" placeholder="agente@cygnusgroup.cl">
                     </div>
-                    <div class="err-text" id="msg-email">Error en el correo</div>
+                    <div class="err-text" id="msg-email"></div>
                 </div>
 
                 <div class="form-group">
@@ -222,7 +203,7 @@
                         <input type="password" id="password" placeholder="••••••••">
                         <button type="button" class="toggle-pass" id="btnEye"><i class="ph-fill ph-eye"></i></button>
                     </div>
-                    <div class="err-text" id="msg-pass">Error en contraseña</div>
+                    <div class="err-text" id="msg-pass"></div>
                 </div>
 
                 <div class="forgot-link">
@@ -233,8 +214,8 @@
             </form>
 
             <form id="recoveryForm" class="hidden">
-                <p style="font-size:0.9rem; color:#475569; margin-bottom:20px; line-height:1.5;">
-                    Ingresa tu correo y te enviaremos un enlace mágico para entrar.
+                <p style="font-size:0.95rem; color:#475569; margin-bottom:24px; line-height:1.5;">
+                    Ingresa tu correo y te enviaremos un enlace de acceso seguro a tu bandeja de entrada.
                 </p>
 
                 <div class="form-group">
@@ -250,31 +231,28 @@
 
                 <button type="submit" class="btn-main" id="btnRec">Enviar Enlace</button>
                 
-                <div style="margin-top:20px; font-size:0.9rem;">
+                <div style="margin-top:24px; font-size:0.9rem;">
                     <span style="color:#64748b; cursor:pointer;" onclick="showLogin()">Cancelar y volver</span>
                 </div>
             </form>
 
             <div class="footer">
-                © 2026 Cygnus Group
-                <span class="secure-badge"><i class="ph-fill ph-shield-check"></i> SSL Seguro</span>
+                © 2026 Cygnus Group • Plataforma Segura
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. LOGIN (AJAX) ---
+        // LOGIN AJAX
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             resetUI();
-
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const btn = document.getElementById('btnLog');
 
-            // Validar campos vacíos
             let error = false;
-            if(!email) { markError('email', 'El correo es obligatorio'); error = true; }
+            if(!email) { markError('email', 'Ingresa tu correo'); error = true; }
             if(!password) { markError('pass', 'Ingresa tu contraseña'); error = true; }
             if(error) return;
 
@@ -288,30 +266,26 @@
                 });
                 const data = await res.json();
 
-                if(data.success) {
-                    window.location.href = data.redirect;
-                } else {
-                    // Mapear error del servidor al campo correcto
-                    const fieldMap = { 'email': 'email', 'password': 'pass' };
-                    const fieldId = fieldMap[data.field] || 'pass';
-                    markError(fieldId, data.message);
+                if(data.success) window.location.href = data.redirect;
+                else {
+                    const map = { 'email': 'email', 'password': 'pass' };
+                    markError(map[data.field] || 'pass', data.message);
                 }
             } catch (err) {
-                markError('pass', 'Error de conexión. Intenta de nuevo.');
+                markError('pass', 'Error de conexión.');
             } finally {
                 setLoading(btn, false);
             }
         });
 
-        // --- 2. RECUPERACIÓN (AJAX) ---
+        // RECOVERY AJAX
         document.getElementById('recoveryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             resetUI();
-            
             const email = document.getElementById('recEmail').value.trim();
             const btn = document.getElementById('btnRec');
 
-            if(!email) return markError('recEmail', 'Ingresa un correo válido');
+            if(!email) return markError('recEmail', 'Correo inválido');
 
             setLoading(btn, true);
 
@@ -325,50 +299,39 @@
 
                 if(data.success) {
                     document.getElementById('recEmail').value = '';
-                    const alert = document.getElementById('recAlert');
-                    alert.innerText = data.message;
-                    alert.classList.add('visible');
+                    const al = document.getElementById('recAlert');
+                    al.innerText = data.message;
+                    al.classList.add('visible');
                 } else {
                     markError('recEmail', data.message);
                 }
             } catch (err) {
-                markError('recEmail', 'Error al procesar solicitud');
+                markError('recEmail', 'Error al procesar.');
             } finally {
                 setLoading(btn, false);
             }
         });
 
-        // --- UTILIDADES VISUALES ---
-
-        // Marcar campo en ROJO
+        // UTILS
         function markError(id, msg) {
             const box = document.getElementById('box-' + id);
-            const text = document.getElementById('msg-' + id);
-            if(box && text) {
+            const txt = document.getElementById('msg-' + id);
+            if(box && txt) {
                 box.classList.add('error');
-                text.innerText = msg;
-                text.classList.add('show');
+                txt.innerText = msg;
+                txt.classList.add('show');
             }
         }
-
-        // Limpiar errores
         function resetUI() {
             document.querySelectorAll('.input-box').forEach(el => el.classList.remove('error'));
             document.querySelectorAll('.err-text').forEach(el => el.classList.remove('show'));
-            
-            const global = document.getElementById('globalAlert');
-            if(global && global.innerText.trim() === '') global.classList.remove('visible');
-            
+            const ga = document.getElementById('globalAlert');
+            if(ga && !ga.innerText.trim()) ga.classList.remove('visible');
             document.getElementById('recAlert').classList.remove('visible');
         }
-
-        // Spinner en botón
-        function setLoading(btn, loading) {
-            if(loading) btn.classList.add('loading');
-            else btn.classList.remove('loading');
+        function setLoading(btn, state) {
+            state ? btn.classList.add('loading') : btn.classList.remove('loading');
         }
-
-        // Cambiar Vistas
         function showRecovery() {
             resetUI();
             document.getElementById('loginForm').classList.add('hidden');
@@ -376,7 +339,6 @@
             document.getElementById('titleText').innerText = "Recuperar Acceso";
             document.getElementById('subText').innerText = "Te ayudaremos a volver";
         }
-
         function showLogin() {
             resetUI();
             document.getElementById('recoveryForm').classList.add('hidden');
@@ -384,19 +346,15 @@
             document.getElementById('titleText').innerText = "Bienvenido";
             document.getElementById('subText').innerText = "Sistema de Gestión Inmobiliaria";
         }
-
-        // Toggle Password
         const btnEye = document.getElementById('btnEye');
         if(btnEye) {
             btnEye.addEventListener('click', () => {
-                const input = document.getElementById('password');
-                const isPass = input.type === 'password';
-                input.type = isPass ? 'text' : 'password';
-                btnEye.innerHTML = isPass ? '<i class="ph-fill ph-eye-slash"></i>' : '<i class="ph-fill ph-eye"></i>';
+                const inp = document.getElementById('password');
+                const isP = inp.type === 'password';
+                inp.type = isP ? 'text' : 'password';
+                btnEye.innerHTML = isP ? '<i class="ph-fill ph-eye-slash"></i>' : '<i class="ph-fill ph-eye"></i>';
             });
         }
-
-        // Init: Ocultar alerta global si está vacía
         document.addEventListener("DOMContentLoaded", () => {
              const alert = document.getElementById('globalAlert');
              if(alert && !alert.innerText.trim()) alert.style.display = 'none';
