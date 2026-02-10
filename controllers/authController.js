@@ -4,27 +4,29 @@ const logActivity = require('../helpers/logger');
 const sendEmail = require('../helpers/emailHelper'); 
 const { createClient } = require('@supabase/supabase-js');
 
-// Cliente Admin (Para links mágicos)
+// Cliente Admin (Necesario para generar links de recuperación y forzar updates)
 const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY 
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
     : null;
 
 const authController = {
     
-    // Vista (GET)
+    // =========================================================================
+    // 1. VISTA LOGIN (GET) - Carga la página normal
+    // =========================================================================
     loginForm: (req, res) => {
         if (req.session.user) return res.redirect('/dashboard');
         res.render('login', { title: 'Acceso Agentes | Cygnus' });
     },
 
-    // -------------------------------------------------------------------------
-    // LOGIN "PRO" (Responde JSON para AJAX)
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // 2. PROCESAR LOGIN (POST - AJAX) - Devuelve JSON
+    // =========================================================================
     login: async (req, res) => {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
         const { password } = req.body;
 
-        // Función auxiliar para responder error JSON
+        // Helper para devolver error JSON rápido
         const returnError = (field, msg) => {
             return res.status(400).json({ success: false, field, message: msg });
         };
@@ -33,15 +35,14 @@ const authController = {
         if (!password) return returnError('password', 'Ingresa tu contraseña.');
 
         try {
-            // 1. Auth con Supabase
+            // A. Autenticar con Supabase
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
             if (authError) {
-                // Aquí decidimos qué campo marcar en rojo
                 return returnError('password', 'Contraseña incorrecta o usuario no encontrado.');
             }
 
-            // 2. Buscar datos en tabla pública
+            // B. Buscar perfil en base de datos pública
             const { data: user } = await supabase
                 .from('users')
                 .select('*')
@@ -50,47 +51,49 @@ const authController = {
 
             if (!user) {
                 await supabase.auth.signOut();
-                return returnError('email', 'Usuario sin perfil activo en Cygnus.');
+                return returnError('email', 'Usuario autenticado pero sin perfil activo.');
             }
 
-            // 3. Crear Sesión
+            // C. Crear Sesión
             req.session.user = {
                 id: user.id, email: user.email, name: user.name,
                 role: user.role, photo: user.photo_url, position: user.position || 'Agente'
             };
 
-            // 4. Log (Asíncrono para no frenar)
+            // D. Registrar actividad (sin esperar promesa para agilidad)
             logActivity(user.id, user.name, 'login', 'sesion', 'Inició sesión').catch(console.error);
 
-            // 5. ÉXITO (El frontend redirigirá)
+            // E. ÉXITO: Mandamos la URL a donde debe ir el frontend
             return res.json({ success: true, redirect: '/dashboard' });
 
         } catch (err) {
             console.error("Login Error:", err);
-            return returnError('general', 'Error de conexión. Intenta más tarde.');
+            return returnError('general', 'Error de conexión con el servidor.');
         }
     },
 
-    // -------------------------------------------------------------------------
-    // RECUPERAR CONTRASEÑA (AJAX + Email Bonito)
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // 3. RECUPERAR PASSWORD (POST - AJAX)
+    // =========================================================================
     recoverPassword: async (req, res) => {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
         
-        if (!email) return res.status(400).json({ success: false, message: 'Ingresa un correo.' });
+        if (!email) return res.status(400).json({ success: false, message: 'Ingresa un correo válido.' });
 
         try {
-            // Verificar usuario localmente primero
+            // Verificar usuario localmente (para obtener el nombre)
             const { data: user } = await supabase.from('users').select('name').eq('email', email).single();
             
             // Si no existe, simulamos éxito por seguridad
             if (!user) {
-                return res.json({ success: true, message: 'Si el correo existe, enviamos las instrucciones.' });
+                await new Promise(r => setTimeout(r, 1000)); // Pausa de seguridad
+                return res.json({ success: true, message: 'Si el correo existe, recibirás instrucciones.' });
             }
 
-            if (!supabaseAdmin) throw new Error("Falta Service Role Key");
+            if (!supabaseAdmin) throw new Error("Falta Service Key en servidor");
 
-            // Generar Link
+            // Generar Link Mágico
+            // Importante: Redirige a /update-password donde el frontend capturará el hash
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
                 type: 'recovery',
                 email: email,
@@ -99,70 +102,103 @@ const authController = {
 
             if (linkError) throw linkError;
 
-            // ENVIAR CORREO HERMOSO
+            // HTML del correo
             const htmlMessage = `
                 <p>Hola <strong>${user.name}</strong>,</p>
-                <p>Hemos recibido una solicitud para restablecer tu contraseña en el sistema Cygnus.</p>
+                <p>Hemos recibido una solicitud para restablecer tu contraseña en Cygnus Group.</p>
                 <p>Haz clic en el botón a continuación para crear una nueva clave segura:</p>
             `;
-
+            
             await sendEmail(
                 email, 
-                'Recuperar Acceso 🔒', 
-                'Restablecer Contraseña', 
+                'Restablecer Contraseña 🔒', 
+                'Recuperación de Acceso', 
                 htmlMessage,
                 'Crear Nueva Clave',
                 linkData.properties.action_link
             );
 
-            return res.json({ success: true, message: 'Correo enviado. Revisa tu bandeja de entrada.' });
+            return res.json({ success: true, message: '¡Correo enviado! Revisa tu bandeja de entrada.' });
 
         } catch (err) {
             console.error("Recovery Error:", err);
-            return res.status(500).json({ success: false, message: 'Error interno del servidor.' });
+            return res.status(500).json({ success: false, message: 'Error interno al procesar solicitud.' });
         }
     },
 
-    // -------------------------------------------------------------------------
-    // UPDATE PASSWORD (GET & POST)
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // 4. VISTA UPDATE PASSWORD (GET) - Renderiza la página con credenciales
+    // =========================================================================
     showUpdatePassword: (req, res) => {
+        // Pasamos las credenciales públicas para que el frontend pueda verificar el token
         res.render('update-password', { 
-            title: 'Nueva Contraseña', 
+            title: 'Nueva Contraseña | Cygnus', 
             supabaseUrl: process.env.SUPABASE_URL,
-            supabaseKey: process.env.SUPABASE_KEY
+            supabaseKey: process.env.SUPABASE_KEY // Key anónima pública
         });
     },
 
+    // =========================================================================
+    // 5. PROCESAR NUEVA CONTRASEÑA (POST - AJAX)
+    // =========================================================================
     updatePassword: async (req, res) => {
-        // Este sigue siendo un form submit tradicional porque viene de un link externo
         const { password, accessToken } = req.body;
 
+        // Helper de error JSON
+        const sendError = (msg) => res.status(400).json({ success: false, message: msg });
+
+        if (!password || password.length < 6) {
+            return sendError('La contraseña debe tener al menos 6 caracteres.');
+        }
+
+        if (!accessToken) {
+            return sendError('No se detectó una sesión segura. El enlace puede estar roto.');
+        }
+
         try {
-            let userId = null;
-            if (accessToken) {
-                const { data: { user } } = await supabase.auth.getUser(accessToken);
-                if (user) userId = user.id;
-            } else if (req.session.user) {
-                userId = req.session.user.id;
+            // 1. Verificar la sesión con el Token que nos envía el frontend
+            const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
+
+            if (userError || !user) {
+                return sendError('El enlace ha expirado o no es válido. Solicita uno nuevo.');
             }
 
-            if (!userId) throw new Error("Link expirado");
+            // 2. Actualizar la contraseña
+            if (supabaseAdmin) {
+                // Opción Admin (más segura y robusta)
+                await supabaseAdmin.auth.admin.updateUserById(user.id, { password: password });
+            } else {
+                // Opción Cliente
+                await supabase.auth.updateUser({ password: password });
+            }
 
-            if (supabaseAdmin) await supabaseAdmin.auth.admin.updateUserById(userId, { password });
-            else await supabase.auth.updateUser({ password });
+            // 3. Sincronizar tabla pública 'users' (si guardas hash o flag de cambio)
+            // Nota: Supabase Auth ya maneja la pass, esto es por si tienes lógica extra
+            await supabase
+                .from('users')
+                .update({ password: password }) 
+                .eq('id', user.id);
 
-            await supabase.from('users').update({ password }).eq('id', userId);
+            // 4. Cerrar sesión globalmente y limpiar sesión del servidor
             await supabase.auth.signOut();
             req.session.destroy();
 
-            res.render('login', { title: 'Iniciar Sesión', successMessage: '¡Clave actualizada! Ingresa ahora.' });
+            // 5. Respuesta Exitosa
+            return res.json({ 
+                success: true, 
+                message: 'Contraseña actualizada correctamente.',
+                redirect: '/login' 
+            });
 
         } catch (error) {
-            res.render('login', { title: 'Iniciar Sesión', error: 'El enlace expiró. Solicita uno nuevo.' });
+            console.error("Update Pass Error:", error);
+            return sendError('Error interno del servidor. Intenta más tarde.');
         }
     },
 
+    // =========================================================================
+    // 6. LOGOUT
+    // =========================================================================
     logout: async (req, res) => {
         await supabase.auth.signOut();
         req.session.destroy(() => res.redirect('/login'));

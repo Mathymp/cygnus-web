@@ -2,42 +2,85 @@
 <html lang="es">
 <head>
     <%- include('./partials/head') %>
-    <link rel="stylesheet" href="/css/login.css">
+    <link rel="stylesheet" href="/css/login.css"> 
     <title>Acceso Agentes | Cygnus</title>
+    
     <style>
-        /* --- ESTILOS PRO PARA ERRORES --- */
-        .input-wrapper { transition: all 0.3s ease; }
+        /* =========================================
+           ESTILOS ESPECÍFICOS PARA ERRORES Y CARGA
+           ========================================= */
         
-        /* Borde Rojo al fallar */
+        /* Contenedor del Input */
+        .input-wrapper { 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #e2e8f0; /* Borde suave por defecto */
+        }
+        
+        /* ESTADO DE ERROR (Borde Rojo + Fondo) */
         .input-wrapper.error { 
             border-color: #ef4444 !important; 
-            background-color: #fef2f2;
+            background-color: #fef2f2 !important;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
             animation: shake 0.4s ease-in-out;
         }
-        .input-wrapper.error i { color: #ef4444; }
+        
+        /* Icono rojo en error */
+        .input-wrapper.error i { color: #ef4444 !important; }
 
-        /* Texto chiquito abajo */
+        /* Mensaje de error chiquito debajo */
         .error-msg { 
             display: none; 
             color: #ef4444; 
-            font-size: 0.8rem; 
+            font-size: 0.85rem; 
             margin-top: 6px; 
             margin-left: 4px;
             font-weight: 500;
+            opacity: 0;
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+        .error-msg.visible {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
         }
 
-        /* Animación Shake */
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        /* Animación de vibración (Shake) */
+        @keyframes shake { 
+            0%, 100% { transform: translateX(0); } 
+            25% { transform: translateX(-6px); } 
+            75% { transform: translateX(6px); } 
+        }
 
-        /* Spinner en Botón */
-        .btn-loading { pointer-events: none; opacity: 0.8; }
-        .btn-loading span { display: none; }
+        /* SPINNER DE CARGA EN BOTÓN */
+        .btn-loading { 
+            position: relative; 
+            color: transparent !important; 
+            pointer-events: none; 
+            opacity: 0.9;
+        }
         .btn-loading::after {
-            content: ""; display: inline-block; width: 18px; height: 18px;
-            border: 2px solid #fff; border-radius: 50%;
-            border-top-color: transparent; animation: spin 0.8s linear infinite;
+            content: ""; 
+            position: absolute; 
+            top: 50%; left: 50%; 
+            width: 20px; height: 20px; 
+            margin-top: -10px; margin-left: -10px;
+            border: 2px solid #ffffff; 
+            border-top-color: transparent; 
+            border-radius: 50%; 
+            animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* UTILIDADES DE VISIBILIDAD */
+        .hidden { display: none !important; }
+        
+        /* ALERTAS GLOBALES (Flash messages) */
+        .alert-global {
+            padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; text-align: center;
+        }
+        .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+        .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
     </style>
 </head>
 <body>
@@ -56,6 +99,13 @@
                 <p id="cardSubtitle">Sistema de Gestión Inmobiliaria</p>
             </div>
 
+            <% if (locals.error) { %>
+                <div class="alert-global alert-error"><%= error %></div>
+            <% } %>
+            <% if (locals.successMessage) { %>
+                <div class="alert-global alert-success"><%= successMessage %></div>
+            <% } %>
+
             <div id="loginSection" class="form-container">
                 <form id="loginForm" novalidate>
                     
@@ -63,7 +113,7 @@
                         <label>Correo Corporativo</label>
                         <div class="input-wrapper" id="wrap-email">
                             <i class="ph-fill ph-envelope-simple"></i>
-                            <input type="email" id="email" placeholder="usuario@cygnus.cl">
+                            <input type="email" id="email" placeholder="usuario@cygnus.cl" autocomplete="email">
                         </div>
                         <div class="error-msg" id="err-email"></div>
                     </div>
@@ -72,7 +122,7 @@
                         <label>Contraseña</label>
                         <div class="input-wrapper" id="wrap-password">
                             <i class="ph-fill ph-lock-key"></i>
-                            <input type="password" id="password" placeholder="••••••••">
+                            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
                             <button type="button" class="btn-toggle-pass" id="togglePass" tabindex="-1">
                                 <i class="ph-fill ph-eye"></i>
                             </button>
@@ -92,8 +142,8 @@
 
             <div id="recoverySection" class="form-container hidden">
                 <form id="recoveryForm" novalidate>
-                    <p style="margin-bottom: 20px; font-size: 0.9rem; color: #475569;">
-                        Ingresa tu correo y te enviaremos un enlace seguro.
+                    <p style="margin-bottom: 20px; font-size: 0.9rem; color: #475569; text-align: center;">
+                        Ingresa tu correo y te enviaremos un enlace seguro para restablecer tu clave.
                     </p>
 
                     <div class="input-group">
@@ -103,15 +153,18 @@
                             <input type="email" id="recEmail" placeholder="usuario@cygnus.cl">
                         </div>
                         <div class="error-msg" id="err-recEmail"></div>
-                        <div id="recSuccess" style="display:none; color:#16a34a; font-size:0.9rem; margin-top:10px; font-weight:600;"></div>
+                        
+                        <div id="recSuccess" style="display:none; background:#f0fdf4; color:#16a34a; padding:10px; border-radius:8px; font-size:0.9rem; margin-top:10px; border:1px solid #bbf7d0; text-align: center;"></div>
                     </div>
 
                     <button type="submit" class="btn-primary" id="btnRec">
                         <span>Enviar Enlace</span>
                     </button>
 
-                    <div style="margin-top: 20px;">
-                        <span class="link-text" onclick="switchView('login')">Volver al inicio</span>
+                    <div style="margin-top: 20px; text-align: center;">
+                        <span class="link-text" onclick="switchView('login')">
+                            <i class="ph-bold ph-arrow-left"></i> Volver al inicio
+                        </span>
                     </div>
                 </form>
             </div>
@@ -127,21 +180,22 @@
         // --- 1. LÓGICA DE LOGIN (AJAX) ---
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            clearErrors();
+            clearErrors(); // Limpiamos errores previos
             
             const btn = document.getElementById('btnLogin');
-            const email = document.getElementById('email').value;
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
+            
+            // Validaciones cliente rápidas
             let hasError = false;
+            if (!email) { showError('email', 'Ingresa tu correo'); hasError = true; }
+            if (!password) { showError('password', 'Ingresa tu contraseña'); hasError = true; }
+            if (hasError) return;
 
-            // Validación Local
-            if(!email) { showError('email', 'Ingresa tu correo'); hasError = true; }
-            if(!password) { showError('password', 'Ingresa tu contraseña'); hasError = true; }
-            if(hasError) return;
-
-            setLoading(btn, true);
+            setLoading(btn, true); // Activar Spinner
 
             try {
+                // Petición AJAX al backend
                 const res = await fetch('/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -151,13 +205,15 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    window.location.href = data.redirect; // Redirección exitosa
+                    // Si todo bien, redirigimos
+                    window.location.href = data.redirect;
                 } else {
-                    // Mostrar error específico del servidor (rojo y chiquito)
-                    showError(data.field || 'general', data.message);
+                    // Si falla, mostramos el error rojo en el campo específico
+                    showError(data.field || 'password', data.message);
                     setLoading(btn, false);
                 }
             } catch (err) {
+                console.error(err);
                 showError('password', 'Error de conexión. Intenta nuevamente.');
                 setLoading(btn, false);
             }
@@ -169,10 +225,9 @@
             clearErrors();
             
             const btn = document.getElementById('btnRec');
-            const email = document.getElementById('recEmail').value;
-            const successMsg = document.getElementById('recSuccess');
+            const email = document.getElementById('recEmail').value.trim();
 
-            if(!email) return showError('recEmail', 'Ingresa tu correo para continuar.');
+            if (!email) return showError('recEmail', 'Ingresa un correo válido.');
 
             setLoading(btn, true);
 
@@ -183,69 +238,77 @@
                     body: JSON.stringify({ email })
                 });
                 const data = await res.json();
-
-                if (data.success) {
+                
+                if(data.success) {
+                    // Éxito: Limpiamos input y mostramos mensaje verde
                     document.getElementById('recEmail').value = '';
+                    const successMsg = document.getElementById('recSuccess');
                     successMsg.innerText = data.message;
                     successMsg.style.display = 'block';
                 } else {
+                    // Error: Borde rojo
                     showError('recEmail', data.message);
                 }
             } catch (err) {
-                showError('recEmail', 'Error al enviar. Intenta más tarde.');
+                showError('recEmail', 'Error al procesar solicitud.');
             } finally {
                 setLoading(btn, false);
             }
         });
 
         // --- HERRAMIENTAS VISUALES ---
+        
+        // Mostrar error en campo específico
         function showError(field, msg) {
             const wrapper = document.getElementById('wrap-' + field);
             const txt = document.getElementById('err-' + field);
-            if (wrapper && txt) {
-                wrapper.classList.add('error');
+            if(wrapper && txt) {
+                wrapper.classList.add('error'); // Pone borde rojo y agita
                 txt.innerText = msg;
-                txt.style.display = 'block';
+                txt.classList.add('visible'); // Muestra el texto abajo
             }
         }
 
+        // Limpiar todos los errores
         function clearErrors() {
             document.querySelectorAll('.input-wrapper').forEach(el => el.classList.remove('error'));
-            document.querySelectorAll('.error-msg').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.error-msg').forEach(el => el.classList.remove('visible'));
             const success = document.getElementById('recSuccess');
             if(success) success.style.display = 'none';
         }
 
+        // Activar/Desactivar Spinner
         function setLoading(btn, isLoading) {
-            if (isLoading) btn.classList.add('btn-loading');
+            if(isLoading) btn.classList.add('btn-loading');
             else btn.classList.remove('btn-loading');
         }
 
-        // --- CAMBIO DE VISTAS ---
+        // Cambiar entre Login y Recuperación
         function switchView(view) {
             clearErrors();
-            const login = document.getElementById('loginSection');
-            const rec = document.getElementById('recoverySection');
+            const loginSec = document.getElementById('loginSection');
+            const recSec = document.getElementById('recoverySection');
             const title = document.getElementById('cardTitle');
             const sub = document.getElementById('cardSubtitle');
 
-            if (view === 'recovery') {
-                login.classList.add('hidden');
-                rec.classList.remove('hidden');
+            // Efecto de desvanecimiento simple
+            if(view === 'recovery') {
+                loginSec.classList.add('hidden');
+                recSec.classList.remove('hidden');
                 title.innerText = "Recuperar Acceso";
                 sub.innerText = "Te ayudaremos a volver.";
             } else {
-                rec.classList.add('hidden');
-                login.classList.remove('hidden');
+                recSec.classList.add('hidden');
+                loginSec.classList.remove('hidden');
                 title.innerText = "Bienvenido";
                 sub.innerText = "Sistema de Gestión Inmobiliaria";
             }
         }
 
-        // --- PASSWORD TOGGLE ---
+        // Toggle ver/ocultar contraseña
         const toggleBtn = document.getElementById('togglePass');
         const passInput = document.getElementById('password');
-        if (toggleBtn) {
+        if(toggleBtn) {
             toggleBtn.addEventListener('click', () => {
                 const isPass = passInput.type === 'password';
                 passInput.type = isPass ? 'text' : 'password';
