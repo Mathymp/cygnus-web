@@ -1,52 +1,82 @@
-const nodemailer = require('nodemailer');
+// helpers/emailHelper.js
+const sendEmail = async (to, subject, title, message, buttonText = null, buttonLink = null) => {
+    
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = 'contacto@cygnusgroup.cl'; // Tu dominio verificado
 
-// Detectamos si usamos puerto seguro (465) o estándar (587)
-const isSecure = process.env.SMTP_PORT == 465;
+    // --- PLANTILLA CORPORATIVA "CYGNUS BLUE" ---
+    const htmlTemplate = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f1f5f9; }
+            .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+            .header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 30px; text-align: center; }
+            .content { padding: 40px; color: #334155; line-height: 1.6; }
+            .btn { display: inline-block; background-color: #2563eb; color: #ffffff !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; text-align: center; }
+            .footer { background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1 style="color:white; margin:0; font-size:24px;">CYGNUS GROUP</h1>
+            </div>
+            <div class="content">
+                <h2 style="color:#1e293b; margin-top:0;">${title}</h2>
+                <div style="font-size:16px;">${message}</div>
+                
+                ${buttonText && buttonLink ? `
+                <div style="text-align:center; margin: 30px 0;">
+                    <a href="${buttonLink}" class="btn">${buttonText}</a>
+                </div>
+                ` : ''}
+                
+                <p style="margin-top:30px; font-size:14px; color:#64748b;">
+                    Si tienes dudas, responde a este correo.
+                </p>
+            </div>
+            <div class="footer">
+                <p>&copy; 2026 Cygnus Group Propiedades. Todos los derechos reservados.</p>
+                <p>Este correo fue enviado automáticamente, por favor no lo marques como spam.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
 
-// Configuración del transporte (El Cartero)
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: isSecure, // true para 465, false para otros
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-    },
-    // Configuraciones avanzadas para evitar errores de red en servidores corporativos
-    tls: {
-        rejectUnauthorized: false, // Ayuda si el certificado SSL del servidor no es perfecto
-        ciphers: 'SSLv3'
-    },
-    // Aumentamos el tiempo de espera para conexiones lentas
-    connectionTimeout: 10000, // 10 segundos
-    greetingTimeout: 10000,
-    socketTimeout: 10000
-});
-
-// Verificamos la conexión al iniciar la app (para depurar)
-transporter.verify(function (error, success) {
-    if (error) {
-        console.log("❌ Error conectando al servidor de correo:", error.message);
-    } else {
-        console.log("✅ Servidor de correo listo para enviar mensajes.");
+    if (!apiKey) {
+        console.error("❌ ERROR: Falta RESEND_API_KEY en .env");
+        return false;
     }
-});
 
-const sendEmail = async (to, subject, htmlContent) => {
     try {
-        console.log(`📨 Intentando enviar correo a: ${to} usando puerto ${process.env.SMTP_PORT}...`);
-        
-        const info = await transporter.sendMail({
-            from: `"Soporte Cygnus Group" <${process.env.SMTP_USER}>`,
-            to: to,
-            subject: subject,
-            html: htmlContent
+        console.log(`📨 Enviando a: ${to}...`);
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                from: `Cygnus Group <${fromEmail}>`,
+                to: [to],
+                subject: subject,
+                html: htmlTemplate
+            })
         });
 
-        console.log("✅ Correo enviado con éxito. ID:", info.messageId);
-        return true;
+        const data = await response.json();
+        if (response.ok) {
+            console.log("✅ Correo enviado ID:", data.id);
+            return true;
+        } else {
+            console.error("❌ Error Resend:", data);
+            return false;
+        }
     } catch (error) {
-        console.error("❌ Error enviando correo:", error);
+        console.error("❌ Error Red:", error);
         return false;
     }
 };
