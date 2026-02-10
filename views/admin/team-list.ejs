@@ -3,6 +3,7 @@
 <head>
     <%- include('../partials/head') %>
     <link rel="stylesheet" href="/css/team.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="dashboard-body">
     <div class="app-layout">
@@ -44,7 +45,7 @@
                         <tbody>
                             <% if(agents && agents.length > 0) { %>
                                 <% agents.forEach(agent => { %>
-                                <tr class="agent-row">
+                                <tr class="agent-row" id="row-<%= agent.id %>">
                                     <td style="padding-left: 2rem;">
                                         <div class="prop-flex">
                                             <% if(agent.photo_url) { %>
@@ -117,31 +118,74 @@
                 Sus propiedades activas quedarán <strong>sin asignar</strong> (propiedad de la empresa) hasta que las reasignes manualmente.
             </p>
             
-            <form id="deleteForm" method="POST">
-                <div class="modal-actions">
-                    <button type="button" class="btn-modal-cancel" onclick="closeDeleteModal()">Cancelar</button>
-                    <button type="submit" class="btn-modal-confirm">
-                        Confirmar Baja
-                    </button>
-                </div>
-            </form>
+            <div class="modal-actions">
+                <button type="button" class="btn-modal-cancel" onclick="closeDeleteModal()">Cancelar</button>
+                <button type="button" id="confirmDeleteBtn" class="btn-modal-confirm" onclick="confirmDelete()">
+                    Confirmar Baja
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
         const deleteModal = document.getElementById('deleteModal');
-        const deleteForm = document.getElementById('deleteForm');
         const deleteNameSpan = document.getElementById('deleteAgentName');
+        let agentIdToDelete = null; // Variable para guardar el ID temporalmente
 
         function openDeleteModal(id, name) {
-            // Actualiza la acción del formulario con el ID correcto
-            deleteForm.action = `/admin/delete-agent/${id}`;
+            agentIdToDelete = id; // Guardamos el ID
             deleteNameSpan.textContent = name;
             deleteModal.classList.add('active'); 
         }
 
         function closeDeleteModal() {
+            agentIdToDelete = null;
             deleteModal.classList.remove('active');
+        }
+
+        // LÓGICA DE ELIMINACIÓN CON FETCH (Sin recargar a página de error)
+        async function confirmDelete() {
+            if (!agentIdToDelete) return;
+
+            const btn = document.getElementById('confirmDeleteBtn');
+            const originalText = btn.innerText;
+            
+            // Estado de carga
+            btn.innerText = "Procesando...";
+            btn.disabled = true;
+            btn.style.opacity = "0.7";
+
+            try {
+                // Llamada al Backend (Ruta corregida: /admin/agents/delete/:id)
+                const response = await fetch(`/admin/agents/delete/${agentIdToDelete}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Éxito: Recargar la página para ver cambios
+                    window.location.reload();
+                } else {
+                    alert("Error al eliminar: " + (data.message || "Error desconocido"));
+                    resetBtn();
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("Error de conexión al intentar eliminar.");
+                resetBtn();
+            }
+
+            function resetBtn() {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                btn.style.opacity = "1";
+                closeDeleteModal();
+            }
         }
 
         // Cerrar al hacer clic fuera del modal
