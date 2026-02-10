@@ -1,5 +1,5 @@
 /* public/css/login.css */
-/* RESET BÁSICO */
+/* RESET Y BASE */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -13,65 +13,51 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    min-height: 100vh; /* Asegura que cubra toda la altura */
+    min-height: 100vh;
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: var(--dark-bg);
     position: relative;
-    overflow-x: hidden; /* Evita scroll horizontal */
+    overflow: hidden; /* Evita scrolls raros */
 }
 
-/* FONDO BLINDADO (No se rompe) */
+/* FONDO "BLINDADO" */
 .bg-architect {
-    position: fixed; /* Fijo para que no se mueva al scrollear */
-    top: 0; left: 0; width: 100%; height: 100%;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2670&auto=format&fit=crop');
-    background-size: cover;
-    background-position: center;
+    background-size: cover; background-position: center;
     z-index: -2;
 }
-
 .bg-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(15, 23, 42, 0.6); /* Oscurecer imagen */
-    backdrop-filter: blur(4px); /* Efecto borroso elegante */
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
     z-index: -1;
 }
 
-/* CONTENEDOR CENTRAL */
+/* TARJETA CENTRAL */
 .login-container {
-    width: 100%;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    width: 100%; padding: 20px;
+    display: flex; justify-content: center; align-items: center;
     z-index: 10;
 }
-
 .glass-card {
     background: var(--glass-bg);
-    padding: 40px;
-    border-radius: 24px;
+    padding: 40px; border-radius: 24px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    width: 100%;
-    max-width: 420px;
-    text-align: center;
-    position: relative;
-    overflow: hidden; /* Para contener animaciones */
+    width: 100%; max-width: 420px;
+    text-align: center; position: relative;
+    border-top: 1px solid rgba(255,255,255,0.5); /* Borde sutil arriba */
 }
 
 /* HEADER */
-.login-header { margin-bottom: 30px; }
+.login-header { margin-bottom: 25px; }
 .logo-circle {
-    width: 80px; height: 80px;
-    background: white; border-radius: 50%;
-    margin: 0 auto 15px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    padding: 10px;
+    width: 80px; height: 80px; background: white; border-radius: 50%;
+    margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1); padding: 10px;
 }
 .logo-img { width: 100%; height: auto; object-fit: contain; }
 .login-header h1 { font-size: 1.5rem; color: var(--text-main); font-weight: 700; margin-bottom: 5px; }
@@ -80,48 +66,53 @@ body {
 /* INPUTS */
 .input-group { margin-bottom: 20px; text-align: left; }
 .input-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 8px; }
-.input-wrapper { position: relative; }
+
+.input-wrapper { position: relative; display: flex; align-items: center; }
 .input-wrapper input {
-    width: 100%; padding: 12px 15px 12px 40px;
+    width: 100%; padding: 12px 45px 12px 40px; /* Espacio para iconos izq y der */
     border: 1px solid #cbd5e1; border-radius: 10px;
     font-size: 0.95rem; outline: none; transition: all 0.2s;
+    background: #f8fafc;
 }
-.input-wrapper input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-.input-wrapper i {
-    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-    color: #94a3b8; font-size: 1.1rem;
+.input-wrapper input:focus {
+    border-color: var(--primary); background: #fff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* Botón Ojo Contraseña */
+/* Iconos Izquierda */
+.input-wrapper > i.ph-fill:first-child {
+    position: absolute; left: 12px; color: #94a3b8; font-size: 1.2rem; pointer-events: none;
+}
+
+/* Botón Ojo Derecha (CORREGIDO) */
 .btn-toggle-pass {
-    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-    background: none; border: none; cursor: pointer; color: #94a3b8; padding: 5px;
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: #94a3b8; padding: 4px; display: flex;
+    z-index: 5;
 }
 .btn-toggle-pass:hover { color: var(--text-main); }
 
 /* BOTÓN PRINCIPAL */
 .btn-primary {
-    width: 100%; height: 50px;
-    background: var(--primary);
+    width: 100%; height: 50px; background: var(--primary);
     color: white; border: none; border-radius: 10px;
     font-size: 1rem; font-weight: 600; cursor: pointer;
-    margin-top: 10px;
-    transition: background 0.2s;
+    margin-top: 10px; transition: background 0.2s;
     display: flex; align-items: center; justify-content: center;
 }
 .btn-primary:hover { background: var(--primary-dark); }
-.btn-primary:active { transform: scale(0.98); }
 
-/* LINKS & FOOTER */
-.forgot-pass {
-    display: block; text-align: right; margin-top: -10px; margin-bottom: 20px;
-}
+/* LINKS */
+.forgot-pass { text-align: right; margin-bottom: 20px; margin-top: -10px; }
 .link-text { color: var(--primary); text-decoration: none; font-size: 0.85rem; font-weight: 500; cursor: pointer; }
 .link-text:hover { text-decoration: underline; }
 
+/* TRANSICIONES */
+.hidden { display: none !important; }
+.form-container { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* FOOTER */
 .login-footer { margin-top: 30px; font-size: 0.8rem; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
 .secure-badge { display: inline-flex; align-items: center; gap: 5px; background: #f1f5f9; padding: 5px 10px; border-radius: 20px; margin-top: 10px; font-weight: 600; color: #475569; }
-
-/* TRANSICIONES ENTRE FORMULARIOS */
-.form-container { transition: opacity 0.3s ease, transform 0.3s ease; }
-.hidden { display: none !important; }

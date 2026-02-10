@@ -42,7 +42,7 @@
                         <div class="input-wrapper">
                             <i class="ph-fill ph-lock-key"></i>
                             <input type="password" id="passwordInput" name="password" placeholder="••••••••" required>
-                            <button type="button" class="btn-toggle-pass" id="togglePass">
+                            <button type="button" class="btn-toggle-pass" id="togglePass" tabindex="-1">
                                 <i class="ph-fill ph-eye"></i>
                             </button>
                         </div>
@@ -92,7 +92,7 @@
     </main>
 
     <script>
-        // Lógica para cambiar entre Login y Recuperar
+        // CAMBIO DE VISTAS
         const loginSection = document.getElementById('loginSection');
         const recoverySection = document.getElementById('recoverySection');
         const title = document.getElementById('cardTitle');
@@ -112,11 +112,13 @@
             subtitle.innerText = "Sistema de Gestión Inmobiliaria";
         }
 
-        // Ver/Ocultar Contraseña
+        // TOGGLE PASSWORD (OJITO)
         const toggleBtn = document.getElementById('togglePass');
         const passInput = document.getElementById('passwordInput');
+        
         if (toggleBtn && passInput) {
-            toggleBtn.addEventListener('click', () => {
+            toggleBtn.addEventListener('click', (e) => {
+                e.preventDefault(); // Evita cualquier submit raro
                 const isPass = passInput.type === 'password';
                 passInput.type = isPass ? 'text' : 'password';
                 toggleBtn.querySelector('i').className = isPass ? 'ph-fill ph-eye-slash' : 'ph-fill ph-eye';

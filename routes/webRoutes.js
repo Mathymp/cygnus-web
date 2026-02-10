@@ -100,5 +100,7 @@ router.get('/admin/marca', requireAuth, (req, res) => {
         user: req.session.user
     });
 });
-
+router.post('/recover-password', authController.recoverPassword);
+router.get('/update-password', authController.showUpdatePassword);
+router.post('/update-password', authController.updatePassword);
 module.exports = router;
