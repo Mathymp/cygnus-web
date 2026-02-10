@@ -7,7 +7,7 @@ const { createClient } = require('@supabase/supabase-js');
 // --- CONFIGURACIÓN CRÍTICA ---
 const BASE_URL = 'https://www.cygnusgroup.cl';
 
-// Cliente Admin de Supabase
+// Cliente Admin (Service Role) - ¡PODER TOTAL!
 const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY 
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
     : null;
@@ -15,7 +15,7 @@ const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
 const authController = {
     
     // =========================================================================
-    // 1. VISTA LOGIN (GET)
+    // 1. VISTA LOGIN
     // =========================================================================
     loginForm: (req, res) => {
         if (req.session.user) return res.redirect('/dashboard');
@@ -27,11 +27,11 @@ const authController = {
     },
 
     // =========================================================================
-    // 2. PROCESAR LOGIN (AJAX) - ¡PROTECCIÓN TOTAL!
+    // 2. PROCESAR LOGIN (AJAX) - ¡LÓGICA MAESTRA DE REPARACIÓN!
     // =========================================================================
     login: async (req, res) => {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
-        const { password } = req.body; // Pass real
+        const { password } = req.body;
 
         const returnError = (field, msg) => {
             return res.status(400).json({ success: false, field, message: msg });
@@ -41,81 +41,93 @@ const authController = {
         if (!password) return returnError('password', 'Por favor, ingresa tu contraseña.');
 
         try {
-            // A. Login Auth (Verdad Suprema)
+            // A. Login Auth (Paso 1: ¿Es válida la credencial?)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
                 email, 
                 password 
             });
 
-            if (authError) {
-                return returnError('password', 'Credenciales incorrectas o usuario no registrado.');
-            }
+            if (authError) return returnError('password', 'Credenciales incorrectas o usuario no registrado.');
 
-            // B. Sincronización DB Pública (users)
-            // Usamos Admin para saltar RLS y poder arreglar perfiles rotos
+            // B. Gestión de Perfil en DB Pública (Paso 2: Sincronización)
             const clientToUse = supabaseAdmin || supabase;
+            const newUserId = authData.user.id;
             
-            // 1. Buscar perfil por ID (Camino Feliz)
+            // 1. Intentar buscar perfil por ID CORRECTO
             let { data: user } = await clientToUse
                 .from('users')
                 .select('*')
-                .eq('id', authData.user.id)
+                .eq('id', newUserId)
                 .single();
 
-            // 2. Lógica de Reparación Quirúrgica
+            // 2. Si NO existe el perfil por ID, entramos en MODO REPARACIÓN
             if (!user) {
-                console.warn(`⚠️ Login: Usuario ${email} en Auth pero no en DB por ID. Iniciando diagnóstico...`);
+                console.warn(`⚠️ Usuario ${email} (ID: ${newUserId}) autenticado en Auth pero sin perfil en DB.`);
                 
-                // 2.1 Buscar por Email (Caso Zombie: ID cambió)
-                const { data: userByEmail } = await clientToUse
+                // 2.1 Buscar si existe un "Usuario Zombie" (Mismo email, ID viejo)
+                const { data: zombieUser } = await clientToUse
                     .from('users')
                     .select('*')
                     .eq('email', email)
                     .single();
 
-                if (userByEmail) {
-                    console.log("♻️ Reparando: Actualizando ID del usuario existente.");
-                    // Actualizamos el ID antiguo por el nuevo y la password
-                    await clientToUse
-                        .from('users')
-                        .update({ 
-                            id: authData.user.id,
-                            password: password, // Sincronizamos pass también
-                            updated_at: new Date()
-                        })
-                        .eq('email', email);
-                    
-                    // Recuperamos el usuario actualizado
-                    const { data: refreshedUser } = await clientToUse.from('users').select('*').eq('id', authData.user.id).single();
-                    user = refreshedUser;
-                } else {
-                    // 2.2 Caso Fantasma: No existe ni por ID ni por Email (Crear Nuevo)
-                    console.log("🛠️ Reparando: Creando perfil nuevo desde cero.");
-                    const newProfile = {
-                        id: authData.user.id,
-                        email: email,
-                        name: authData.user.user_metadata?.name || email.split('@')[0], 
-                        role: 'corredor',
-                        password: password, // Pass real obligatoria
-                        photo_url: null,
-                        created_at: new Date()
-                    };
+                // Datos base para el nuevo perfil (o migrado)
+                const profileData = {
+                    id: newUserId, // El ID nuevo y correcto de Auth
+                    email: email,
+                    // Heredamos nombre si existe, si no de metadata, si no del email
+                    name: zombieUser?.name || authData.user.user_metadata?.name || email.split('@')[0], 
+                    role: zombieUser?.role || 'corredor', 
+                    position: zombieUser?.position || 'Agente Inmobiliario',
+                    phone: zombieUser?.phone || null,
+                    photo_url: zombieUser?.photo_url || null,
+                    password: password, // Guardamos pass real para cumplir restricción NOT NULL
+                    created_at: new Date(),
+                    updated_at: new Date()
+                };
 
-                    const { error: insertError } = await clientToUse.from('users').insert(newProfile);
+                if (zombieUser) {
+                    console.warn(`🧟 Detectado ZOMBIE (ID Viejo: ${zombieUser.id}). Iniciando Migración Quirúrgica...`);
                     
-                    if (insertError) {
-                        console.error("❌ Falló auto-creación:", insertError);
-                        await supabase.auth.signOut();
-                        return returnError('email', 'Error crítico de cuenta. Contacta a soporte.');
-                    }
-                    user = newProfile;
+                    // A. MIGRAR PROPIEDADES (Reasignar al nuevo ID)
+                    // Ajusta 'properties' y 'agent_id' si tus tablas se llaman distinto
+                    const { error: propError } = await clientToUse
+                        .from('properties')
+                        .update({ agent_id: newUserId })
+                        .eq('agent_id', zombieUser.id);
+                    
+                    if (propError) console.error("❌ Error migrando propiedades:", propError);
+                    else console.log("✅ Propiedades reasignadas al nuevo ID.");
+
+                    // B. ELIMINAR EL VIEJO (Ahora que está vacío)
+                    await clientToUse.from('users').delete().eq('id', zombieUser.id);
+                    console.log("🗑️ Usuario zombie eliminado.");
                 }
+
+                // 2.2 CREAR EL NUEVO PERFIL (Limpio y sincronizado)
+                console.log(`🛠️ Creando perfil definitivo para ${email}...`);
+                const { error: insertError } = await clientToUse.from('users').insert(profileData);
+                
+                if (insertError) {
+                    console.error("❌ Falló creación de perfil:", insertError);
+                    await supabase.auth.signOut();
+                    return returnError('email', 'Error crítico de base de datos. Contacta a soporte.');
+                }
+                
+                user = profileData; // Asignamos el nuevo perfil para la sesión
+                console.log("✨ Perfil sincronizado exitosamente.");
+
             } else {
-                // 3. Mantenimiento Preventivo (Si ya existía, actualizamos pass por si acaso)
-                // Esto asegura que la DB pública siempre tenga la última contraseña válida
+                // 3. Mantenimiento Preventivo (Si ya existía y está bien)
+                // Si la contraseña cambió, la actualizamos en public users para mantener consistencia
                 if (user.password !== password) {
                     await clientToUse.from('users').update({ password: password }).eq('id', user.id);
                 }
+            }
+
+            // --- VALIDACIÓN FINAL ---
+            if (!user || !user.id) {
+                throw new Error("El usuario es nulo después del proceso.");
             }
 
             // C. Crear Sesión
@@ -143,7 +155,6 @@ const authController = {
     // =========================================================================
     recoverPassword: async (req, res) => {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
-        
         if (!email) return res.status(400).json({ success: false, message: 'Ingresa un correo válido.' });
 
         try {
@@ -151,10 +162,10 @@ const authController = {
             
             if (!user) {
                 await new Promise(r => setTimeout(r, 1000));
-                return res.json({ success: true, message: 'Si el correo existe, recibirás instrucciones.' });
+                return res.json({ success: true, message: 'Si el correo existe, enviamos instrucciones.' });
             }
 
-            if (!supabaseAdmin) return res.status(500).json({ success: false, message: 'Error de configuración.' });
+            if (!supabaseAdmin) return res.status(500).json({ success: false, message: 'Error config servidor.' });
 
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
                 type: 'recovery',
@@ -167,102 +178,72 @@ const authController = {
             const htmlMessage = `<p>Hola <strong>${user.name}</strong>,</p><p>Recupera tu acceso aquí:</p>`;
             
             await sendEmail(
-                email, 
-                'Restablecer Contraseña 🔒', 
-                'Recuperación', 
-                htmlMessage,
-                'Crear Nueva Clave', 
-                linkData.properties.action_link
+                email, 'Restablecer Clave 🔒', 'Recuperación', 
+                htmlMessage, 'Nueva Clave', linkData.properties.action_link
             );
 
             return res.json({ success: true, message: 'Correo enviado.' });
 
         } catch (err) {
-            console.error("Recovery Error:", err);
+            console.error(err);
             return res.status(500).json({ success: false, message: 'Error interno.' });
         }
     },
 
-    // =========================================================================
-    // 4. VISTA UPDATE (GET)
-    // =========================================================================
+    // 4. VISTA UPDATE
     showUpdatePassword: (req, res) => {
         res.render('update-password', { 
-            title: 'Nueva Contraseña | Cygnus', 
+            title: 'Nueva Contraseña', 
             supabaseUrl: process.env.SUPABASE_URL,
             supabaseKey: process.env.SUPABASE_KEY 
         });
     },
 
-    // =========================================================================
-    // 5. PROCESAR ACTUALIZACIÓN (AJAX) - ¡PROTECCIÓN TOTAL!
-    // =========================================================================
+    // 5. PROCESO UPDATE (Con Upsert inteligente para cubrir todos los casos)
     updatePassword: async (req, res) => {
         const { password, accessToken } = req.body;
         const sendError = (msg) => res.status(400).json({ success: false, message: msg });
 
         if (!password || password.length < 6) return sendError('Mínimo 6 caracteres.');
-        if (!accessToken) return sendError('Enlace inválido.');
+        if (!accessToken) return sendError('Link inválido.');
 
         try {
             // 1. Validar Token
-            const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
-            if (userError || !user) return sendError('El enlace ha expirado.');
+            const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+            if (error || !user) return sendError('Link expirado.');
 
-            const clientToUse = supabaseAdmin || supabase;
+            const client = supabaseAdmin || supabase;
 
-            // 2. Actualizar en AUTH (Prioridad 1)
-            if (supabaseAdmin) {
-                await supabaseAdmin.auth.admin.updateUserById(user.id, { password: password });
-            } else {
-                await supabase.auth.updateUser({ password: password });
-            }
+            // 2. Actualizar Auth (La fuente de verdad)
+            if (supabaseAdmin) await supabaseAdmin.auth.admin.updateUserById(user.id, { password });
+            else await supabase.auth.updateUser({ password });
 
-            // 3. Sincronizar en DB PÚBLICA (Quirúrgico: Upsert)
-            // Usamos 'upsert' para cubrir creación y actualización en un solo paso
-            const { error: dbError } = await clientToUse
-                .from('users')
-                .upsert({ 
-                    id: user.id,
-                    email: user.email,
-                    password: password, // Pass real
-                    // Si es insert, necesitamos estos campos (si es update, se ignoran o sobrescriben)
-                    name: user.user_metadata?.name || user.email.split('@')[0],
-                    role: 'corredor', // Default seguro
-                    updated_at: new Date()
-                }, { onConflict: 'id' }); // Clave para decidir si es update
+            // 3. Actualizar DB Pública (Upsert: Crea si no existe, Actualiza si existe)
+            // Esto arregla perfiles que falten al momento de recuperar contraseña
+            await client.from('users').upsert({ 
+                id: user.id,
+                email: user.email,
+                password: password, // Sincronizamos pass
+                name: user.user_metadata?.name || user.email.split('@')[0],
+                role: 'corredor', // Default si se crea nuevo
+                updated_at: new Date()
+            }, { onConflict: 'id' });
 
-            if (dbError) {
-                console.error("⚠️ Advertencia Update: DB Pública no sincronizada:", dbError);
-                // No bloqueamos, porque Auth ya cambió la clave. 
-                // El login se encargará de reparar cualquier inconsistencia restante.
-            }
-
-            // 4. Cerrar sesión
+            // 4. Salir
             await supabase.auth.signOut();
             req.session.destroy();
 
-            return res.json({ 
-                success: true, 
-                message: 'Contraseña actualizada correctamente.',
-                redirect: '/login' 
-            });
+            return res.json({ success: true, message: 'Actualizado.', redirect: '/login' });
 
         } catch (error) {
-            console.error("Update Pass Error:", error);
+            console.error(error);
             return sendError('Error interno.');
         }
     },
 
-    // =========================================================================
-    // 6. LOGOUT
-    // =========================================================================
     logout: async (req, res) => {
         await supabase.auth.signOut();
-        req.session.destroy((err) => {
-            if (err) console.error("Session destroy error:", err);
-            res.redirect('/login');
-        });
+        req.session.destroy(() => res.redirect('/login'));
     }
 };
 
