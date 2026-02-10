@@ -5,11 +5,9 @@ const sendEmail = require('../helpers/emailHelper');
 const { createClient } = require('@supabase/supabase-js');
 
 // --- CONFIGURACIÓN CRÍTICA ---
-// Forzamos la URL de producción para evitar errores de localhost en los correos
 const BASE_URL = 'https://www.cygnusgroup.cl';
 
-// Cliente Admin de Supabase (Necesario para generar links, gestionar usuarios y auto-reparar perfiles)
-// Este cliente tiene permisos totales, úsalo con cuidado.
+// Cliente Admin de Supabase
 const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY 
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
     : null;
@@ -20,10 +18,7 @@ const authController = {
     // 1. VISTA LOGIN (GET)
     // =========================================================================
     loginForm: (req, res) => {
-        // Si ya hay sesión, mandamos al dashboard directamente
         if (req.session.user) return res.redirect('/dashboard');
-        
-        // Renderizamos la vista con variables limpias para evitar errores EJS
         res.render('login', { 
             title: 'Acceso Agentes | Cygnus', 
             error: null, 
@@ -32,84 +27,98 @@ const authController = {
     },
 
     // =========================================================================
-    // 2. PROCESAR LOGIN (AJAX - JSON) - ¡CON AUTO-REPARACIÓN!
+    // 2. PROCESAR LOGIN (AJAX) - ¡PROTECCIÓN TOTAL!
     // =========================================================================
     login: async (req, res) => {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
-        const { password } = req.body; // <--- AQUÍ CAPTURAMOS LA CONTRASEÑA REAL
+        const { password } = req.body; // Pass real
 
-        // Función auxiliar para responder errores en formato JSON
         const returnError = (field, msg) => {
             return res.status(400).json({ success: false, field, message: msg });
         };
 
-        // Validaciones básicas
         if (!email) return returnError('email', 'Por favor, ingresa tu correo.');
         if (!password) return returnError('password', 'Por favor, ingresa tu contraseña.');
 
         try {
-            // A. Intentar Login con Supabase Auth (Credenciales de seguridad)
+            // A. Login Auth (Verdad Suprema)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
                 email, 
                 password 
             });
 
             if (authError) {
-                // Si falla aquí, es que la contraseña está mal o el usuario no existe en Auth
                 return returnError('password', 'Credenciales incorrectas o usuario no registrado.');
             }
 
-            // B. Buscar perfil en base de datos pública 'users'
-            let { data: user, error: dbError } = await supabase
+            // B. Sincronización DB Pública (users)
+            // Usamos Admin para saltar RLS y poder arreglar perfiles rotos
+            const clientToUse = supabaseAdmin || supabase;
+            
+            // 1. Buscar perfil por ID (Camino Feliz)
+            let { data: user } = await clientToUse
                 .from('users')
                 .select('*')
                 .eq('id', authData.user.id)
                 .single();
 
-            // =================================================================
-            // --- INICIO: LÓGICA DE BLINDAJE (AUTO-CREACIÓN) ---
-            // =================================================================
-            // Si el usuario autenticó bien en Auth, pero NO tiene perfil en la tabla 'users',
-            // significa que hubo un error al crearlo. Lo arreglamos aquí mismo.
+            // 2. Lógica de Reparación Quirúrgica
             if (!user) {
-                console.warn(`⚠️ ALERTA: Usuario ${email} autenticado en Auth pero sin perfil en DB. Iniciando auto-reparación...`);
+                console.warn(`⚠️ Login: Usuario ${email} en Auth pero no en DB por ID. Iniciando diagnóstico...`);
                 
-                // Creamos el objeto del perfil nuevo
-                const newProfile = {
-                    id: authData.user.id,
-                    email: email,
-                    // Intentamos obtener el nombre de los metadatos de Auth, o usamos el correo
-                    name: authData.user.user_metadata?.name || email.split('@')[0], 
-                    role: 'corredor', // Rol seguro por defecto
-                    // ¡IMPORTANTE! Usamos la contraseña REAL que acabamos de recibir
-                    password: password, 
-                    photo_url: null,
-                    created_at: new Date()
-                };
-
-                // Usamos el cliente Admin si está disponible para saltarnos restricciones RLS
-                const clientToUse = supabaseAdmin || supabase;
-                
-                const { error: insertError } = await clientToUse
+                // 2.1 Buscar por Email (Caso Zombie: ID cambió)
+                const { data: userByEmail } = await clientToUse
                     .from('users')
-                    .insert(newProfile);
+                    .select('*')
+                    .eq('email', email)
+                    .single();
 
-                if (insertError) {
-                    console.error("❌ ERROR CRÍTICO: Falló la auto-creación del perfil:", insertError);
-                    // Cerramos la sesión de Auth porque el sistema no está consistente
-                    await supabase.auth.signOut();
-                    return returnError('email', 'Error de integridad: Tu cuenta existe pero no tiene perfil de datos. Contacta al administrador.');
+                if (userByEmail) {
+                    console.log("♻️ Reparando: Actualizando ID del usuario existente.");
+                    // Actualizamos el ID antiguo por el nuevo y la password
+                    await clientToUse
+                        .from('users')
+                        .update({ 
+                            id: authData.user.id,
+                            password: password, // Sincronizamos pass también
+                            updated_at: new Date()
+                        })
+                        .eq('email', email);
+                    
+                    // Recuperamos el usuario actualizado
+                    const { data: refreshedUser } = await clientToUse.from('users').select('*').eq('id', authData.user.id).single();
+                    user = refreshedUser;
+                } else {
+                    // 2.2 Caso Fantasma: No existe ni por ID ni por Email (Crear Nuevo)
+                    console.log("🛠️ Reparando: Creando perfil nuevo desde cero.");
+                    const newProfile = {
+                        id: authData.user.id,
+                        email: email,
+                        name: authData.user.user_metadata?.name || email.split('@')[0], 
+                        role: 'corredor',
+                        password: password, // Pass real obligatoria
+                        photo_url: null,
+                        created_at: new Date()
+                    };
+
+                    const { error: insertError } = await clientToUse.from('users').insert(newProfile);
+                    
+                    if (insertError) {
+                        console.error("❌ Falló auto-creación:", insertError);
+                        await supabase.auth.signOut();
+                        return returnError('email', 'Error crítico de cuenta. Contacta a soporte.');
+                    }
+                    user = newProfile;
                 }
-
-                // Si funcionó, asignamos el nuevo perfil a la variable 'user' para que el login continúe
-                console.log("✅ ÉXITO: Perfil creado y reparado automáticamente.");
-                user = newProfile;
+            } else {
+                // 3. Mantenimiento Preventivo (Si ya existía, actualizamos pass por si acaso)
+                // Esto asegura que la DB pública siempre tenga la última contraseña válida
+                if (user.password !== password) {
+                    await clientToUse.from('users').update({ password: password }).eq('id', user.id);
+                }
             }
-            // =================================================================
-            // --- FIN LÓGICA DE BLINDAJE ---
-            // =================================================================
 
-            // C. Crear la sesión del usuario en el servidor (Express Session)
+            // C. Crear Sesión
             req.session.user = {
                 id: user.id,
                 email: user.email,
@@ -119,97 +128,65 @@ const authController = {
                 position: user.position || 'Agente Inmobiliario'
             };
 
-            // D. Registrar actividad (Log silencioso para no frenar la respuesta)
-            logActivity(user.id, user.name, 'login', 'sesion', 'Inició sesión exitosamente')
-                .catch(err => console.error('Error guardando log:', err));
+            logActivity(user.id, user.name, 'login', 'sesion', 'Inició sesión').catch(console.error);
 
-            // E. Respuesta exitosa (El frontend redirigirá)
-            return res.json({ 
-                success: true, 
-                redirect: '/dashboard' 
-            });
+            return res.json({ success: true, redirect: '/dashboard' });
 
         } catch (err) {
-            console.error("Critical Login Error:", err);
+            console.error("Login System Error:", err);
             return returnError('general', 'Error de conexión con el servidor.');
         }
     },
 
     // =========================================================================
-    // 3. RECUPERAR CONTRASEÑA (AJAX - Envía Correo)
+    // 3. RECUPERAR PASSWORD (AJAX)
     // =========================================================================
     recoverPassword: async (req, res) => {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
         
-        if (!email) {
-            return res.status(400).json({ success: false, message: 'Ingresa un correo válido.' });
-        }
+        if (!email) return res.status(400).json({ success: false, message: 'Ingresa un correo válido.' });
 
         try {
-            // 1. Verificar si el usuario existe en DB pública (para obtener su nombre)
-            const { data: user } = await supabase
-                .from('users')
-                .select('name')
-                .eq('email', email)
-                .single();
+            const { data: user } = await supabase.from('users').select('name').eq('email', email).single();
             
-            // Si no existe en DB, simulamos éxito por seguridad (para no revelar correos)
             if (!user) {
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Pausa de seguridad
-                return res.json({ 
-                    success: true, 
-                    message: 'Si el correo está registrado, recibirás las instrucciones.' 
-                });
+                await new Promise(r => setTimeout(r, 1000));
+                return res.json({ success: true, message: 'Si el correo existe, recibirás instrucciones.' });
             }
 
-            if (!supabaseAdmin) {
-                console.error("Falta SUPABASE_SERVICE_ROLE_KEY");
-                return res.status(500).json({ success: false, message: 'Error de configuración del servidor.' });
-            }
+            if (!supabaseAdmin) return res.status(500).json({ success: false, message: 'Error de configuración.' });
 
-            // 2. Generar Link Mágico (Token de un solo uso)
-            // Forzamos redirectTo a tu dominio real
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
                 type: 'recovery',
                 email: email,
-                options: { 
-                    redirectTo: `${BASE_URL}/update-password` 
-                }
+                options: { redirectTo: `${BASE_URL}/update-password` }
             });
 
             if (linkError) throw linkError;
 
-            // 3. Preparar mensaje HTML bonito
-            const htmlMessage = `
-                <p>Hola <strong>${user.name}</strong>,</p>
-                <p>Hemos recibido una solicitud para restablecer tu contraseña.</p>
-                <p>Este enlace es seguro y de un solo uso.</p>
-            `;
+            const htmlMessage = `<p>Hola <strong>${user.name}</strong>,</p><p>Recupera tu acceso aquí:</p>`;
             
-            // 4. Enviar correo usando tu helper
             await sendEmail(
                 email, 
                 'Restablecer Contraseña 🔒', 
-                'Recuperación de Acceso', 
+                'Recuperación', 
                 htmlMessage,
                 'Crear Nueva Clave', 
                 linkData.properties.action_link
             );
 
-            return res.json({ success: true, message: 'Correo enviado. Revisa tu bandeja de entrada.' });
+            return res.json({ success: true, message: 'Correo enviado.' });
 
         } catch (err) {
             console.error("Recovery Error:", err);
-            return res.status(500).json({ success: false, message: 'Hubo un problema procesando tu solicitud.' });
+            return res.status(500).json({ success: false, message: 'Error interno.' });
         }
     },
 
     // =========================================================================
-    // 4. VISTA ACTUALIZAR CONTRASEÑA (GET)
+    // 4. VISTA UPDATE (GET)
     // =========================================================================
     showUpdatePassword: (req, res) => {
-        // Renderizamos la vista 'update-password.ejs'
-        // Pasamos las credenciales públicas para que el frontend pueda validar el hash
         res.render('update-password', { 
             title: 'Nueva Contraseña | Cygnus', 
             supabaseUrl: process.env.SUPABASE_URL,
@@ -218,65 +195,72 @@ const authController = {
     },
 
     // =========================================================================
-    // 5. PROCESAR ACTUALIZACIÓN (POST - AJAX)
+    // 5. PROCESAR ACTUALIZACIÓN (AJAX) - ¡PROTECCIÓN TOTAL!
     // =========================================================================
     updatePassword: async (req, res) => {
         const { password, accessToken } = req.body;
-        
         const sendError = (msg) => res.status(400).json({ success: false, message: msg });
 
-        if (!password || password.length < 6) return sendError('La contraseña es muy corta (mínimo 6 caracteres).');
-        if (!accessToken) return sendError('El enlace de recuperación no es válido.');
+        if (!password || password.length < 6) return sendError('Mínimo 6 caracteres.');
+        if (!accessToken) return sendError('Enlace inválido.');
 
         try {
-            // 1. Validar el token con Supabase
+            // 1. Validar Token
             const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
+            if (userError || !user) return sendError('El enlace ha expirado.');
 
-            if (userError || !user) {
-                return sendError('El enlace de seguridad ha expirado. Por favor solicita uno nuevo.');
-            }
+            const clientToUse = supabaseAdmin || supabase;
 
-            // 2. Actualizar la contraseña en AUTH
-            // Usamos Admin si existe para evitar bloqueos
+            // 2. Actualizar en AUTH (Prioridad 1)
             if (supabaseAdmin) {
                 await supabaseAdmin.auth.admin.updateUserById(user.id, { password: password });
             } else {
                 await supabase.auth.updateUser({ password: password });
             }
 
-            // 3. Sincronizar tabla pública 'users'
-            // IMPORTANTE: Aquí también guardamos la contraseña real para mantener consistencia
-            const clientToUse = supabaseAdmin || supabase;
-            
+            // 3. Sincronizar en DB PÚBLICA (Quirúrgico: Upsert)
+            // Usamos 'upsert' para cubrir creación y actualización en un solo paso
             const { error: dbError } = await clientToUse
                 .from('users')
-                .update({ password: password }) 
-                .eq('id', user.id);
-            
-            // 4. Cerrar sesión globalmente y limpiar sesión del servidor
+                .upsert({ 
+                    id: user.id,
+                    email: user.email,
+                    password: password, // Pass real
+                    // Si es insert, necesitamos estos campos (si es update, se ignoran o sobrescriben)
+                    name: user.user_metadata?.name || user.email.split('@')[0],
+                    role: 'corredor', // Default seguro
+                    updated_at: new Date()
+                }, { onConflict: 'id' }); // Clave para decidir si es update
+
+            if (dbError) {
+                console.error("⚠️ Advertencia Update: DB Pública no sincronizada:", dbError);
+                // No bloqueamos, porque Auth ya cambió la clave. 
+                // El login se encargará de reparar cualquier inconsistencia restante.
+            }
+
+            // 4. Cerrar sesión
             await supabase.auth.signOut();
             req.session.destroy();
 
-            // 5. Éxito
             return res.json({ 
                 success: true, 
-                message: 'Contraseña actualizada exitosamente.',
+                message: 'Contraseña actualizada correctamente.',
                 redirect: '/login' 
             });
 
         } catch (error) {
             console.error("Update Pass Error:", error);
-            return sendError('Error interno del sistema.');
+            return sendError('Error interno.');
         }
     },
 
     // =========================================================================
-    // 6. CERRAR SESIÓN
+    // 6. LOGOUT
     // =========================================================================
     logout: async (req, res) => {
         await supabase.auth.signOut();
         req.session.destroy((err) => {
-            if (err) console.error("Error destruyendo sesión:", err);
+            if (err) console.error("Session destroy error:", err);
             res.redirect('/login');
         });
     }
