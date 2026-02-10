@@ -3,225 +3,183 @@
 <head>
     <%- include('./partials/head') %>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
     <title>Acceso Agentes | Cygnus</title>
     
     <style>
-        /* --- 1. FONDO PREMIUM & ESTRUCTURA --- */
+        /* --- 0. RESET CRÍTICO (Evita que los bordes se descuadren) --- */
+        * { box-sizing: border-box; outline: none; }
+
+        /* --- 1. ESTRUCTURA Y FONDO --- */
         body {
             margin: 0; padding: 0;
-            height: 100vh;
-            width: 100%;
-            font-family: 'Inter', 'Helvetica Neue', sans-serif;
+            height: 100vh; width: 100%;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background-color: #0f172a;
-            /* Imagen de arquitectura moderna de alta calidad */
-            background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop');
+            /* Imagen optimizada */
+            background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1920&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
-            background-repeat: no-repeat;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            position: relative;
+            overflow: hidden; /* Evita scroll innecesario */
         }
 
-        /* Capa oscura azulada para dar elegancia y legibilidad */
+        /* Capa oscura (Overlay) */
         .bg-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 58, 138, 0.75) 100%);
-            backdrop-filter: blur(4px); /* Efecto difuminado pro */
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 58, 138, 0.8) 100%);
             z-index: 1;
         }
 
-        /* --- 2. BOTÓN VOLVER (Esquina Superior Izquierda) --- */
-        .back-btn {
-            position: absolute;
-            top: 25px;
-            left: 25px;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 30px;
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .back-btn:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-        }
-
-        /* --- 3. TARJETA GLASSMORPHISM --- */
-        .login-container {
-            position: relative;
-            z-index: 10;
-            width: 100%;
-            max-width: 420px;
+        /* --- 2. TARJETA FLOTANTE (Glassmorphism Optimizado) --- */
+        .login-wrapper {
+            position: relative; z-index: 10;
+            width: 100%; max-width: 400px;
             padding: 20px;
         }
 
         .glass-card {
-            background: rgba(255, 255, 255, 0.95); /* Blanco casi sólido para contraste */
-            border-radius: 24px;
-            padding: 40px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* Sombra profunda */
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            background: #ffffff; /* Fondo sólido blanco para máxima nitidez y velocidad */
+            border-radius: 20px;
+            padding: 40px 35px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             text-align: center;
-            transition: transform 0.3s ease;
-        }
-
-        /* Cabecera del Login */
-        .logo-circle {
-            width: 70px;
-            height: 70px;
-            background: #eff6ff;
-            border-radius: 50%;
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.1);
-        }
-        .logo-img { max-width: 60%; height: auto; }
-
-        h1 { margin: 0; font-size: 1.6rem; color: #1e293b; font-weight: 700; }
-        #cardSubtitle { margin: 8px 0 30px; color: #64748b; font-size: 0.95rem; }
-
-        /* --- 4. INPUTS MODERNOS --- */
-        .form-container { text-align: left; }
-        
-        .input-group { margin-bottom: 20px; }
-        .input-group label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #334155;
-            margin-bottom: 6px;
-        }
-
-        .input-wrapper {
             position: relative;
-            display: flex;
-            align-items: center;
+        }
+
+        /* Botón Volver (Estilo Pastilla) */
+        .back-btn {
+            position: absolute; top: -60px; left: 0;
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            color: white; text-decoration: none; font-size: 0.9rem; font-weight: 500;
+            backdrop-filter: blur(4px);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .back-btn:hover { background: rgba(255, 255, 255, 0.25); transform: translateX(-3px); }
+
+        /* Cabecera */
+        .logo-area {
+            width: 64px; height: 64px;
+            background: #f1f5f9; border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .logo-area img { height: 32px; width: auto; }
+        
+        h1 { margin: 0; font-size: 1.5rem; color: #0f172a; font-weight: 700; }
+        .subtitle { margin: 5px 0 25px; color: #64748b; font-size: 0.9rem; }
+
+        /* --- 3. INPUTS (Corrección del Halo) --- */
+        .form-group { margin-bottom: 20px; text-align: left; }
+        
+        .form-group label {
+            display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 6px;
+        }
+
+        /* Contenedor del Input (Este recibe el borde y el halo) */
+        .input-box {
+            position: relative;
+            display: flex; align-items: center;
+            width: 100%; height: 48px;
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 0 15px;
-            height: 50px;
-            transition: all 0.3s ease;
+            border-radius: 10px;
+            padding: 0 12px;
+            transition: all 0.2s ease-in-out; /* Animación suave */
         }
 
-        .input-wrapper:focus-within {
+        /* Icono */
+        .input-box i { font-size: 1.2rem; color: #94a3b8; margin-right: 10px; }
+
+        /* Input Real (Transparente y sin bordes propios) */
+        .input-box input {
+            flex: 1; width: 100%; height: 100%;
+            border: none; background: transparent;
+            font-size: 0.95rem; color: #1e293b;
+            padding: 0; margin: 0;
+        }
+        .input-box input::placeholder { color: #cbd5e1; }
+
+        /* ESTADO FOCUS (El Halo Correcto) */
+        .input-box:focus-within {
             border-color: #2563eb;
             background: #fff;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); /* Halo suave y centrado */
         }
 
-        .input-wrapper i { font-size: 1.2rem; color: #94a3b8; margin-right: 12px; }
-        
-        .input-wrapper input {
-            border: none;
-            background: transparent;
-            flex: 1;
-            height: 100%;
-            font-size: 1rem;
-            color: #1e293b;
-            outline: none;
+        /* Botón Ojo */
+        .toggle-pass {
+            background: none; border: none; padding: 5px; cursor: pointer; color: #94a3b8; display: flex;
         }
+        .toggle-pass:hover { color: #2563eb; }
 
-        .btn-toggle-pass {
-            background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0;
-            display: flex; align-items: center;
-        }
-        .btn-toggle-pass:hover { color: #2563eb; }
-
-        /* Estados de Error (Tu lógica original mejorada) */
-        .input-wrapper.error {
+        /* --- 4. ESTADOS DE ERROR (Rojo y Vibración) --- */
+        .input-box.error {
             border-color: #ef4444 !important;
-            background-color: #fff1f2 !important;
-            animation: shake 0.4s ease-in-out;
+            background-color: #fef2f2 !important;
+            animation: shake 0.3s ease-in-out;
         }
-        .input-wrapper.error i { color: #ef4444 !important; }
-        
-        .error-msg {
-            display: none;
-            color: #ef4444;
-            font-size: 0.8rem;
-            margin-top: 6px;
-            padding-left: 4px;
-            font-weight: 500;
+        .input-box.error i { color: #ef4444 !important; }
+        .input-box.error:focus-within {
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15); /* Halo rojo */
         }
-        .error-msg.visible { display: block; }
 
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        .err-text {
+            display: none; color: #dc2626; font-size: 0.75rem; margin-top: 5px; font-weight: 500; margin-left: 4px;
+        }
+        .err-text.show { display: block; }
 
-        /* --- 5. BOTÓN PRINCIPAL --- */
-        .btn-primary {
-            width: 100%;
-            height: 50px;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+        /* --- 5. BOTONES Y LINKS --- */
+        .forgot-link {
+            text-align: right; margin-bottom: 20px; font-size: 0.85rem;
+        }
+        .forgot-link span {
+            color: #2563eb; cursor: pointer; font-weight: 500; text-decoration: none;
+        }
+        .forgot-link span:hover { text-decoration: underline; }
+
+        .btn-main {
+            width: 100%; height: 48px;
+            background: #2563eb; color: white;
+            border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-            margin-top: 10px;
+            transition: background 0.2s, transform 0.1s;
+            display: flex; align-items: center; justify-content: center;
         }
+        .btn-main:hover { background: #1d4ed8; }
+        .btn-main:active { transform: scale(0.98); }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
-        }
-
-        /* Spinner */
-        .btn-loading { color: transparent !important; pointer-events: none; position: relative; }
-        .btn-loading::after {
-            content: ""; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px;
-            border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;
+        /* Spinner dentro del botón */
+        .btn-main.loading { color: transparent !important; pointer-events: none; }
+        .btn-main.loading::after {
+            content: ""; position: absolute;
+            width: 20px; height: 20px;
+            border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Links y Footer */
-        .forgot-pass { text-align: right; margin-bottom: 25px; margin-top: 10px; }
-        .link-text {
-            color: #2563eb; font-size: 0.9rem; text-decoration: none; font-weight: 500; cursor: pointer; transition: color 0.2s;
+        /* --- 6. ALERTAS y FOOTER --- */
+        .alert-box {
+            padding: 10px; border-radius: 8px; margin-bottom: 20px; font-size: 0.85rem; display: none;
         }
-        .link-text:hover { color: #1e40af; text-decoration: underline; }
-
-        .login-footer {
-            margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;
-        }
-        .login-footer p { font-size: 0.8rem; color: #94a3b8; margin: 0 0 10px; }
-        .secure-badge {
-            display: inline-flex; align-items: center; gap: 5px;
-            font-size: 0.75rem; color: #10b981; background: #ecfdf5;
-            padding: 4px 12px; border-radius: 20px;
-        }
-
-        /* Alertas */
-        .alert-global {
-            padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; text-align: center; display: none;
-        }
-        .alert-global:not(:empty) { display: block; }
+        .alert-box.visible { display: block; }
         .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
 
-        /* Utilidades */
+        .footer { margin-top: 30px; font-size: 0.75rem; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+        .secure-badge { display: inline-flex; align-items: center; gap: 4px; color: #10b981; margin-left: 5px; }
+
+        /* Utilidad ocultar */
         .hidden { display: none !important; }
     </style>
 </head>
@@ -229,104 +187,96 @@
 
     <div class="bg-overlay"></div>
 
-    <a href="/" class="back-btn">
-        <i class="ph-bold ph-arrow-left"></i>
-        <span>Volver al Inicio</span>
-    </a>
+    <div class="login-wrapper">
+        <a href="/" class="back-btn">
+            <i class="ph-bold ph-arrow-left"></i> Volver
+        </a>
 
-    <main class="login-container">
         <div class="glass-card">
             
-            <div class="login-header">
-                <div class="logo-circle">
-                    <img src="/img/logo.png" alt="Cygnus" class="logo-img" onerror="this.style.display='none'">
-                </div>
-                <h1 id="cardTitle">Bienvenido</h1>
-                <p id="cardSubtitle">Sistema de Gestión Inmobiliaria</p>
+            <div class="logo-area">
+                <img src="/img/logo.png" alt="Logo" onerror="this.style.display='none'">
             </div>
 
-            <div id="serverAlert" class="alert-global <%= locals.error ? 'alert-error' : (locals.successMessage ? 'alert-success' : '') %>">
+            <h1 id="titleText">Bienvenido</h1>
+            <p class="subtitle" id="subText">Sistema de Gestión Inmobiliaria</p>
+
+            <div id="globalAlert" class="alert-box <%= locals.error ? 'alert-error visible' : (locals.successMessage ? 'alert-success visible' : '') %>">
                 <%= locals.error || locals.successMessage || '' %>
             </div>
 
-            <div id="loginSection" class="form-container">
-                <form id="loginForm" novalidate>
-                    
-                    <div class="input-group">
-                        <label>Correo Corporativo</label>
-                        <div class="input-wrapper" id="wrap-email">
-                            <i class="ph-fill ph-envelope-simple"></i>
-                            <input type="email" id="email" placeholder="agente@cygnusgroup.cl" autocomplete="email">
-                        </div>
-                        <div class="error-msg" id="err-email"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Correo Corporativo</label>
+                    <div class="input-box" id="box-email">
+                        <i class="ph-fill ph-envelope-simple"></i>
+                        <input type="email" id="email" placeholder="agente@cygnusgroup.cl">
                     </div>
+                    <div class="err-text" id="msg-email">Error en el correo</div>
+                </div>
 
-                    <div class="input-group">
-                        <label>Contraseña</label>
-                        <div class="input-wrapper" id="wrap-password">
-                            <i class="ph-fill ph-lock-key"></i>
-                            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
-                            <button type="button" class="btn-toggle-pass" id="togglePass" tabindex="-1">
-                                <i class="ph-fill ph-eye"></i>
-                            </button>
-                        </div>
-                        <div class="error-msg" id="err-password"></div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <div class="input-box" id="box-pass">
+                        <i class="ph-fill ph-lock-key"></i>
+                        <input type="password" id="password" placeholder="••••••••">
+                        <button type="button" class="toggle-pass" id="btnEye"><i class="ph-fill ph-eye"></i></button>
                     </div>
+                    <div class="err-text" id="msg-pass">Error en contraseña</div>
+                </div>
 
-                    <div class="forgot-pass">
-                        <span class="link-text" onclick="switchView('recovery')">¿Olvidaste tu contraseña?</span>
+                <div class="forgot-link">
+                    <span onclick="showRecovery()">¿Olvidaste tu contraseña?</span>
+                </div>
+
+                <button type="submit" class="btn-main" id="btnLog">Ingresar</button>
+            </form>
+
+            <form id="recoveryForm" class="hidden">
+                <p style="font-size:0.9rem; color:#475569; margin-bottom:20px; line-height:1.5;">
+                    Ingresa tu correo y te enviaremos un enlace mágico para entrar.
+                </p>
+
+                <div class="form-group">
+                    <label>Correo Registrado</label>
+                    <div class="input-box" id="box-recEmail">
+                        <i class="ph-fill ph-envelope-simple"></i>
+                        <input type="email" id="recEmail" placeholder="agente@cygnusgroup.cl">
                     </div>
+                    <div class="err-text" id="msg-recEmail"></div>
+                </div>
 
-                    <button type="submit" class="btn-primary" id="btnLogin">Inicia Sesión</button>
-                </form>
-            </div>
+                <div id="recAlert" class="alert-box alert-success"></div>
 
-            <div id="recoverySection" class="form-container hidden">
-                <form id="recoveryForm" novalidate>
-                    <p style="margin-bottom: 25px; font-size: 0.9rem; color: #475569; text-align: center; line-height: 1.5;">
-                        Ingresa tu correo corporativo y te enviaremos un enlace de acceso seguro.
-                    </p>
+                <button type="submit" class="btn-main" id="btnRec">Enviar Enlace</button>
+                
+                <div style="margin-top:20px; font-size:0.9rem;">
+                    <span style="color:#64748b; cursor:pointer;" onclick="showLogin()">Cancelar y volver</span>
+                </div>
+            </form>
 
-                    <div class="input-group">
-                        <label>Correo Registrado</label>
-                        <div class="input-wrapper" id="wrap-recEmail">
-                            <i class="ph-fill ph-envelope-simple"></i>
-                            <input type="email" id="recEmail" placeholder="agente@cygnusgroup.cl">
-                        </div>
-                        <div class="error-msg" id="err-recEmail"></div>
-                        
-                        <div id="recSuccess" class="alert-global alert-success" style="margin-top:15px;"></div>
-                    </div>
-
-                    <button type="submit" class="btn-primary" id="btnRec">Enviar Enlace</button>
-
-                    <div style="margin-top: 25px; text-align: center;">
-                        <span class="link-text" onclick="switchView('login')">
-                            <i class="ph-bold ph-arrow-left"></i> Volver al inicio
-                        </span>
-                    </div>
-                </form>
-            </div>
-
-            <div class="login-footer">
-                <p>© 2026 Cygnus Group</p>
-                <div class="secure-badge"><i class="ph-fill ph-shield-check"></i> Conexión Segura SSL</div>
+            <div class="footer">
+                © 2026 Cygnus Group
+                <span class="secure-badge"><i class="ph-fill ph-shield-check"></i> SSL Seguro</span>
             </div>
         </div>
-    </main>
+    </div>
 
     <script>
-        // --- 1. LÓGICA LOGIN (AJAX) ---
+        // --- 1. LOGIN (AJAX) ---
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            clearErrors();
-            
-            const btn = document.getElementById('btnLogin');
+            resetUI();
+
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
+            const btn = document.getElementById('btnLog');
 
-            if(!email) return showError('email', 'Ingresa tu correo');
-            if(!password) return showError('password', 'Ingresa tu contraseña');
+            // Validar campos vacíos
+            let error = false;
+            if(!email) { markError('email', 'El correo es obligatorio'); error = true; }
+            if(!password) { markError('pass', 'Ingresa tu contraseña'); error = true; }
+            if(error) return;
 
             setLoading(btn, true);
 
@@ -336,30 +286,32 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
                 });
-
                 const data = await res.json();
 
-                if (data.success) {
+                if(data.success) {
                     window.location.href = data.redirect;
                 } else {
-                    showError(data.field || 'password', data.message);
-                    setLoading(btn, false);
+                    // Mapear error del servidor al campo correcto
+                    const fieldMap = { 'email': 'email', 'password': 'pass' };
+                    const fieldId = fieldMap[data.field] || 'pass';
+                    markError(fieldId, data.message);
                 }
             } catch (err) {
-                showError('password', 'Error de conexión. Intenta nuevamente.');
+                markError('pass', 'Error de conexión. Intenta de nuevo.');
+            } finally {
                 setLoading(btn, false);
             }
         });
 
-        // --- 2. LÓGICA RECUPERACIÓN (AJAX) ---
+        // --- 2. RECUPERACIÓN (AJAX) ---
         document.getElementById('recoveryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            clearErrors();
+            resetUI();
             
-            const btn = document.getElementById('btnRec');
             const email = document.getElementById('recEmail').value.trim();
+            const btn = document.getElementById('btnRec');
 
-            if(!email) return showError('recEmail', 'Correo inválido');
+            if(!email) return markError('recEmail', 'Ingresa un correo válido');
 
             setLoading(btn, true);
 
@@ -373,81 +325,80 @@
 
                 if(data.success) {
                     document.getElementById('recEmail').value = '';
-                    const box = document.getElementById('recSuccess');
-                    box.innerText = data.message;
-                    box.style.display = 'block';
+                    const alert = document.getElementById('recAlert');
+                    alert.innerText = data.message;
+                    alert.classList.add('visible');
                 } else {
-                    showError('recEmail', data.message);
+                    markError('recEmail', data.message);
                 }
             } catch (err) {
-                showError('recEmail', 'Error al procesar la solicitud.');
+                markError('recEmail', 'Error al procesar solicitud');
             } finally {
                 setLoading(btn, false);
             }
         });
 
-        // --- UTILIDADES ---
-        function showError(field, msg) {
-            const wrap = document.getElementById('wrap-' + field);
-            const txt = document.getElementById('err-' + field);
-            if(wrap && txt) {
-                wrap.classList.add('error');
-                txt.innerText = msg;
-                txt.classList.add('visible');
+        // --- UTILIDADES VISUALES ---
+
+        // Marcar campo en ROJO
+        function markError(id, msg) {
+            const box = document.getElementById('box-' + id);
+            const text = document.getElementById('msg-' + id);
+            if(box && text) {
+                box.classList.add('error');
+                text.innerText = msg;
+                text.classList.add('show');
             }
         }
 
-        function clearErrors() {
-            document.querySelectorAll('.input-wrapper').forEach(el => el.classList.remove('error'));
-            document.querySelectorAll('.error-msg').forEach(el => el.classList.remove('visible'));
+        // Limpiar errores
+        function resetUI() {
+            document.querySelectorAll('.input-box').forEach(el => el.classList.remove('error'));
+            document.querySelectorAll('.err-text').forEach(el => el.classList.remove('show'));
             
-            // Ocultar alertas globales si están vacías
-            const alert = document.getElementById('serverAlert');
-            if(alert && alert.innerText.trim() === '') alert.style.display = 'none';
+            const global = document.getElementById('globalAlert');
+            if(global && global.innerText.trim() === '') global.classList.remove('visible');
             
-            const recSuccess = document.getElementById('recSuccess');
-            if(recSuccess) recSuccess.style.display = 'none';
+            document.getElementById('recAlert').classList.remove('visible');
         }
 
-        function setLoading(btn, isLoading) {
-            if(isLoading) btn.classList.add('btn-loading');
-            else btn.classList.remove('btn-loading');
+        // Spinner en botón
+        function setLoading(btn, loading) {
+            if(loading) btn.classList.add('loading');
+            else btn.classList.remove('loading');
         }
 
-        function switchView(view) {
-            clearErrors();
-            const login = document.getElementById('loginSection');
-            const rec = document.getElementById('recoverySection');
-            const title = document.getElementById('cardTitle');
-            const sub = document.getElementById('cardSubtitle');
-
-            // Efecto suave
-            if(view === 'recovery') {
-                login.classList.add('hidden');
-                rec.classList.remove('hidden');
-                title.innerText = "Recuperar Acceso";
-                sub.innerText = "Te ayudaremos a volver.";
-            } else {
-                rec.classList.add('hidden');
-                login.classList.remove('hidden');
-                title.innerText = "Bienvenido";
-                sub.innerText = "Sistema de Gestión Inmobiliaria";
-            }
+        // Cambiar Vistas
+        function showRecovery() {
+            resetUI();
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('recoveryForm').classList.remove('hidden');
+            document.getElementById('titleText').innerText = "Recuperar Acceso";
+            document.getElementById('subText').innerText = "Te ayudaremos a volver";
         }
 
-        const toggleBtn = document.getElementById('togglePass');
-        if(toggleBtn) {
-            toggleBtn.addEventListener('click', function() {
+        function showLogin() {
+            resetUI();
+            document.getElementById('recoveryForm').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('titleText').innerText = "Bienvenido";
+            document.getElementById('subText').innerText = "Sistema de Gestión Inmobiliaria";
+        }
+
+        // Toggle Password
+        const btnEye = document.getElementById('btnEye');
+        if(btnEye) {
+            btnEye.addEventListener('click', () => {
                 const input = document.getElementById('password');
                 const isPass = input.type === 'password';
                 input.type = isPass ? 'text' : 'password';
-                this.querySelector('i').className = isPass ? 'ph-fill ph-eye-slash' : 'ph-fill ph-eye';
+                btnEye.innerHTML = isPass ? '<i class="ph-fill ph-eye-slash"></i>' : '<i class="ph-fill ph-eye"></i>';
             });
         }
-        
-        // Inicialización: Ocultar alertas vacías
+
+        // Init: Ocultar alerta global si está vacía
         document.addEventListener("DOMContentLoaded", () => {
-             const alert = document.getElementById('serverAlert');
+             const alert = document.getElementById('globalAlert');
              if(alert && !alert.innerText.trim()) alert.style.display = 'none';
         });
     </script>
