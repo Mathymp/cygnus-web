@@ -2,83 +2,52 @@
 <html lang="es">
 <head>
     <%- include('./partials/head') %>
-    <link rel="stylesheet" href="/css/login.css"> 
+    <link rel="stylesheet" href="/css/login.css">
     <title>Acceso Agentes | Cygnus</title>
     
     <style>
-        /* =========================================
-           ESTILOS ESPECÍFICOS PARA ERRORES Y CARGA
-           ========================================= */
+        /* --- ESTILOS VISUALES CORREGIDOS --- */
         
-        /* Contenedor del Input */
         .input-wrapper { 
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid #e2e8f0; /* Borde suave por defecto */
+            border: 1px solid #e2e8f0; 
         }
         
-        /* ESTADO DE ERROR (Borde Rojo + Fondo) */
+        /* Error en Campo */
         .input-wrapper.error { 
-            border-color: #ef4444 !important; 
+            border-color: #ef4444 !important;
             background-color: #fef2f2 !important;
-            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
             animation: shake 0.4s ease-in-out;
         }
-        
-        /* Icono rojo en error */
         .input-wrapper.error i { color: #ef4444 !important; }
 
-        /* Mensaje de error chiquito debajo */
+        /* Mensaje Error Pequeño */
         .error-msg { 
             display: none; 
             color: #ef4444; 
             font-size: 0.85rem; 
-            margin-top: 6px; 
-            margin-left: 4px;
-            font-weight: 500;
-            opacity: 0;
-            transform: translateY(-5px);
-            transition: all 0.3s ease;
+            margin-top: 5px; margin-left: 4px; font-weight: 500;
         }
-        .error-msg.visible {
-            display: block;
-            opacity: 1;
-            transform: translateY(0);
-        }
+        .error-msg.visible { display: block; }
 
-        /* Animación de vibración (Shake) */
-        @keyframes shake { 
-            0%, 100% { transform: translateX(0); } 
-            25% { transform: translateX(-6px); } 
-            75% { transform: translateX(6px); } 
-        }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
-        /* SPINNER DE CARGA EN BOTÓN */
-        .btn-loading { 
-            position: relative; 
-            color: transparent !important; 
-            pointer-events: none; 
-            opacity: 0.9;
-        }
+        /* Spinner Cargando */
+        .btn-loading { color: transparent !important; pointer-events: none; position: relative; }
         .btn-loading::after {
-            content: ""; 
-            position: absolute; 
-            top: 50%; left: 50%; 
-            width: 20px; height: 20px; 
-            margin-top: -10px; margin-left: -10px;
-            border: 2px solid #ffffff; 
-            border-top-color: transparent; 
-            border-radius: 50%; 
-            animation: spin 0.8s linear infinite;
+            content: ""; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px;
+            border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* UTILIDADES DE VISIBILIDAD */
-        .hidden { display: none !important; }
-        
-        /* ALERTAS GLOBALES (Flash messages) */
+        /* --- SOLUCIÓN AL CUADRADO ROJO VACÍO --- */
         .alert-global {
             padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; text-align: center;
+            display: none; /* Oculto por defecto */
         }
+        /* Solo mostrar si tiene contenido */
+        .alert-global:not(:empty) { display: block; }
+        
         .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
         .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
     </style>
@@ -99,12 +68,10 @@
                 <p id="cardSubtitle">Sistema de Gestión Inmobiliaria</p>
             </div>
 
-            <% if (locals.error) { %>
-                <div class="alert-global alert-error"><%= error %></div>
-            <% } %>
-            <% if (locals.successMessage) { %>
-                <div class="alert-global alert-success"><%= successMessage %></div>
-            <% } %>
+            <div id="serverAlert" class="alert-global 
+                <%= locals.error ? 'alert-error' : (locals.successMessage ? 'alert-success' : '') %>">
+                <%= locals.error || locals.successMessage || '' %>
+            </div>
 
             <div id="loginSection" class="form-container">
                 <form id="loginForm" novalidate>
@@ -134,9 +101,7 @@
                         <span class="link-text" onclick="switchView('recovery')">¿Olvidaste tu contraseña?</span>
                     </div>
 
-                    <button type="submit" class="btn-primary" id="btnLogin">
-                        <span>Iniciar Sesión</span>
-                    </button>
+                    <button type="submit" class="btn-primary" id="btnLogin">Inicia Sesión</button>
                 </form>
             </div>
 
@@ -154,12 +119,10 @@
                         </div>
                         <div class="error-msg" id="err-recEmail"></div>
                         
-                        <div id="recSuccess" style="display:none; background:#f0fdf4; color:#16a34a; padding:10px; border-radius:8px; font-size:0.9rem; margin-top:10px; border:1px solid #bbf7d0; text-align: center;"></div>
+                        <div id="recSuccess" class="alert-global alert-success" style="margin-top:10px;"></div>
                     </div>
 
-                    <button type="submit" class="btn-primary" id="btnRec">
-                        <span>Enviar Enlace</span>
-                    </button>
+                    <button type="submit" class="btn-primary" id="btnRec">Enviar Enlace</button>
 
                     <div style="margin-top: 20px; text-align: center;">
                         <span class="link-text" onclick="switchView('login')">
@@ -177,25 +140,21 @@
     </main>
 
     <script>
-        // --- 1. LÓGICA DE LOGIN (AJAX) ---
+        // --- 1. LÓGICA LOGIN (AJAX) ---
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            clearErrors(); // Limpiamos errores previos
+            clearErrors();
             
             const btn = document.getElementById('btnLogin');
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-            
-            // Validaciones cliente rápidas
-            let hasError = false;
-            if (!email) { showError('email', 'Ingresa tu correo'); hasError = true; }
-            if (!password) { showError('password', 'Ingresa tu contraseña'); hasError = true; }
-            if (hasError) return;
 
-            setLoading(btn, true); // Activar Spinner
+            if(!email) return showError('email', 'Ingresa tu correo');
+            if(!password) return showError('password', 'Ingresa tu contraseña');
+
+            setLoading(btn, true);
 
             try {
-                // Petición AJAX al backend
                 const res = await fetch('/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -205,21 +164,18 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    // Si todo bien, redirigimos
                     window.location.href = data.redirect;
                 } else {
-                    // Si falla, mostramos el error rojo en el campo específico
                     showError(data.field || 'password', data.message);
                     setLoading(btn, false);
                 }
             } catch (err) {
-                console.error(err);
                 showError('password', 'Error de conexión. Intenta nuevamente.');
                 setLoading(btn, false);
             }
         });
 
-        // --- 2. LÓGICA DE RECUPERACIÓN (AJAX) ---
+        // --- 2. LÓGICA RECUPERACIÓN (AJAX) ---
         document.getElementById('recoveryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             clearErrors();
@@ -227,7 +183,7 @@
             const btn = document.getElementById('btnRec');
             const email = document.getElementById('recEmail').value.trim();
 
-            if (!email) return showError('recEmail', 'Ingresa un correo válido.');
+            if(!email) return showError('recEmail', 'Correo inválido');
 
             setLoading(btn, true);
 
@@ -238,83 +194,85 @@
                     body: JSON.stringify({ email })
                 });
                 const data = await res.json();
-                
+
                 if(data.success) {
-                    // Éxito: Limpiamos input y mostramos mensaje verde
                     document.getElementById('recEmail').value = '';
-                    const successMsg = document.getElementById('recSuccess');
-                    successMsg.innerText = data.message;
-                    successMsg.style.display = 'block';
+                    const box = document.getElementById('recSuccess');
+                    box.innerText = data.message;
+                    box.style.display = 'block';
                 } else {
-                    // Error: Borde rojo
                     showError('recEmail', data.message);
                 }
             } catch (err) {
-                showError('recEmail', 'Error al procesar solicitud.');
+                showError('recEmail', 'Error al procesar la solicitud.');
             } finally {
                 setLoading(btn, false);
             }
         });
 
-        // --- HERRAMIENTAS VISUALES ---
-        
-        // Mostrar error en campo específico
+        // --- UTILIDADES ---
         function showError(field, msg) {
-            const wrapper = document.getElementById('wrap-' + field);
+            const wrap = document.getElementById('wrap-' + field);
             const txt = document.getElementById('err-' + field);
-            if(wrapper && txt) {
-                wrapper.classList.add('error'); // Pone borde rojo y agita
+            if(wrap && txt) {
+                wrap.classList.add('error');
                 txt.innerText = msg;
-                txt.classList.add('visible'); // Muestra el texto abajo
+                txt.classList.add('visible');
             }
         }
 
-        // Limpiar todos los errores
         function clearErrors() {
             document.querySelectorAll('.input-wrapper').forEach(el => el.classList.remove('error'));
             document.querySelectorAll('.error-msg').forEach(el => el.classList.remove('visible'));
-            const success = document.getElementById('recSuccess');
-            if(success) success.style.display = 'none';
+            
+            // Limpiar alertas globales
+            const alert = document.getElementById('serverAlert');
+            if(alert && alert.innerText.trim() === '') alert.style.display = 'none';
+            
+            const recSuccess = document.getElementById('recSuccess');
+            if(recSuccess) recSuccess.style.display = 'none';
         }
 
-        // Activar/Desactivar Spinner
         function setLoading(btn, isLoading) {
             if(isLoading) btn.classList.add('btn-loading');
             else btn.classList.remove('btn-loading');
         }
 
-        // Cambiar entre Login y Recuperación
         function switchView(view) {
             clearErrors();
-            const loginSec = document.getElementById('loginSection');
-            const recSec = document.getElementById('recoverySection');
+            const login = document.getElementById('loginSection');
+            const rec = document.getElementById('recoverySection');
             const title = document.getElementById('cardTitle');
             const sub = document.getElementById('cardSubtitle');
 
-            // Efecto de desvanecimiento simple
             if(view === 'recovery') {
-                loginSec.classList.add('hidden');
-                recSec.classList.remove('hidden');
+                login.classList.add('hidden');
+                rec.classList.remove('hidden');
                 title.innerText = "Recuperar Acceso";
                 sub.innerText = "Te ayudaremos a volver.";
             } else {
-                recSec.classList.add('hidden');
-                loginSec.classList.remove('hidden');
+                rec.classList.add('hidden');
+                login.classList.remove('hidden');
                 title.innerText = "Bienvenido";
                 sub.innerText = "Sistema de Gestión Inmobiliaria";
             }
         }
 
-        // Toggle ver/ocultar contraseña
         const toggleBtn = document.getElementById('togglePass');
-        const passInput = document.getElementById('password');
         if(toggleBtn) {
-            toggleBtn.addEventListener('click', () => {
-                const isPass = passInput.type === 'password';
-                passInput.type = isPass ? 'text' : 'password';
-                toggleBtn.querySelector('i').className = isPass ? 'ph-fill ph-eye-slash' : 'ph-fill ph-eye';
+            toggleBtn.addEventListener('click', function() {
+                const input = document.getElementById('password');
+                const isPass = input.type === 'password';
+                input.type = isPass ? 'text' : 'password';
+                this.querySelector('i').className = isPass ? 'ph-fill ph-eye-slash' : 'ph-fill ph-eye';
             });
         }
+        
+        // Inicialización: Ocultar alertas vacías al cargar
+        document.addEventListener("DOMContentLoaded", () => {
+             const alert = document.getElementById('serverAlert');
+             if(alert && !alert.innerText.trim()) alert.style.display = 'none';
+        });
     </script>
 </body>
 </html>
