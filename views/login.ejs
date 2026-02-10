@@ -2,37 +2,193 @@
 <html lang="es">
 <head>
     <%- include('./partials/head') %>
-    <link rel="stylesheet" href="/css/login.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
     <title>Acceso Agentes | Cygnus</title>
     
     <style>
-        /* --- ESTILOS VISUALES CORREGIDOS --- */
-        
-        .input-wrapper { 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid #e2e8f0; 
+        /* --- 1. FONDO PREMIUM & ESTRUCTURA --- */
+        body {
+            margin: 0; padding: 0;
+            height: 100vh;
+            width: 100%;
+            font-family: 'Inter', 'Helvetica Neue', sans-serif;
+            background-color: #0f172a;
+            /* Imagen de arquitectura moderna de alta calidad */
+            background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
         }
+
+        /* Capa oscura azulada para dar elegancia y legibilidad */
+        .bg-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 58, 138, 0.75) 100%);
+            backdrop-filter: blur(4px); /* Efecto difuminado pro */
+            z-index: 1;
+        }
+
+        /* --- 2. BOTÓN VOLVER (Esquina Superior Izquierda) --- */
+        .back-btn {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        /* --- 3. TARJETA GLASSMORPHISM --- */
+        .login-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95); /* Blanco casi sólido para contraste */
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* Sombra profunda */
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        /* Cabecera del Login */
+        .logo-circle {
+            width: 70px;
+            height: 70px;
+            background: #eff6ff;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.1);
+        }
+        .logo-img { max-width: 60%; height: auto; }
+
+        h1 { margin: 0; font-size: 1.6rem; color: #1e293b; font-weight: 700; }
+        #cardSubtitle { margin: 8px 0 30px; color: #64748b; font-size: 0.95rem; }
+
+        /* --- 4. INPUTS MODERNOS --- */
+        .form-container { text-align: left; }
         
-        /* Error en Campo */
-        .input-wrapper.error { 
+        .input-group { margin-bottom: 20px; }
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0 15px;
+            height: 50px;
+            transition: all 0.3s ease;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #2563eb;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .input-wrapper i { font-size: 1.2rem; color: #94a3b8; margin-right: 12px; }
+        
+        .input-wrapper input {
+            border: none;
+            background: transparent;
+            flex: 1;
+            height: 100%;
+            font-size: 1rem;
+            color: #1e293b;
+            outline: none;
+        }
+
+        .btn-toggle-pass {
+            background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0;
+            display: flex; align-items: center;
+        }
+        .btn-toggle-pass:hover { color: #2563eb; }
+
+        /* Estados de Error (Tu lógica original mejorada) */
+        .input-wrapper.error {
             border-color: #ef4444 !important;
-            background-color: #fef2f2 !important;
+            background-color: #fff1f2 !important;
             animation: shake 0.4s ease-in-out;
         }
         .input-wrapper.error i { color: #ef4444 !important; }
-
-        /* Mensaje Error Pequeño */
-        .error-msg { 
-            display: none; 
-            color: #ef4444; 
-            font-size: 0.85rem; 
-            margin-top: 5px; margin-left: 4px; font-weight: 500;
+        
+        .error-msg {
+            display: none;
+            color: #ef4444;
+            font-size: 0.8rem;
+            margin-top: 6px;
+            padding-left: 4px;
+            font-weight: 500;
         }
         .error-msg.visible { display: block; }
 
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
-        /* Spinner Cargando */
+        /* --- 5. BOTÓN PRINCIPAL --- */
+        .btn-primary {
+            width: 100%;
+            height: 50px;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        /* Spinner */
         .btn-loading { color: transparent !important; pointer-events: none; position: relative; }
         .btn-loading::after {
             content: ""; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px;
@@ -40,22 +196,43 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* --- SOLUCIÓN AL CUADRADO ROJO VACÍO --- */
-        .alert-global {
-            padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; text-align: center;
-            display: none; /* Oculto por defecto */
+        /* Links y Footer */
+        .forgot-pass { text-align: right; margin-bottom: 25px; margin-top: 10px; }
+        .link-text {
+            color: #2563eb; font-size: 0.9rem; text-decoration: none; font-weight: 500; cursor: pointer; transition: color 0.2s;
         }
-        /* Solo mostrar si tiene contenido */
+        .link-text:hover { color: #1e40af; text-decoration: underline; }
+
+        .login-footer {
+            margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;
+        }
+        .login-footer p { font-size: 0.8rem; color: #94a3b8; margin: 0 0 10px; }
+        .secure-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 0.75rem; color: #10b981; background: #ecfdf5;
+            padding: 4px 12px; border-radius: 20px;
+        }
+
+        /* Alertas */
+        .alert-global {
+            padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; text-align: center; display: none;
+        }
         .alert-global:not(:empty) { display: block; }
-        
-        .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
-        .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+
+        /* Utilidades */
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="bg-architect"></div>
     <div class="bg-overlay"></div>
+
+    <a href="/" class="back-btn">
+        <i class="ph-bold ph-arrow-left"></i>
+        <span>Volver al Inicio</span>
+    </a>
 
     <main class="login-container">
         <div class="glass-card">
@@ -68,8 +245,7 @@
                 <p id="cardSubtitle">Sistema de Gestión Inmobiliaria</p>
             </div>
 
-            <div id="serverAlert" class="alert-global 
-                <%= locals.error ? 'alert-error' : (locals.successMessage ? 'alert-success' : '') %>">
+            <div id="serverAlert" class="alert-global <%= locals.error ? 'alert-error' : (locals.successMessage ? 'alert-success' : '') %>">
                 <%= locals.error || locals.successMessage || '' %>
             </div>
 
@@ -80,7 +256,7 @@
                         <label>Correo Corporativo</label>
                         <div class="input-wrapper" id="wrap-email">
                             <i class="ph-fill ph-envelope-simple"></i>
-                            <input type="email" id="email" placeholder="usuario@cygnus.cl" autocomplete="email">
+                            <input type="email" id="email" placeholder="agente@cygnusgroup.cl" autocomplete="email">
                         </div>
                         <div class="error-msg" id="err-email"></div>
                     </div>
@@ -107,24 +283,24 @@
 
             <div id="recoverySection" class="form-container hidden">
                 <form id="recoveryForm" novalidate>
-                    <p style="margin-bottom: 20px; font-size: 0.9rem; color: #475569; text-align: center;">
-                        Ingresa tu correo y te enviaremos un enlace seguro para restablecer tu clave.
+                    <p style="margin-bottom: 25px; font-size: 0.9rem; color: #475569; text-align: center; line-height: 1.5;">
+                        Ingresa tu correo corporativo y te enviaremos un enlace de acceso seguro.
                     </p>
 
                     <div class="input-group">
                         <label>Correo Registrado</label>
                         <div class="input-wrapper" id="wrap-recEmail">
                             <i class="ph-fill ph-envelope-simple"></i>
-                            <input type="email" id="recEmail" placeholder="usuario@cygnus.cl">
+                            <input type="email" id="recEmail" placeholder="agente@cygnusgroup.cl">
                         </div>
                         <div class="error-msg" id="err-recEmail"></div>
                         
-                        <div id="recSuccess" class="alert-global alert-success" style="margin-top:10px;"></div>
+                        <div id="recSuccess" class="alert-global alert-success" style="margin-top:15px;"></div>
                     </div>
 
                     <button type="submit" class="btn-primary" id="btnRec">Enviar Enlace</button>
 
-                    <div style="margin-top: 20px; text-align: center;">
+                    <div style="margin-top: 25px; text-align: center;">
                         <span class="link-text" onclick="switchView('login')">
                             <i class="ph-bold ph-arrow-left"></i> Volver al inicio
                         </span>
@@ -134,7 +310,7 @@
 
             <div class="login-footer">
                 <p>© 2026 Cygnus Group</p>
-                <div class="secure-badge"><i class="ph-fill ph-shield-check"></i> Plataforma Segura</div>
+                <div class="secure-badge"><i class="ph-fill ph-shield-check"></i> Conexión Segura SSL</div>
             </div>
         </div>
     </main>
@@ -225,7 +401,7 @@
             document.querySelectorAll('.input-wrapper').forEach(el => el.classList.remove('error'));
             document.querySelectorAll('.error-msg').forEach(el => el.classList.remove('visible'));
             
-            // Limpiar alertas globales
+            // Ocultar alertas globales si están vacías
             const alert = document.getElementById('serverAlert');
             if(alert && alert.innerText.trim() === '') alert.style.display = 'none';
             
@@ -245,6 +421,7 @@
             const title = document.getElementById('cardTitle');
             const sub = document.getElementById('cardSubtitle');
 
+            // Efecto suave
             if(view === 'recovery') {
                 login.classList.add('hidden');
                 rec.classList.remove('hidden');
@@ -268,7 +445,7 @@
             });
         }
         
-        // Inicialización: Ocultar alertas vacías al cargar
+        // Inicialización: Ocultar alertas vacías
         document.addEventListener("DOMContentLoaded", () => {
              const alert = document.getElementById('serverAlert');
              if(alert && !alert.innerText.trim()) alert.style.display = 'none';
