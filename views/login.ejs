@@ -11,148 +11,141 @@
         
         body {
             margin: 0; padding: 0;
-            height: 100vh; width: 100%;
+            min-height: 100vh; width: 100%;
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background-color: #0f172a;
-            /* Imagen de fondo de alta calidad */
+            /* Imagen HD */
             background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
             display: flex; align-items: center; justify-content: center;
-            overflow: hidden;
+            position: relative;
         }
 
-        /* Capa oscura para contraste */
+        /* Capa oscura */
         .bg-overlay {
             position: absolute; inset: 0;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 58, 138, 0.85) 100%);
             z-index: 1;
         }
 
+        /* --- BOTÓN VOLVER (FIJO REAL) --- */
+        .back-btn {
+            position: fixed; /* FIJO a la pantalla */
+            top: 30px; 
+            left: 30px;
+            z-index: 100; /* Por encima de todo */
+            display: inline-flex; align-items: center; gap: 8px;
+            color: rgba(255,255,255,0.9); text-decoration: none;
+            font-size: 0.9rem; font-weight: 500;
+            padding: 10px 18px; border-radius: 30px;
+            background: rgba(255,255,255,0.1); 
+            border: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .back-btn:hover { 
+            background: rgba(255,255,255,0.25); 
+            color: #fff; 
+            transform: translateY(-2px); 
+        }
+
         /* --- CONTENEDOR CENTRAL --- */
         .login-wrapper {
             position: relative; z-index: 10;
             width: 100%; 
-            max-width: 480px; /* Ancho aumentado para que no se vea "achicado" */
+            max-width: 460px; /* Ancho ideal */
             padding: 20px;
+            margin: auto;
         }
 
-        /* Tarjeta Blanca Limpia */
+        /* Tarjeta Glass */
         .glass-card {
             background: #ffffff;
             border-radius: 24px;
-            padding: 48px 40px; /* Más padding interno */
+            padding: 45px 40px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             text-align: center;
             position: relative;
+            /* Animación suave de altura */
+            transition: all 0.3s ease;
         }
 
-        /* --- LOGO (CORREGIDO: Sin círculo restrictivo) --- */
+        /* Logo */
         .logo-area {
             margin-bottom: 25px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 60px; /* Altura fija para evitar saltos */
+            display: flex; justify-content: center; align-items: center;
+            height: 55px;
         }
-        
-        .logo-img {
-            max-height: 100%; /* Se adapta a la altura */
-            max-width: 240px; /* Ancho máximo generoso */
-            width: auto;
-            object-fit: contain;
-            display: block;
-        }
+        .logo-img { max-height: 100%; width: auto; display: block; object-fit: contain; }
 
-        /* Títulos */
-        h1 { margin: 0; font-size: 1.75rem; color: #0f172a; font-weight: 700; letter-spacing: -0.5px; }
-        .subtitle { margin: 8px 0 32px; color: #64748b; font-size: 0.95rem; }
+        h1 { margin: 0; font-size: 1.7rem; color: #0f172a; font-weight: 700; letter-spacing: -0.5px; }
+        .subtitle { margin: 8px 0 30px; color: #64748b; font-size: 0.95rem; }
 
-        /* --- INPUTS MODERNOS --- */
-        .form-group { margin-bottom: 24px; text-align: left; }
-        
-        .form-group label {
-            display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 8px;
-        }
+        /* --- INPUTS --- */
+        .form-group { margin-bottom: 22px; text-align: left; position: relative; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 8px; }
 
         .input-box {
-            position: relative;
-            display: flex; align-items: center;
-            width: 100%; 
-            height: 52px; /* Input más alto y cómodo */
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 0 16px;
-            transition: all 0.2s ease-in-out;
+            position: relative; display: flex; align-items: center;
+            width: 100%; height: 50px; background: #f8fafc;
+            border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 16px;
+            transition: all 0.2s ease;
         }
-
-        .input-box i { font-size: 1.3rem; color: #94a3b8; margin-right: 12px; }
-
-        .input-box input {
-            flex: 1; width: 100%; height: 100%;
-            border: none; background: transparent;
-            font-size: 1rem; color: #1e293b;
-            padding: 0;
+        .input-box:focus-within { 
+            border-color: #2563eb; background: #fff; 
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); 
+        }
+        .input-box i.icon-left { font-size: 1.3rem; color: #94a3b8; margin-right: 12px; }
+        .input-box input { 
+            flex: 1; height: 100%; border: none; background: transparent; 
+            font-size: 1rem; color: #1e293b; 
         }
         .input-box input::placeholder { color: #cbd5e1; }
 
-        /* Foco Azul Pro */
-        .input-box:focus-within {
-            border-color: #2563eb;
-            background: #ffffff;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        /* Errores */
+        .input-box.error { 
+            border-color: #ef4444 !important; background-color: #fef2f2 !important; 
+            animation: shake 0.3s ease-in-out; 
         }
-
-        /* Error Rojo */
-        .input-box.error {
-            border-color: #ef4444 !important;
-            background-color: #fff1f2 !important;
-            animation: shake 0.3s ease-in-out;
+        .input-box.error i.icon-left { color: #ef4444 !important; }
+        .err-text { 
+            display: none; color: #dc2626; font-size: 0.8rem; 
+            margin-top: 5px; font-weight: 500; margin-left: 2px;
         }
-        .input-box.error i { color: #ef4444 !important; }
-        .err-text { display: none; color: #dc2626; font-size: 0.8rem; margin-top: 6px; font-weight: 500; }
         .err-text.show { display: block; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
+        /* Botón Ojo */
+        .toggle-pass {
+            background: none; border: none; padding: 8px; cursor: pointer; color: #94a3b8;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .toggle-pass:hover { color: #2563eb; }
+
         /* --- BOTONES --- */
         .btn-main {
-            width: 100%; height: 52px;
+            width: 100%; height: 50px;
             background: #2563eb; color: white;
             border: none; border-radius: 12px;
             font-size: 1rem; font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            cursor: pointer; transition: all 0.2s;
             box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+            margin-top: 10px;
         }
         .btn-main:hover { background: #1d4ed8; transform: translateY(-1px); }
-        .btn-main:active { transform: translateY(0); }
-        
         .btn-main.loading { color: transparent !important; pointer-events: none; position: relative; }
         .btn-main.loading::after {
-            content: ""; position: absolute; left: 50%; top: 50%;
-            width: 20px; height: 20px; margin: -10px;
-            border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
-            border-radius: 50%; animation: spin 0.8s linear infinite;
+            content: ""; position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px;
+            border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Links */
         .forgot-link { text-align: right; margin-bottom: 24px; font-size: 0.9rem; }
-        .forgot-link span { color: #2563eb; cursor: pointer; font-weight: 500; }
-        .forgot-link span:hover { text-decoration: underline; }
-
-        .back-btn {
-            position: absolute; top: -50px; left: 0;
-            display: inline-flex; align-items: center; gap: 8px;
-            color: rgba(255,255,255,0.8); text-decoration: none;
-            font-size: 0.9rem; font-weight: 500;
-            padding: 8px 16px; border-radius: 20px;
-            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1);
-            backdrop-filter: blur(4px);
-            transition: all 0.2s;
-        }
-        .back-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+        .forgot-link span { color: #2563eb; cursor: pointer; font-weight: 500; transition: color 0.2s; }
+        .forgot-link span:hover { color: #1e3a8a; text-decoration: underline; }
 
         /* Alertas */
         .alert-box { padding: 12px; border-radius: 8px; margin-bottom: 24px; font-size: 0.9rem; display: none; }
@@ -160,19 +153,31 @@
         .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
         .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
 
-        .footer { margin-top: 32px; font-size: 0.8rem; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+        .footer { margin-top: 35px; font-size: 0.8rem; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
         .hidden { display: none !important; }
-        .toggle-pass { background:none; border:none; cursor:pointer; color:#94a3b8; padding:5px; display:flex; }
-        .toggle-pass:hover { color:#2563eb; }
+
+        /* --- RESPONSIVE (Móviles) --- */
+        @media (max-width: 480px) {
+            .login-wrapper { padding: 15px; }
+            .glass-card { padding: 35px 25px; }
+            
+            /* Ajustar botón volver para móviles */
+            .back-btn { 
+                top: 20px; left: 20px; 
+                padding: 8px 14px; font-size: 0.85rem;
+            }
+            
+            h1 { font-size: 1.5rem; }
+        }
     </style>
 </head>
 <body>
 
     <div class="bg-overlay"></div>
 
-    <div class="login-wrapper">
-        <a href="/" class="back-btn"><i class="ph-bold ph-arrow-left"></i> Volver al Inicio</a>
+    <a href="/" class="back-btn"><i class="ph-bold ph-arrow-left"></i> Volver</a>
 
+    <div class="login-wrapper">
         <div class="glass-card">
             
             <div class="logo-area">
@@ -190,8 +195,8 @@
                 <div class="form-group">
                     <label>Correo Corporativo</label>
                     <div class="input-box" id="box-email">
-                        <i class="ph-fill ph-envelope-simple"></i>
-                        <input type="email" id="email" placeholder="agente@cygnusgroup.cl">
+                        <i class="ph-fill ph-envelope-simple icon-left"></i>
+                        <input type="email" id="email" placeholder="agente@cygnusgroup.cl" autocomplete="email">
                     </div>
                     <div class="err-text" id="msg-email"></div>
                 </div>
@@ -199,15 +204,17 @@
                 <div class="form-group">
                     <label>Contraseña</label>
                     <div class="input-box" id="box-pass">
-                        <i class="ph-fill ph-lock-key"></i>
-                        <input type="password" id="password" placeholder="••••••••">
-                        <button type="button" class="toggle-pass" id="btnEye"><i class="ph-fill ph-eye"></i></button>
+                        <i class="ph-fill ph-lock-key icon-left"></i>
+                        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+                        <button type="button" class="toggle-pass" id="btnEye">
+                            <i class="ph-fill ph-eye"></i>
+                        </button>
                     </div>
                     <div class="err-text" id="msg-pass"></div>
                 </div>
 
                 <div class="forgot-link">
-                    <span onclick="showRecovery()">¿Olvidaste tu contraseña?</span>
+                    <span onclick="switchView('recovery')">¿Olvidaste tu contraseña?</span>
                 </div>
 
                 <button type="submit" class="btn-main" id="btnLog">Ingresar</button>
@@ -221,7 +228,7 @@
                 <div class="form-group">
                     <label>Correo Registrado</label>
                     <div class="input-box" id="box-recEmail">
-                        <i class="ph-fill ph-envelope-simple"></i>
+                        <i class="ph-fill ph-envelope-simple icon-left"></i>
                         <input type="email" id="recEmail" placeholder="agente@cygnusgroup.cl">
                     </div>
                     <div class="err-text" id="msg-recEmail"></div>
@@ -232,7 +239,7 @@
                 <button type="submit" class="btn-main" id="btnRec">Enviar Enlace</button>
                 
                 <div style="margin-top:24px; font-size:0.9rem;">
-                    <span style="color:#64748b; cursor:pointer;" onclick="showLogin()">Cancelar y volver</span>
+                    <span style="color:#64748b; cursor:pointer;" onclick="switchView('login')">Cancelar y volver</span>
                 </div>
             </form>
 
@@ -243,7 +250,7 @@
     </div>
 
     <script>
-        // LOGIN AJAX
+        // --- LOGIN AJAX ---
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             resetUI();
@@ -278,7 +285,7 @@
             }
         });
 
-        // RECOVERY AJAX
+        // --- RECOVERY AJAX ---
         document.getElementById('recoveryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             resetUI();
@@ -312,7 +319,7 @@
             }
         });
 
-        // UTILS
+        // --- FUNCIONES VISUALES ---
         function markError(id, msg) {
             const box = document.getElementById('box-' + id);
             const txt = document.getElementById('msg-' + id);
@@ -322,6 +329,7 @@
                 txt.classList.add('show');
             }
         }
+
         function resetUI() {
             document.querySelectorAll('.input-box').forEach(el => el.classList.remove('error'));
             document.querySelectorAll('.err-text').forEach(el => el.classList.remove('show'));
@@ -329,23 +337,36 @@
             if(ga && !ga.innerText.trim()) ga.classList.remove('visible');
             document.getElementById('recAlert').classList.remove('visible');
         }
+
         function setLoading(btn, state) {
             state ? btn.classList.add('loading') : btn.classList.remove('loading');
         }
-        function showRecovery() {
+
+        // CAMBIO DE VISTAS (Suave y sin perder posición)
+        function switchView(view) {
             resetUI();
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('recoveryForm').classList.remove('hidden');
-            document.getElementById('titleText').innerText = "Recuperar Acceso";
-            document.getElementById('subText').innerText = "Te ayudaremos a volver";
+            const login = document.getElementById('loginForm');
+            const rec = document.getElementById('recoveryForm');
+            const title = document.getElementById('titleText');
+            const sub = document.getElementById('subText');
+            const link = document.querySelector('.forgot-link');
+
+            if (view === 'recovery') {
+                login.classList.add('hidden');
+                link.classList.add('hidden'); // Ocultar link de olvido
+                rec.classList.remove('hidden');
+                title.innerText = "Recuperar Acceso";
+                sub.innerText = "Te ayudaremos a volver";
+            } else {
+                rec.classList.add('hidden');
+                login.classList.remove('hidden');
+                link.classList.remove('hidden');
+                title.innerText = "Bienvenido";
+                sub.innerText = "Sistema de Gestión Inmobiliaria";
+            }
         }
-        function showLogin() {
-            resetUI();
-            document.getElementById('recoveryForm').classList.add('hidden');
-            document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('titleText').innerText = "Bienvenido";
-            document.getElementById('subText').innerText = "Sistema de Gestión Inmobiliaria";
-        }
+
+        // TOGGLE PASSWORD
         const btnEye = document.getElementById('btnEye');
         if(btnEye) {
             btnEye.addEventListener('click', () => {
@@ -355,6 +376,8 @@
                 btnEye.innerHTML = isP ? '<i class="ph-fill ph-eye-slash"></i>' : '<i class="ph-fill ph-eye"></i>';
             });
         }
+
+        // Ocultar alertas vacías al inicio
         document.addEventListener("DOMContentLoaded", () => {
              const alert = document.getElementById('globalAlert');
              if(alert && !alert.innerText.trim()) alert.style.display = 'none';

@@ -8,7 +8,7 @@ const { createClient } = require('@supabase/supabase-js');
 // Forzamos la URL de producción para evitar errores de localhost en los correos
 const BASE_URL = 'https://www.cygnusgroup.cl';
 
-// Cliente Admin de Supabase (Necesario para generar links y gestionar usuarios)
+// Cliente Admin de Supabase (Necesario para generar links, gestionar usuarios y auto-reparar perfiles)
 const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY 
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
     : null;
@@ -29,7 +29,7 @@ const authController = {
     },
 
     // =========================================================================
-    // 2. PROCESAR LOGIN (AJAX - JSON)
+    // 2. PROCESAR LOGIN (AJAX - JSON) - ¡BLINDADO!
     // =========================================================================
     login: async (req, res) => {
         const email = req.body.email ? req.body.email.toLowerCase().trim() : '';
@@ -44,27 +44,55 @@ const authController = {
         if (!password) return returnError('password', 'Por favor, ingresa tu contraseña.');
 
         try {
-            // A. Intentar Login con Supabase
+            // A. Intentar Login con Supabase Auth (Credenciales)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
                 email, 
                 password 
             });
 
             if (authError) {
-                // No damos pistas si es el mail o la pass por seguridad, pero marcamos pass
                 return returnError('password', 'Credenciales incorrectas o usuario no registrado.');
             }
 
-            // B. Verificar que el usuario exista en nuestra tabla pública 'users'
-            const { data: user, error: dbError } = await supabase
+            // B. Buscar perfil en base de datos pública 'users'
+            let { data: user, error: dbError } = await supabase
                 .from('users')
                 .select('*')
                 .eq('id', authData.user.id)
                 .single();
 
-            if (dbError || !user) {
-                await supabase.auth.signOut();
-                return returnError('email', 'Usuario autenticado pero sin perfil de agente activo.');
+            // --- LÓGICA DE AUTO-REPARACIÓN (BLINDAJE) ---
+            // Si el usuario autenticó bien, pero no tiene perfil en la tabla 'users', lo creamos AHORA.
+            if (!user) {
+                console.warn(`⚠️ Usuario ${email} autenticado pero sin perfil. Iniciando auto-creación...`);
+                
+                // Datos para el nuevo perfil
+                const newProfile = {
+                    id: authData.user.id,
+                    email: email,
+                    // Intentamos sacar el nombre de los metadatos o usamos la parte del correo antes del @
+                    name: authData.user.user_metadata?.name || email.split('@')[0], 
+                    role: 'corredor', // Rol por defecto seguro
+                    photo_url: null,
+                    created_at: new Date()
+                };
+
+                // Usamos supabaseAdmin si existe para saltarnos restricciones (RLS)
+                const clientToUse = supabaseAdmin || supabase;
+                
+                const { error: insertError } = await clientToUse
+                    .from('users')
+                    .insert(newProfile);
+
+                if (insertError) {
+                    console.error("❌ Falló la auto-creación del perfil:", insertError);
+                    await supabase.auth.signOut();
+                    return returnError('email', 'Error de cuenta: No se pudo generar tu perfil. Contacta a soporte.');
+                }
+
+                // Si funcionó, asignamos el nuevo perfil a la variable user para continuar
+                console.log("✅ Perfil creado automáticamente.");
+                user = newProfile;
             }
 
             // C. Crear la sesión del usuario
@@ -89,7 +117,7 @@ const authController = {
 
         } catch (err) {
             console.error("Critical Login Error:", err);
-            return returnError('general', 'Error de conexión con el servidor. Intenta nuevamente.');
+            return returnError('general', 'Error de conexión con el servidor.');
         }
     },
 
@@ -104,16 +132,15 @@ const authController = {
         }
 
         try {
-            // 1. Verificar si el usuario existe en nuestra DB (para obtener su nombre)
+            // 1. Verificar si el usuario existe (opcional, para obtener nombre)
             const { data: user } = await supabase
                 .from('users')
                 .select('name')
                 .eq('email', email)
                 .single();
             
-            // Si no existe, simulamos éxito por seguridad (para no revelar correos registrados)
+            // Si no existe en DB, simulamos éxito por seguridad
             if (!user) {
-                // Pequeña pausa para simular procesamiento
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 return res.json({ 
                     success: true, 
@@ -126,8 +153,8 @@ const authController = {
                 return res.status(500).json({ success: false, message: 'Error de configuración del servidor.' });
             }
 
-            // 2. Generar Link Mágico (Token de un solo uso)
-            // AQUÍ ESTÁ EL TRUCO: Forzamos redirectTo a tu dominio real
+            // 2. Generar Link Mágico
+            // Forzamos redirectTo a tu dominio real para evitar errores
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
                 type: 'recovery',
                 email: email,
@@ -138,28 +165,24 @@ const authController = {
 
             if (linkError) throw linkError;
 
-            // 3. Preparar mensaje HTML bonito
+            // 3. Mensaje HTML
             const htmlMessage = `
                 <p>Hola <strong>${user.name}</strong>,</p>
-                <p>Hemos recibido una solicitud para restablecer tu contraseña de acceso al panel de gestión.</p>
-                <p>Este enlace es seguro, de un solo uso y caducará pronto.</p>
+                <p>Hemos recibido una solicitud para restablecer tu contraseña.</p>
+                <p>Este enlace es seguro y de un solo uso.</p>
             `;
             
-            // 4. Enviar correo usando tu helper
-            const emailSent = await sendEmail(
+            // 4. Enviar correo
+            await sendEmail(
                 email, 
-                'Restablecer Contraseña 🔒', // Asunto
-                'Recuperación de Acceso',    // Título interno
-                htmlMessage,                 // Cuerpo
-                'Crear Nueva Contraseña',    // Texto del botón
-                linkData.properties.action_link // Link generado
+                'Restablecer Contraseña 🔒', 
+                'Recuperación de Acceso', 
+                htmlMessage,
+                'Crear Nueva Contraseña', 
+                linkData.properties.action_link
             );
 
-            if (emailSent) {
-                return res.json({ success: true, message: 'Correo enviado. Revisa tu bandeja de entrada.' });
-            } else {
-                throw new Error("Fallo al enviar el email.");
-            }
+            return res.json({ success: true, message: 'Correo enviado. Revisa tu bandeja de entrada.' });
 
         } catch (err) {
             console.error("Recovery Error:", err);
@@ -171,8 +194,6 @@ const authController = {
     // 4. VISTA ACTUALIZAR CONTRASEÑA (GET)
     // =========================================================================
     showUpdatePassword: (req, res) => {
-        // Renderizamos la vista 'update-password.ejs'
-        // Pasamos las credenciales públicas para que el frontend pueda validar el hash
         res.render('update-password', { 
             title: 'Nueva Contraseña | Cygnus', 
             supabaseUrl: process.env.SUPABASE_URL,
@@ -185,39 +206,43 @@ const authController = {
     // =========================================================================
     updatePassword: async (req, res) => {
         const { password, accessToken } = req.body;
-
         const sendError = (msg) => res.status(400).json({ success: false, message: msg });
 
-        if (!password || password.length < 6) {
-            return sendError('La contraseña es muy corta (mínimo 6 caracteres).');
-        }
-
-        if (!accessToken) {
-            return sendError('El enlace de recuperación no es válido o ha expirado.');
-        }
+        if (!password || password.length < 6) return sendError('La contraseña es muy corta (mínimo 6 caracteres).');
+        if (!accessToken) return sendError('El enlace de recuperación no es válido.');
 
         try {
             // 1. Validar el token con Supabase
             const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken);
 
             if (userError || !user) {
-                return sendError('El enlace de seguridad ha expirado. Por favor solicita uno nuevo.');
+                return sendError('El enlace de seguridad ha expirado. Solicita uno nuevo.');
             }
 
-            // 2. Actualizar la contraseña
+            // 2. Actualizar la contraseña (Usamos Admin si existe para máxima autoridad)
             if (supabaseAdmin) {
-                // Método Admin (Más seguro y sin rate limits)
                 await supabaseAdmin.auth.admin.updateUserById(user.id, { password: password });
             } else {
-                // Método Cliente
                 await supabase.auth.updateUser({ password: password });
             }
 
-            // 3. Asegurar que la sesión se destruya para obligar a loguearse de nuevo
+            // 3. Sincronizar tabla pública 'users' (Opcional, pero recomendado para consistencia)
+            // Usamos Admin o Cliente según disponibilidad
+            const clientToUse = supabaseAdmin || supabase;
+            
+            const { error: dbError } = await clientToUse
+                .from('users')
+                .update({ password: password }) // Si guardas hash o flag
+                .eq('id', user.id);
+            
+            // Si la sincronización falla porque el usuario no existe en 'users', 
+            // no lanzamos error aquí. El próximo Login usará la "Auto-Reparación" que programamos arriba.
+
+            // 4. Cerrar sesión global
             await supabase.auth.signOut();
             req.session.destroy();
 
-            // 4. Éxito
+            // 5. Éxito
             return res.json({ 
                 success: true, 
                 message: 'Contraseña actualizada exitosamente.',
