@@ -1,12 +1,22 @@
+// Archivo: controllers/userController.js
 const supabase = require('../config/supabaseClient');
-const { createClient } = require('@supabase/supabase-js'); 
+const { createClient } = require('@supabase/supabase-js');
+
+// --- CONFIGURACIÓN DE CLIENTE ADMIN (Service Role) ---
+// Vital para gestión de usuarios sin restricciones
+const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY 
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+    : null;
 
 const userController = {
 
-    // --- LISTAR EQUIPO ---
+    // =========================================================================
+    // 1. LISTAR EQUIPO
+    // =========================================================================
     manageTeam: async (req, res) => {
         try {
-            const { data: users, error } = await supabase
+            const client = supabaseAdmin || supabase;
+            const { data: users, error } = await client
                 .from('users')
                 .select('*')
                 .order('created_at', { ascending: false });
@@ -14,10 +24,12 @@ const userController = {
             if (error) throw error;
 
             res.render('admin/team-list', {
-                title: 'Gestión de Equipo',
+                title: 'Gestión de Equipo | Admin',
                 page: 'equipo',
                 user: req.session.user,
-                agents: users || [] 
+                agents: users || [],
+                error: null,
+                successMessage: null
             });
         } catch (error) {
             console.error("Error cargando equipo:", error);
@@ -25,65 +37,106 @@ const userController = {
         }
     },
 
-    // --- FORMULARIO CREAR ---
+    // =========================================================================
+    // 2. FORMULARIO CREAR
+    // =========================================================================
     addAgentForm: (req, res) => {
         res.render('admin/add-agent', {
             title: 'Nuevo Agente',
             page: 'equipo',
             user: req.session.user,
             error: null,
+            successMessage: null,
             formData: {}
         });
     },
 
-    // --- CREAR AGENTE ---
+    // =========================================================================
+    // 3. CREAR AGENTE (Blindado Anti-Zombies)
+    // =========================================================================
     addAgent: async (req, res) => {
         try {
             const { name, email, password, phone, position, role } = req.body;
             const finalEmail = email.trim().toLowerCase();
 
-            // Cliente temporal para crear en Auth sin cerrar sesión Admin
-            const tempSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+            if (!finalEmail || !password || !name) throw new Error("Faltan datos obligatorios.");
+            if (password.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres.");
 
-            const { data: authData, error: authError } = await tempSupabase.auth.signUp({
-                email: finalEmail,
-                password: password
-            });
+            let authData, authError;
 
-            if (authError) throw authError;
-
-            if (authData.user) {
-                const { error: dbError } = await supabase
-                    .from('users')
-                    .insert([{
-                        id: authData.user.id,
-                        name: name,
-                        email: finalEmail,
-                        password: password, // Guardamos referencia
-                        phone: phone,
-                        role: role || 'agent',
-                        position: position || 'Agente Inmobiliario',
-                        created_at: new Date()
-                    }]);
-                
-                if (dbError) console.error("Error DB rollback:", dbError);
+            // 1. Crear en Auth (Ya confirmado)
+            if (supabaseAdmin) {
+                const result = await supabaseAdmin.auth.admin.createUser({
+                    email: finalEmail,
+                    password: password,
+                    email_confirm: true,
+                    user_metadata: { name: name, role: role || 'corredor' }
+                });
+                authData = result.data;
+                authError = result.error;
+            } else {
+                const tempSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+                const result = await tempSupabase.auth.signUp({
+                    email: finalEmail,
+                    password: password,
+                    options: { data: { name: name, role: role || 'corredor' } }
+                });
+                authData = result.data;
+                authError = result.error;
             }
 
-            res.redirect('/admin/team');
+            if (authError) throw new Error(`Error Auth: ${authError.message}`);
+            if (!authData.user) throw new Error("No se pudo crear usuario en Auth.");
 
-        } catch (error) {
-            console.error("Error creando agente:", error);
+            // 2. Sincronizar DB Pública (Upsert para evitar zombies)
+            const clientToUse = supabaseAdmin || supabase;
+            const newUserId = authData.user.id;
+
+            const { error: dbError } = await clientToUse
+                .from('users')
+                .upsert({
+                    id: newUserId,
+                    email: finalEmail,
+                    name: name,
+                    password: password, // Pass real
+                    phone: phone || null,
+                    role: role || 'corredor',
+                    position: position || 'Agente Inmobiliario',
+                    created_at: new Date()
+                    // Sin updated_at
+                }, { onConflict: 'email' }); 
+
+            if (dbError) {
+                console.error("❌ Error DB:", dbError);
+                if (supabaseAdmin) await supabaseAdmin.auth.admin.deleteUser(newUserId);
+                throw new Error("Error sincronizando base de datos.");
+            }
+
             res.render('admin/add-agent', {
                 title: 'Nuevo Agente',
                 page: 'equipo',
                 user: req.session.user,
-                error: "Error al crear: " + error.message,
+                error: null,
+                successMessage: `Agente ${name} creado correctamente.`,
+                formData: {}
+            });
+
+        } catch (error) {
+            console.error("Error Add Agent:", error);
+            res.render('admin/add-agent', {
+                title: 'Nuevo Agente',
+                page: 'equipo',
+                user: req.session.user,
+                error: "Error: " + error.message,
+                successMessage: null,
                 formData: req.body 
             });
         }
     },
 
-    // --- FORMULARIO EDITAR ---
+    // =========================================================================
+    // 4. FORMULARIO EDITAR
+    // =========================================================================
     editAgentForm: async (req, res) => {
         try {
             const { id } = req.params;
@@ -100,84 +153,89 @@ const userController = {
                 page: 'equipo',
                 user: req.session.user,
                 agent: agent,
-                error: null
+                error: null,
+                successMessage: null
             });
         } catch (error) {
-            console.error(error);
             res.redirect('/admin/team');
         }
     },
 
-    // --- ACTUALIZAR AGENTE (CON CAMBIO DE CONTRASEÑA) ---
+    // =========================================================================
+    // 5. ACTUALIZAR AGENTE (Sincronización Total)
+    // =========================================================================
     updateAgent: async (req, res) => {
         try {
-            const { id, name, phone, position, password } = req.body; 
+            const { id, name, phone, position, password, role } = req.body; 
             
-            // 1. Objeto base de actualización para la BD
+            // Datos base para DB
             let updateData = { 
                 name, 
                 phone, 
-                position 
+                position,
+                role: role || 'corredor'
             };
 
-            // 2. Si el admin escribió una nueva contraseña...
+            // Si cambia la contraseña...
             if (password && password.trim().length > 0) {
                 if(password.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres");
 
-                // A) Actualizar en Supabase Auth (Sistema de Login)
-                // Necesitamos usar service_role para cambiar pass de otro usuario, 
-                // PERO como workaround usaremos update en la tabla y asumimos que el usuario
-                // deberá usar "Olvidé mi contraseña" o el admin recrearlo si Auth falla.
-                // *MEJOR OPCIÓN SI TIENES SERVICE_KEY*: 
-                // const adminAuth = createClient(URL, SERVICE_KEY); await adminAuth.auth.admin.updateUserById(id, {password})
-                
-                // Como probablemente no tengas la SERVICE_KEY configurada a mano aquí,
-                // actualizamos solo la BD local para referencia visual.
-                // Si quieres que el login funcione con la nueva pass, el usuario nuevo DEBE coincidir.
-                
-                // INTENTO DE ACTUALIZAR AUTH (Solo funciona si eres el mismo usuario o tienes service_role)
-                // Para simplificar tu caso: Solo actualizamos los datos visuales y la pass en BD.
-                // Si la pass de Auth no coincide, hay que borrar y crear de nuevo o usar Recover.
-                
-                // P.D: Para que FUNCIONE el cambio de pass real de otro usuario, se necesita la SERVICE_ROLE_KEY.
-                // Si no la tienes, el login seguirá usando la vieja.
-                
-                updateData.password = password; 
+                updateData.password = password; // 1. Guardar en DB
+
+                // 2. Guardar en Auth (Login Real)
+                if (supabaseAdmin) {
+                    const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(id, { 
+                        password: password,
+                        user_metadata: { name: name } 
+                    });
+                    if (authErr) console.error("Error actualizando Auth:", authErr.message);
+                }
+            } else {
+                // Si no cambia pass, solo actualizamos nombre en Auth
+                if (supabaseAdmin) {
+                    await supabaseAdmin.auth.admin.updateUserById(id, { user_metadata: { name: name } });
+                }
             }
 
-            // 3. Actualizar en Tabla 'users'
-            const { error } = await supabase
+            // 3. Ejecutar Update en DB Pública
+            const clientToUse = supabaseAdmin || supabase;
+            const { error } = await clientToUse
                 .from('users')
                 .update(updateData)
                 .eq('id', id);
 
             if (error) throw error;
             
-            // 4. TRUCO: Si cambiaste la pass, intentamos actualizarla en Auth usando una instancia Admin
-            // Esto requiere que process.env.SUPABASE_SERVICE_ROLE_KEY esté en tu .env
-            // Si no está, este bloque fallará silenciosamente o lo ignoramos.
-            if (password && password.trim().length > 0 && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-                const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-                await supabaseAdmin.auth.admin.updateUserById(id, { password: password });
-            }
+            // Recargar para mostrar
+            const { data: updatedAgent } = await supabase.from('users').select('*').eq('id', id).single();
 
-            res.redirect('/admin/team');
+            res.render('admin/edit-agent', {
+                title: 'Editar Agente',
+                page: 'equipo',
+                user: req.session.user,
+                agent: updatedAgent,
+                error: null,
+                successMessage: "Datos y credenciales actualizados."
+            });
 
         } catch (error) {
-            console.error("Error actualizando:", error);
-            // Volver a cargar la vista con el error
+            console.error("Error Update:", error);
             const { data: agent } = await supabase.from('users').select('*').eq('id', req.body.id).single();
+            
             res.render('admin/edit-agent', {
                 title: 'Editar Agente',
                 page: 'equipo',
                 user: req.session.user,
                 agent: agent || {},
-                error: "Error al actualizar: " + error.message
+                error: "Error: " + error.message,
+                successMessage: null
             });
         }
     },
 
-    // --- PERFIL Y BORRAR (Igual que antes) ---
+    // =========================================================================
+    // 6. PERFIL AGENTE
+    // =========================================================================
     agentProfile: async (req, res) => {
         try {
             const { id } = req.params;
@@ -196,34 +254,55 @@ const userController = {
         }
     },
 
+    // =========================================================================
+    // 7. ELIMINAR AGENTE (Pasar a Empresa / NULL)
+    // =========================================================================
     deleteAgent: async (req, res) => {
         try {
             const { id } = req.params;
-            const { data: adminUser } = await supabase.from('users').select('id').eq('role', 'admin').limit(1).single();
+            const clientToUse = supabaseAdmin || supabase;
+
+            // 1. "Liberar" Propiedades (Pasar a NULL = Empresa)
+            console.log(`📦 Liberando propiedades del agente ${id} (Set NULL)...`);
             
-            if (adminUser) {
-                await supabase.from('properties').update({ agent_id: adminUser.id }).eq('agent_id', id);
+            const { error: releaseError } = await clientToUse
+                .from('properties')
+                .update({ agent_id: null }) // <--- AQUÍ ESTÁ EL CAMBIO QUE PEDISTE
+                .eq('agent_id', id);
+
+            if (releaseError) {
+                console.error("Error liberando propiedades:", releaseError);
+                throw new Error("No se pudieron liberar las propiedades.");
             }
 
-            const { error: dbError } = await supabase.from('users').delete().eq('id', id);
+            // 2. Borrar de DB Pública
+            const { error: dbError } = await clientToUse.from('users').delete().eq('id', id);
             if (dbError) throw dbError;
 
-            // Intento de borrar de Auth si existe la key
-            if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-                const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+            // 3. Borrar de Auth (Para que no entre más)
+            if (supabaseAdmin) {
                 await supabaseAdmin.auth.admin.deleteUser(id);
+                console.log(`🗑️ Usuario ${id} eliminado definitivamente.`);
             }
 
-            res.json({ success: true });
+            res.json({ success: true, message: 'Agente eliminado. Propiedades asignadas a la empresa.' });
+
         } catch (error) {
-            console.error("Error eliminando agente:", error);
+            console.error("Error Delete:", error);
             res.status(500).json({ success: false, message: error.message });
         }
     },
     
+    // =========================================================================
+    // 8. LISTADO PÚBLICO
+    // =========================================================================
     listAgents: async (req, res) => {
         try {
-            const { data: agents } = await supabase.from('users').select('*').eq('role', 'agent'); 
+            const { data: agents } = await supabase
+                .from('users')
+                .select('*')
+                .order('created_at', { ascending: false });
+
             res.render('agents', {
                 title: 'Nuestros Agentes',
                 page: 'agentes',
@@ -231,7 +310,6 @@ const userController = {
                 agents: agents || []
             });
         } catch (e) {
-            console.error(e);
             res.redirect('/');
         }
     }
