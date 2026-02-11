@@ -273,8 +273,8 @@
 
     <div class="main-container">
         <div class="content-grid">
+            <!-- COLUMNA IZQUIERDA - Parte 1: Header y Galería -->
             <div class="col-left">
-                
                 <header class="prop-header">
                     <h1 class="prop-title"><%= prop.title %></h1>
                     <div class="address-inline">
@@ -294,6 +294,7 @@
                     </div>
                 </header>
 
+                <!-- GALERÍA DE FOTOS -->
                 <div class="gallery-container">
                     <div class="main-stage" id="mainStage" onclick="toggleZoom(event)">
                         
@@ -335,7 +336,85 @@
                         <button class="thumb-nav right" onclick="scrollThumbs('right')"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
+            </div> <!-- /.col-left (parte 1) -->
 
+            <!-- COLUMNA DERECHA (Tarjeta de precio + características) 
+                 Se coloca AQUÍ, justo después de la galería, para que en móvil aparezca debajo -->
+            <div class="col-right">
+                <div class="sticky-widget">
+                    
+                    <div class="status-pill-widget <%= statusConfig.solidClass %>">
+                        <%= statusConfig.text %>
+                    </div>
+
+                    <div class="uf-corner-badge" title="Valor UF Actualizado">
+                        UF <%= fmtCLP(ufVal).replace('$ ', '$') %>
+                    </div>
+                    
+                    <div class="price-header">
+                        <span class="lbl-op">Valor de <%= prop.operation_type || 'Venta' %></span>
+                        <div class="price-main"><%= mainPriceDisplay %> <%- rentSuffix %></div>
+                        <div class="price-pill-container">
+                            <span class="price-pill-small">Aprox. <%= subPriceDisplay %></span>
+                        </div>
+                    </div>
+
+                    <% if(prop.common_expenses > 0 || prop.contributions > 0) { %>
+                    <div class="extra-costs">
+                        <% if(prop.common_expenses > 0) { %>
+                            <div class="cost-item"><span>Gastos Comunes</span> <strong><%= fmtCLP(prop.common_expenses) %></strong></div>
+                        <% } %>
+                        <% if(prop.contributions > 0) { %>
+                            <div class="cost-item"><span>Contribuciones</span> <strong><%= fmtCLP(prop.contributions) %></strong></div>
+                        <% } %>
+                    </div>
+                    <% } %>
+                    
+                    <div class="h-line-soft"></div>
+                    
+                    <div class="agent-row">
+                        <div class="agent-img-wrap"><img src="<%= contactInfo.photo %>" alt="Empresa"></div>
+                        <div class="agent-txt">
+                            <span class="tiny-lbl">Publicado por</span>
+                            <h4><%= contactInfo.displayName %></h4>
+                            <span class="agent-sub"><%= contactInfo.subtitle %></span>
+                            <span class="agent-role-small"><%= contactInfo.role %></span>
+                        </div>
+                    </div>
+                    
+                    <div class="action-btns">
+                        <a href="#" id="btnWsp" target="_blank" class="btn btn-whatsapp">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </a>
+                        <a href="tel:<%= contactInfo.phone %>" class="btn btn-call"><i class="fas fa-phone-alt"></i> Llamar</a>
+                        <a href="mailto:<%= contactInfo.email %>?subject=Consulta propiedad <%= cleanTitle %>&body=Hola, estoy interesado en la propiedad..." class="btn btn-email"><i class="far fa-envelope"></i> Enviar Correo</a>
+                    </div>
+                </div>
+
+                <% if(hasFeatures) { %>
+                    <div class="features-widget">
+                        <div class="fw-header">
+                            <h3 class="fw-title">Características</h3>
+                        </div>
+                        <% Object.keys(featureGroups).forEach(groupTitle => { %>
+                            <div class="fw-group">
+                                <h4 class="fw-cat-title"><i class="fas fa-layer-group"></i> <%= groupTitle %></h4>
+                                <ul class="fw-list">
+                                    <% featureGroups[groupTitle].forEach(item => { %>
+                                        <li class="fw-item">
+                                            <i class="fas fa-circle-check"></i>
+                                            <span><%= item %></span>
+                                        </li>
+                                    <% }) %>
+                                </ul>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } %>
+            </div> <!-- /.col-right -->
+
+            <!-- COLUMNA IZQUIERDA - Parte 2: Especificaciones, Descripción, Mapa -->
+            <div class="col-left">
                 <% if(showSpecsSection) { %>
                 <div class="specs-section compact">
                     <% if(hasSurface) { %>
@@ -464,83 +543,10 @@
                         <% } %>
                     </div>
                 </section>
-            </div>
+            </div> <!-- /.col-left (parte 2) -->
 
-            <div class="col-right">
-                
-                <div class="sticky-widget">
-                    
-                    <div class="status-pill-widget <%= statusConfig.solidClass %>">
-                        <%= statusConfig.text %>
-                    </div>
-
-                    <div class="uf-corner-badge" title="Valor UF Actualizado">
-                        UF <%= fmtCLP(ufVal).replace('$ ', '$') %>
-                    </div>
-                    
-                    <div class="price-header">
-                        <span class="lbl-op">Valor de <%= prop.operation_type || 'Venta' %></span>
-                        <div class="price-main"><%= mainPriceDisplay %> <%- rentSuffix %></div>
-                        <div class="price-pill-container">
-                            <span class="price-pill-small">Aprox. <%= subPriceDisplay %></span>
-                        </div>
-                    </div>
-
-                    <% if(prop.common_expenses > 0 || prop.contributions > 0) { %>
-                    <div class="extra-costs">
-                        <% if(prop.common_expenses > 0) { %>
-                            <div class="cost-item"><span>Gastos Comunes</span> <strong><%= fmtCLP(prop.common_expenses) %></strong></div>
-                        <% } %>
-                        <% if(prop.contributions > 0) { %>
-                            <div class="cost-item"><span>Contribuciones</span> <strong><%= fmtCLP(prop.contributions) %></strong></div>
-                        <% } %>
-                    </div>
-                    <% } %>
-                    
-                    <div class="h-line-soft"></div>
-                    
-                    <div class="agent-row">
-                        <div class="agent-img-wrap"><img src="<%= contactInfo.photo %>" alt="Empresa"></div>
-                        <div class="agent-txt">
-                            <span class="tiny-lbl">Publicado por</span>
-                            <h4><%= contactInfo.displayName %></h4>
-                            <span class="agent-sub"><%= contactInfo.subtitle %></span>
-                            <span class="agent-role-small"><%= contactInfo.role %></span>
-                        </div>
-                    </div>
-                    
-                    <div class="action-btns">
-                        <a href="#" id="btnWsp" target="_blank" class="btn btn-whatsapp">
-                            <i class="fab fa-whatsapp"></i> WhatsApp
-                        </a>
-                        <a href="tel:<%= contactInfo.phone %>" class="btn btn-call"><i class="fas fa-phone-alt"></i> Llamar</a>
-                        <a href="mailto:<%= contactInfo.email %>?subject=Consulta propiedad <%= cleanTitle %>&body=Hola, estoy interesado en la propiedad..." class="btn btn-email"><i class="far fa-envelope"></i> Enviar Correo</a>
-                    </div>
-                </div>
-
-                <% if(hasFeatures) { %>
-                    <div class="features-widget">
-                        <div class="fw-header">
-                            <h3 class="fw-title">Características</h3>
-                        </div>
-                        <% Object.keys(featureGroups).forEach(groupTitle => { %>
-                            <div class="fw-group">
-                                <h4 class="fw-cat-title"><i class="fas fa-layer-group"></i> <%= groupTitle %></h4>
-                                <ul class="fw-list">
-                                    <% featureGroups[groupTitle].forEach(item => { %>
-                                        <li class="fw-item">
-                                            <i class="fas fa-circle-check"></i>
-                                            <span><%= item %></span>
-                                        </li>
-                                    <% }) %>
-                                </ul>
-                            </div>
-                        <% }) %>
-                    </div>
-                <% } %>
-            </div>
-        </div> 
-    </div>
+        </div> <!-- /.content-grid -->
+    </div> <!-- /.main-container -->
 
     <%- include('partials/footer') %>
 

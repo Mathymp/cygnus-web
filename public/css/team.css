@@ -1,11 +1,68 @@
 /* =========================================
-   1. ESTILOS GENERALES Y TABLA (LISTADO)
+   TEAM.CSS - GESTIÓN DE AGENTES (CORREGIDO)
+   Layout con sidebar sticky y scroll en main
+   ========================================= */
+
+/* -----------------------------------------
+   1. RESET Y LAYOUT PRINCIPAL
+   ----------------------------------------- */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Satoshi', 'Inter', sans-serif;
+    background-color: #f8fafc;
+}
+
+.app-layout {
+    display: flex;
+    height: 100vh;          /* Altura total de la ventana */
+    overflow: hidden;       /* Elimina doble scroll */
+    width: 100%;
+}
+
+/* -----------------------------------------
+   2. SIDEBAR (STICKY + SCROLL INTERNO)
+   ----------------------------------------- */
+aside.sidebar {
+    width: 280px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    left: 0;
+    flex-shrink: 0;
+    overflow-y: auto;       /* Scroll si el menú es muy largo */
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+    z-index: 1000;
+}
+
+/* -----------------------------------------
+   3. CONTENIDO PRINCIPAL (DESPLAZABLE)
+   ----------------------------------------- */
+.main-content {
+    flex: 1;
+    height: 100vh;          /* Misma altura que la ventana */
+    overflow-y: auto;       /* ¡ACTIVA EL SCROLL VERTICAL! */
+    background-color: #f8fafc;
+    display: block;
+}
+
+/* Contenedor interno con espaciado */
+.dashboard-scroll {
+    padding: 2rem 2rem 3rem 2rem;
+    min-height: 100%;       /* Ocupa todo el alto disponible */
+    box-sizing: border-box;
+}
+
+/* =========================================
+   4. ESTILOS DE LA TABLA (LISTADO)
    ========================================= */
 
 /* Header de la sección */
 .team-panel-header {
     padding: 1.5rem;
-    border-bottom: 1px solid var(--border, #e2e8f0);
+    border-bottom: 1px solid #e2e8f0;
     background: #fff;
     border-top-left-radius: 16px;
     border-top-right-radius: 16px;
@@ -23,7 +80,7 @@
     font-size: 0.95rem;
     font-weight: 700;
     color: white;
-    background: var(--primary, #2563eb);
+    background: #2563eb;
     border: none;
     border-radius: 50px;
     text-decoration: none;
@@ -34,7 +91,7 @@
 .btn-publish-big:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 15px rgba(37, 99, 235, 0.3);
-    background: var(--primary-dark, #1d4ed8);
+    background: #1d4ed8;
 }
 
 /* Contenedor de la Tabla */
@@ -50,7 +107,7 @@
 .modern-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 700px; /* Scroll horizontal en móvil */
+    min-width: 700px;
 }
 
 .modern-table th {
@@ -77,24 +134,43 @@
 }
 
 /* Avatar y Textos */
-.prop-flex { display: flex; align-items: center; gap: 15px; }
+.prop-flex { 
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+}
 
 .agent-avatar-img {
-    width: 42px; height: 42px;
-    border-radius: 50%; object-fit: cover;
-    border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    width: 42px; 
+    height: 42px;
+    border-radius: 50%; 
+    object-fit: cover;
+    border: 2px solid white; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .agent-avatar-placeholder {
-    width: 42px; height: 42px;
-    border-radius: 50%; background: #eff6ff;
-    color: #3b82f6; display: flex;
-    align-items: center; justify-content: center;
-    font-weight: 700; font-size: 1.1rem;
+    width: 42px; 
+    height: 42px;
+    border-radius: 50%; 
+    background: #eff6ff;
+    color: #3b82f6; 
+    display: flex;
+    align-items: center; 
+    justify-content: center;
+    font-weight: 700; 
+    font-size: 1.1rem;
 }
 
-.agent-name { font-weight: 700; color: #0f172a; margin-bottom: 2px; }
-.agent-email { font-size: 0.85rem; color: #64748b; }
+.agent-name { 
+    font-weight: 700; 
+    color: #0f172a; 
+    margin-bottom: 2px; 
+}
+.agent-email { 
+    font-size: 0.85rem; 
+    color: #64748b; 
+}
 
 /* Badges de Rol */
 .badge-role {
@@ -104,25 +180,53 @@
     font-weight: 700;
     text-transform: uppercase;
 }
-.role-admin { background: #e0e7ff; color: #4338ca; }
-.role-corredor { background: #dcfce7; color: #15803d; }
+.role-admin { 
+    background: #e0e7ff; 
+    color: #4338ca; 
+}
+.role-corredor { 
+    background: #dcfce7; 
+    color: #15803d; 
+}
 
 /* Botones de Acción (Tabla) */
-.actions-cell { display: flex; gap: 8px; justify-content: flex-end; }
-.btn-action {
-    width: 34px; height: 34px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    border: none; cursor: pointer; transition: all 0.2s;
-    font-size: 1.1rem; text-decoration: none;
+.actions-cell { 
+    display: flex; 
+    gap: 8px; 
+    justify-content: flex-end; 
 }
-.btn-edit { background: #f0f9ff; color: #0284c7; }
-.btn-edit:hover { background: #0284c7; color: white; }
-.btn-delete { background: #fef2f2; color: #dc2626; }
-.btn-delete:hover { background: #dc2626; color: white; }
-
+.btn-action {
+    width: 34px; 
+    height: 34px; 
+    border-radius: 8px;
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    border: none; 
+    cursor: pointer; 
+    transition: all 0.2s;
+    font-size: 1.1rem; 
+    text-decoration: none;
+}
+.btn-edit { 
+    background: #f0f9ff; 
+    color: #0284c7; 
+}
+.btn-edit:hover { 
+    background: #0284c7; 
+    color: white; 
+}
+.btn-delete { 
+    background: #fef2f2; 
+    color: #dc2626; 
+}
+.btn-delete:hover { 
+    background: #dc2626; 
+    color: white; 
+}
 
 /* =========================================
-   2. FORMULARIOS (NUEVO / EDITAR)
+   5. FORMULARIOS (NUEVO / EDITAR)
    ========================================= */
 
 /* Contenedor tipo Tarjeta Centrada */
@@ -164,7 +268,7 @@
 }
 
 .section-title i {
-    color: var(--primary, #2563eb);
+    color: #2563eb;
     font-size: 1.3rem;
     background: #eff6ff;
     padding: 8px;
@@ -174,14 +278,18 @@
 /* Grid de Inputs */
 .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Dos columnas */
+    grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
 }
 
 /* Responsive: 1 columna en móvil */
 @media (max-width: 768px) {
-    .form-grid { grid-template-columns: 1fr; }
-    .publish-container { padding: 1.5rem; }
+    .form-grid { 
+        grid-template-columns: 1fr; 
+    }
+    .publish-container { 
+        padding: 1.5rem; 
+    }
 }
 
 /* Grupos de Input */
@@ -192,7 +300,7 @@
 }
 
 .input-group.full-width {
-    grid-column: 1 / -1; /* Ocupa todo el ancho */
+    grid-column: 1 / -1;
 }
 
 .input-group label {
@@ -212,13 +320,13 @@
     color: #0f172a;
     transition: all 0.2s ease;
     background: #f8fafc;
-    width: 100%; /* Asegura que llene el contenedor */
-    box-sizing: border-box; /* Evita que el padding rompa el ancho */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .input-group input:focus,
 .input-group select:focus {
-    border-color: var(--primary, #2563eb);
+    border-color: #2563eb;
     background: white;
     outline: none;
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
@@ -236,7 +344,7 @@
 }
 
 .phone-input-wrapper:focus-within {
-    border-color: var(--primary, #2563eb);
+    border-color: #2563eb;
     background: white;
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
@@ -270,7 +378,7 @@
 }
 
 .btn-publish-submit {
-    background: var(--primary, #2563eb);
+    background: #2563eb;
     color: white;
     border: none;
     padding: 14px 32px;
@@ -285,7 +393,7 @@
 }
 
 .btn-publish-submit:hover {
-    background: var(--primary-dark, #1d4ed8);
+    background: #1d4ed8;
     transform: translateY(-2px);
     box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4);
 }
@@ -327,73 +435,31 @@
     color: #991b1b;
     border: 1px solid #fecaca;
 }
-/* --- CORRECCIÓN DE LAYOUT Y SIDEBAR --- */
-        
-        /* 1. Asegura que el contenedor principal use Flexbox */
-        .app-layout {
-            display: flex;
-            min-height: 100vh; /* Ocupa al menos el 100% de la pantalla */
-            width: 100%;
-            overflow-x: hidden;
-        }
 
-        /* 2. Corrige el Sidebar para que sea Sticky (se queda fijo al bajar) */
-        aside.sidebar {
-            width: 280px; /* Mismo ancho que tu variable --sb-width */
-            height: 100vh; /* Altura completa de la ventana */
-            position: sticky; /* Se pega al borde superior */
-            top: 0;
-            left: 0;
-            flex-shrink: 0; /* Evita que se encoja */
-            overflow-y: auto; /* Permite scroll interno si el menú es muy alto */
-            z-index: 1000;
-            background: #ffffff; /* Asegura fondo blanco */
-            border-right: 1px solid #e2e8f0;
-        }
-
-        /* 3. Ajusta el contenido principal para que fluya a la derecha */
-        .main-content {
-            flex: 1; /* Toma el espacio restante */
-            width: calc(100% - 280px); /* Resta el ancho del sidebar */
-            min-height: 100vh;
-            background-color: #f8fafc; /* Color de fondo general */
-            display: block; /* Asegura flujo normal */
-        }
-
-        /* 4. Ajuste específico para el wrapper de publicar */
-        .publish-wrapper-fluid {
-            padding: 2rem;
-            max-width: 1600px;
-            margin: 0 auto;
-        }
-        /* =========================================
-   3. ESTILOS DEL MODAL (FALTABAN)
+/* =========================================
+   6. MODAL DE ELIMINACIÓN
    ========================================= */
-
-/* Fondo oscurecido (Overlay) */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(15, 23, 42, 0.6); /* Fondo oscuro semitransparente */
-    backdrop-filter: blur(4px); /* Efecto borroso elegante */
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
     z-index: 9999;
-    display: none; /* Oculto por defecto */
+    display: none;
     justify-content: center;
     align-items: center;
     opacity: 0;
     transition: opacity 0.3s ease;
 }
 
-/* Clase para mostrar el modal */
 .modal-overlay.active {
     display: flex;
     opacity: 1;
 }
 
-/* Contenedor del Modal */
 .modal-container {
     background: white;
     width: 90%;
@@ -410,7 +476,6 @@
     transform: scale(1);
 }
 
-/* Icono y Textos */
 .modal-icon-warning {
     width: 64px;
     height: 64px;
@@ -437,7 +502,6 @@
     line-height: 1.6;
 }
 
-/* Botones del Modal */
 .modal-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -475,3 +539,48 @@
     border-color: #b91c1c;
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
+
+/* =========================================
+   7. UTILIDADES Y RESPONSIVE FINO
+   ========================================= */
+.dash-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 0 0.5rem;
+}
+
+.welcome-text h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 0.25rem 0;
+}
+.welcome-text p {
+    color: #64748b;
+    margin: 0;
+}
+
+/* Ajustes para pantallas muy pequeñas */
+@media (max-width: 768px) {
+    .dashboard-scroll {
+        padding: 1.5rem;
+    }
+    .dash-top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    .team-panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    .btn-publish-big {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Fin de team.css */
