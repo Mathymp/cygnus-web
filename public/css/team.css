@@ -1,11 +1,17 @@
 /* =========================================
    TEAM.CSS - GESTIÓN DE AGENTES (CORREGIDO)
-   Layout con sidebar sticky y scroll en main
+   Layout con sidebar fijo y scroll en main
    ========================================= */
 
 /* -----------------------------------------
    1. RESET Y LAYOUT PRINCIPAL
    ----------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 html, body {
     height: 100%;
     margin: 0;
@@ -46,13 +52,14 @@ aside.sidebar {
     overflow-y: auto;       /* ¡ACTIVA EL SCROLL VERTICAL! */
     background-color: #f8fafc;
     display: block;
+    position: relative;
 }
 
 /* Contenedor interno con espaciado */
 .dashboard-scroll {
     padding: 2rem 2rem 3rem 2rem;
     min-height: 100%;       /* Ocupa todo el alto disponible */
-    box-sizing: border-box;
+    width: 100%;
 }
 
 /* =========================================
