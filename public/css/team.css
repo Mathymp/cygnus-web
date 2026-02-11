@@ -1,10 +1,10 @@
 /* =========================================
-   TEAM.CSS - GESTIÓN DE AGENTES (CORREGIDO)
+   TEAM.CSS - GESTIÓN DE AGENTES (FIX DEFINITIVO)
    Layout con sidebar fijo y scroll en main
    ========================================= */
 
 /* -----------------------------------------
-   1. RESET Y LAYOUT PRINCIPAL
+   1. RESET Y LAYOUT PRINCIPAL (REFORZADO)
    ----------------------------------------- */
 *,
 *::before,
@@ -22,8 +22,8 @@ html, body {
 
 .app-layout {
     display: flex;
-    height: 100vh;          /* Altura total de la ventana */
-    overflow: hidden;       /* Elimina doble scroll */
+    height: 100%;           /* 100% en lugar de 100vh (más fiable) */
+    overflow: hidden;
     width: 100%;
 }
 
@@ -32,34 +32,36 @@ html, body {
    ----------------------------------------- */
 aside.sidebar {
     width: 280px;
-    height: 100vh;
+    height: 100%;
     position: sticky;
     top: 0;
     left: 0;
     flex-shrink: 0;
-    overflow-y: auto;       /* Scroll si el menú es muy largo */
+    overflow-y: auto;
     background: #ffffff;
     border-right: 1px solid #e2e8f0;
     z-index: 1000;
 }
 
 /* -----------------------------------------
-   3. CONTENIDO PRINCIPAL (DESPLAZABLE)
+   3. CONTENIDO PRINCIPAL (SCROLL GARANTIZADO)
    ----------------------------------------- */
 .main-content {
     flex: 1;
-    height: 100vh;          /* Misma altura que la ventana */
-    overflow-y: auto;       /* ¡ACTIVA EL SCROLL VERTICAL! */
+    height: 100%;           /* Hereda altura del padre */
+    display: flex;
+    flex-direction: column; /* Asegura que el hijo pueda tomar altura */
     background-color: #f8fafc;
-    display: block;
     position: relative;
 }
 
-/* Contenedor interno con espaciado */
+/* Contenedor interno con espaciado - AQUÍ SE APLICA EL SCROLL */
 .dashboard-scroll {
     padding: 2rem 2rem 3rem 2rem;
-    min-height: 100%;       /* Ocupa todo el alto disponible */
-    width: 100%;
+    flex: 1 1 auto;         /* Ocupa todo el espacio disponible */
+    overflow-y: auto;       /* ← ACTIVA EL SCROLL VERTICAL AQUÍ */
+    height: 0;             /* Truco para forzar overflow en flex hijos */
+    min-height: 0;
 }
 
 /* =========================================

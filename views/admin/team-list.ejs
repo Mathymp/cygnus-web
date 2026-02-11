@@ -9,8 +9,9 @@
     <div class="app-layout">
         <%- include('../partials/sidebar-admin') %>
 
-        <main class="main-content">
-            <div class="dashboard-scroll">
+        <!-- FIX: ESTILO INLINE QUE GARANTIZA SCROLL -->
+        <main class="main-content" style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+            <div class="dashboard-scroll" style="overflow-y: auto !important; flex: 1 1 auto; height: 0; min-height: 0;">
                 
                 <div class="dash-top-bar">
                     <div class="welcome-text">
@@ -130,10 +131,10 @@
     <script>
         const deleteModal = document.getElementById('deleteModal');
         const deleteNameSpan = document.getElementById('deleteAgentName');
-        let agentIdToDelete = null; // Variable para guardar el ID temporalmente
+        let agentIdToDelete = null;
 
         function openDeleteModal(id, name) {
-            agentIdToDelete = id; // Guardamos el ID
+            agentIdToDelete = id;
             deleteNameSpan.textContent = name;
             deleteModal.classList.add('active'); 
         }
@@ -143,20 +144,17 @@
             deleteModal.classList.remove('active');
         }
 
-        // LÓGICA DE ELIMINACIÓN CON FETCH (Sin recargar a página de error)
         async function confirmDelete() {
             if (!agentIdToDelete) return;
 
             const btn = document.getElementById('confirmDeleteBtn');
             const originalText = btn.innerText;
             
-            // Estado de carga
             btn.innerText = "Procesando...";
             btn.disabled = true;
             btn.style.opacity = "0.7";
 
             try {
-                // Llamada al Backend (Ruta corregida: /admin/agents/delete/:id)
                 const response = await fetch(`/admin/agents/delete/${agentIdToDelete}`, {
                     method: 'DELETE',
                     headers: {
@@ -167,7 +165,6 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Éxito: Recargar la página para ver cambios
                     window.location.reload();
                 } else {
                     alert("Error al eliminar: " + (data.message || "Error desconocido"));
@@ -188,12 +185,28 @@
             }
         }
 
-        // Cerrar al hacer clic fuera del modal
         window.onclick = function(event) {
             if (event.target == deleteModal) {
                 closeDeleteModal();
             }
         }
+
+        // === SCRIPT DE RESPALDO: FORZAR SCROLL SI NO APARECE ===
+        document.addEventListener('DOMContentLoaded', function() {
+            const scrollContainer = document.querySelector('.dashboard-scroll');
+            if (scrollContainer) {
+                // Forzar estilos inline por si acaso
+                scrollContainer.style.overflowY = 'auto';
+                scrollContainer.style.flex = '1 1 auto';
+                scrollContainer.style.height = '0';
+                scrollContainer.style.minHeight = '0';
+                
+                // Si aun así no hay scroll, mostrar un mensaje en consola (opcional)
+                if (scrollContainer.scrollHeight <= scrollContainer.clientHeight) {
+                    console.log('El contenido no requiere scroll. Nada que arreglar.');
+                }
+            }
+        });
     </script>
 </body>
 </html>
