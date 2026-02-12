@@ -7,7 +7,8 @@ const cookieParser = require('cookie-parser');
 const cron = require('node-cron');
 const axios = require('axios');
 const multer = require('multer'); // Necesario para detectar errores de upload
-const moment = require('moment-timezone'); // REFUERZO: Control total de tiempo
+// NOTA: Si no tienes 'moment-timezone' instalado, te dará error. 
+// Para evitar problemas en Render sin instalar nada nuevo, usaré la solución nativa más abajo.
 require('dotenv').config();
 
 // --- CONFIGURACIÓN DE ZONA HORARIA GLOBAL (RENDER/VERCEL FIX) ---
@@ -62,40 +63,43 @@ app.use(session({
 app.use(flash());
 
 // =========================================================
-// --- SISTEMA DE INDICADORES ECONÓMICOS (REFORZADO) ---
+// --- SISTEMA DE INDICADORES ECONÓMICOS (REFORZADO Y BLINDADO) ---
 // =========================================================
 
+// CORRECCIÓN CRÍTICA: Valores iniciales reales para evitar NaN si la API falla al inicio
 const BACKUP_INDICATORS = {
     uf: 38200.50,      
     usd: 960.00,       
     utm: 69500.00,     
     ipc: 0.8,       
     source: 'Respaldo Manual (Offline)',
-    date: moment().tz(CHILE_TZ).format()
+    date: new Date().toISOString()
 };
 
-// Inicialización para evitar el $NaN en el arranque
+// Inicialización de memoria con respaldo seguro
 app.locals.indicators = { ...BACKUP_INDICATORS };
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const updateEconomicIndicators = async () => {
-    const nowInChile = moment().tz(CHILE_TZ);
-    console.log(`🔄 [ECONOMÍA] Actualizando: ${nowInChile.format('DD-MM-YYYY HH:mm:ss')}`);
+    // Usamos fecha nativa para loguear la hora de Chile sin depender de moment
+    const nowInChile = new Date().toLocaleString("es-CL", { timeZone: CHILE_TZ });
+    console.log(`🔄 [ECONOMÍA] Actualizando: ${nowInChile}`);
 
     // INSTANCIA 1: mindicador.cl (Con reintentos y validación de tipos)
     for (let i = 1; i <= 4; i++) {
         try {
             const response = await axios.get('https://mindicador.cl/api', { timeout: 8000 });
             const data = response.data;
-            if (data && data.uf && data.uf.valor) {
+            // BLINDAJE: Validamos que data.uf.valor sea un número real
+            if (data && data.uf && !isNaN(parseFloat(data.uf.valor))) {
                 app.locals.indicators = {
-                    uf: Number(data.uf.valor),
-                    usd: data.dolar ? Number(data.dolar.valor) : app.locals.indicators.usd,
-                    utm: data.utm ? Number(data.utm.valor) : app.locals.indicators.utm,
-                    ipc: data.ipc ? Number(data.ipc.valor) : app.locals.indicators.ipc,
+                    uf: parseFloat(data.uf.valor),
+                    usd: data.dolar ? parseFloat(data.dolar.valor) : app.locals.indicators.usd,
+                    utm: data.utm ? parseFloat(data.utm.valor) : app.locals.indicators.utm,
+                    ipc: data.ipc ? parseFloat(data.ipc.valor) : app.locals.indicators.ipc,
                     source: 'API Principal (mindicador.cl)',
-                    date: nowInChile.format()
+                    date: new Date().toISOString()
                 };
                 console.log('✅ [ECONOMÍA] Éxito con API Principal.');
                 logIndicators();
@@ -111,23 +115,28 @@ const updateEconomicIndicators = async () => {
     try {
         const response2 = await axios.get('https://api.gael.cl/general/public/indicadores', { timeout: 8000 });
         if (response2.data && Array.isArray(response2.data)) {
-            const getVal = (code) => response2.data.find(idx => idx.Codigo === code)?.Valor;
+            const getVal = (code) => {
+                const item = response2.data.find(idx => idx.Codigo === code);
+                return item ? parseFloat(item.Valor) : null;
+            };
             
+            // BLINDAJE: Si getVal devuelve null, mantenemos el valor anterior (Backup)
             app.locals.indicators = {
-                uf: Number(getVal('UF')) || app.locals.indicators.uf,
-                usd: Number(getVal('Dolar')) || app.locals.indicators.usd,
-                utm: Number(getVal('UTM')) || app.locals.indicators.utm,
-                ipc: app.locals.indicators.ipc,
+                uf: getVal('UF') || app.locals.indicators.uf,
+                usd: getVal('Dolar') || app.locals.indicators.usd,
+                utm: getVal('UTM') || app.locals.indicators.utm,
+                ipc: app.locals.indicators.ipc, // Gael a veces no tiene IPC, mantenemos el anterior
                 source: 'API Secundaria (Gael)',
-                date: nowInChile.format()
+                date: new Date().toISOString()
             };
             console.log('✅ [ECONOMÍA] Éxito con API Secundaria.');
             logIndicators();
             return;
         }
     } catch (error) {
-        console.error(`   ❌ Fallo total indicadores.`);
+        console.error(`   ❌ Fallo total indicadores. Usando respaldo.`);
     }
+    // Si todo falla, marcamos como respaldo pero mantenemos los números del BACKUP_INDICATORS
     app.locals.indicators.source = 'Modo Respaldo Activo';
 };
 
@@ -135,15 +144,13 @@ function logIndicators() {
     console.log(`   📊 UF: $${app.locals.indicators.uf} | USD: $${app.locals.indicators.usd}`);
 }
 
-// Carga inicial
+// Carga inicial al levantar el servidor
 updateEconomicIndicators();
 
-// Cron configurado para las 02:00 AM hora de CHILE
-cron.schedule('0 2 * * *', () => {
+// Cron configurado para las 02:00 AM hora de CHILE (05:00 UTC)
+// Usamos notación UTC estándar para evitar dependencias
+cron.schedule('0 5 * * *', () => {
     updateEconomicIndicators();
-}, { 
-    scheduled: true,
-    timezone: CHILE_TZ 
 });
 
 app.get('/api/cron-update', async (req, res) => {
@@ -165,15 +172,25 @@ app.use((req, res, next) => {
     res.locals.error = req.flash('error');
     
     // Inyección blindada de indicadores
+    // Si app.locals.indicators falla, usa BACKUP_INDICATORS inmediatamente
     const current = app.locals.indicators || BACKUP_INDICATORS;
     res.locals.indicators = current;
+    
+    // Variables pre-formateadas numéricamente para evitar NaN en cálculos
     res.locals.ufValue = Number(current.uf) || BACKUP_INDICATORS.uf;
     res.locals.dolarValue = Number(current.usd) || BACKUP_INDICATORS.usd;
     res.locals.utmValue = Number(current.utm) || BACKUP_INDICATORS.utm;
     res.locals.ipcValue = (current.ipc !== undefined) ? Number(current.ipc) : BACKUP_INDICATORS.ipc; 
     
-    // Pasar moment y zona horaria a todas las vistas EJS
-    res.locals.moment = moment;
+    // Pasar helper de fecha nativa a todas las vistas
+    // Esto reemplaza a 'moment' en la vista para evitar errores
+    res.locals.formatDateChile = (isoDate) => {
+        if (!isoDate) return '-';
+        try {
+            return new Date(isoDate).toLocaleString("en-GB", { timeZone: CHILE_TZ });
+        } catch (e) { return isoDate; }
+    };
+    
     res.locals.CHILE_TZ = CHILE_TZ;
     
     next();
