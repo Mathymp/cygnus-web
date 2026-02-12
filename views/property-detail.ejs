@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
     <%- include('partials/head') %>
+    <!-- META VIEWPORT OBLIGATORIO PARA MÓVIL -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title><%= prop.title %> | Cygnus Group</title>
     <link rel="stylesheet" href="/css/property-detail.css">
     <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet">
@@ -140,7 +142,7 @@
 
     <div class="main-container">
         <div class="content-grid">
-            <!-- COLUMNA IZQUIERDA (DESKTOP) / TODOS LOS BLOQUES (MÓVIL VÍA DISPLAY:CONTENTS) -->
+            <!-- COLUMNA IZQUIERDA (DESKTOP) – TODOS LOS BLOQUES CON CLASES DE ORDEN -->
             <div class="col-left">
                 <!-- HEADER -->
                 <header class="prop-header block-header">
@@ -203,7 +205,7 @@
                     </div>
                 </div>
 
-                <!-- SUPERFICIE (se muestra solo si hay datos) -->
+                <!-- SUPERFICIE (solo si hay datos) -->
                 <% if(hasSurface) { %>
                 <div class="surface-mini-card block-surface">
                     <% if(prop.surface_util > 0) { %>
