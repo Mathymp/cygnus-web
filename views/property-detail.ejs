@@ -79,7 +79,7 @@
             }
         }
         
-        // --- LÓGICA DE CARACTERÍSTICAS ---
+        // --- LÓGICA DE CARACTERÍSTICAS (FEATURES) ---
         let featureGroups = {};
         let hasFeatures = false;
         try {
@@ -140,9 +140,10 @@
 
     <div class="main-container">
         <div class="content-grid">
-            <!-- COLUMNA IZQUIERDA: TODO EL CONTENIDO (HEADER, GALERÍA, SUPERFICIE, FICHA, DESCRIPCIÓN, MAPA) -->
+            <!-- COLUMNA IZQUIERDA (DESKTOP) / TODOS LOS BLOQUES (MÓVIL VÍA DISPLAY:CONTENTS) -->
             <div class="col-left">
-                <header class="prop-header">
+                <!-- HEADER -->
+                <header class="prop-header block-header">
                     <h1 class="prop-title"><%= prop.title %></h1>
                     <div class="address-inline">
                         <i class="fas fa-map-marker-alt map-icon"></i>
@@ -161,10 +162,9 @@
                     </div>
                 </header>
 
-                <!-- GALERÍA DE FOTOS -->
-                <div class="gallery-container">
+                <!-- GALERÍA -->
+                <div class="gallery-container block-gallery">
                     <div class="main-stage" id="mainStage" onclick="toggleZoom(event)">
-                        
                         <% if(statusConfig.showOverlay) { %>
                             <div class="status-overlay-center">
                                 <div class="status-glass-card <%= statusConfig.glassClass %>">
@@ -172,7 +172,6 @@
                                 </div>
                             </div>
                         <% } %>
-
                         <div class="img-overlay-left">
                             <span class="badge op-badge <%= isRent ? 'rent' : 'sale' %>">
                                 <%= prop.operation_type || 'Venta' %>
@@ -204,9 +203,9 @@
                     </div>
                 </div>
 
-                <!-- SUPERFICIE (DESTACADA, JUSTO DEBAJO DE LAS FOTOS) -->
+                <!-- SUPERFICIE (se muestra solo si hay datos) -->
                 <% if(hasSurface) { %>
-                <div class="surface-mini-card">
+                <div class="surface-mini-card block-surface">
                     <% if(prop.surface_util > 0) { %>
                     <div class="surface-mini-item">
                         <span class="surface-mini-label"><i class="fas fa-vector-square"></i> Útil</span>
@@ -230,7 +229,7 @@
 
                 <!-- FICHA TÉCNICA (DISTRIBUCIÓN Y DETALLES) -->
                 <% if(showSpecsSection) { %>
-                <div class="specs-section compact">
+                <div class="specs-section compact block-specs">
                     <% if(hasDistrib) { %>
                     <div class="specs-row">
                         <h4 class="specs-title"><i class="fas fa-door-open"></i> Distribución</h4>
@@ -254,7 +253,7 @@
                                 <i class="fas fa-car spec-icon"></i>
                                 <div class="spec-data">
                                     <strong class="spec-value"><%= prop.parking %></strong>
-                                    <span class="spec-label">Estacionamientos</span>
+                                    <span class="spec-label">Estac.</span>
                                 </div>
                             </div>
                             <% } %>
@@ -306,17 +305,17 @@
                     <% } %>
                 </div>
                 <% } %>
-                
+
                 <!-- DESCRIPCIÓN -->
-                <div class="specs-section">
+                <div class="specs-section block-description">
                     <h3 class="section-title"><i class="fas fa-align-left"></i> Descripción</h3>
                     <div class="desc-text">
                         <%- prop.description %>
                     </div>
                 </div>
 
-                <!-- MAPA DE UBICACIÓN -->
-                <section class="info-section">
+                <!-- MAPA -->
+                <section class="info-section block-map">
                     <h3 class="section-title"><i class="fas fa-map-marked-alt"></i> Ubicación</h3>
                     <div class="map-frame">
                         <div id="google-map"></div>
@@ -327,18 +326,16 @@
                 </section>
             </div> <!-- /.col-left -->
 
-            <!-- COLUMNA DERECHA: TARJETA DE PRECIO, AGENTE, CARACTERÍSTICAS -->
+            <!-- COLUMNA DERECHA (DESKTOP) – PRECIO Y CARACTERÍSTICAS -->
             <div class="col-right">
-                <div class="sticky-widget">
-                    
+                <!-- TARJETA DE PRECIO -->
+                <div class="sticky-widget block-price">
                     <div class="status-pill-widget <%= statusConfig.solidClass %>">
                         <%= statusConfig.text %>
                     </div>
-
                     <div class="uf-corner-badge" title="Valor UF Actualizado">
                         UF <%= fmtCLP(ufVal).replace('$ ', '$') %>
                     </div>
-                    
                     <div class="price-header">
                         <span class="lbl-op">Valor de <%= prop.operation_type || 'Venta' %></span>
                         <div class="price-main"><%= mainPriceDisplay %> <%- rentSuffix %></div>
@@ -346,7 +343,6 @@
                             <span class="price-pill-small">Aprox. <%= subPriceDisplay %></span>
                         </div>
                     </div>
-
                     <% if(prop.common_expenses > 0 || prop.contributions > 0) { %>
                     <div class="extra-costs">
                         <% if(prop.common_expenses > 0) { %>
@@ -357,9 +353,7 @@
                         <% } %>
                     </div>
                     <% } %>
-                    
                     <div class="h-line-soft"></div>
-                    
                     <div class="agent-row">
                         <div class="agent-img-wrap"><img src="<%= contactInfo.photo %>" alt="Agente"></div>
                         <div class="agent-txt">
@@ -369,7 +363,6 @@
                             <span class="agent-role-small"><%= contactInfo.role %></span>
                         </div>
                     </div>
-                    
                     <div class="action-btns">
                         <a href="#" id="btnWsp" target="_blank" class="btn btn-whatsapp">
                             <i class="fab fa-whatsapp"></i> WhatsApp
@@ -379,9 +372,9 @@
                     </div>
                 </div>
 
-                <!-- CARACTERÍSTICAS (WIDGET COMPACTO) -->
+                <!-- CARACTERÍSTICAS DESTACADAS -->
                 <% if(hasFeatures) { %>
-                    <div class="features-widget">
+                    <div class="features-widget block-features">
                         <div class="fw-header">
                             <h3 class="fw-title">Características destacadas</h3>
                         </div>
@@ -416,7 +409,6 @@
             const wspNum = "<%= contactInfo.wspNumber %>";
             const text = `Hola, vi la propiedad ${titleClean} en: ${currentUrl}`;
             const link = `https://wa.me/${wspNum}?text=${encodeURIComponent(text)}`;
-            
             document.getElementById('btnWsp').href = link;
         });
 
