@@ -3,8 +3,8 @@ const supabase = require('../config/supabaseClient');
 
 const logActivity = async (userId, userName, action, entity, details) => {
     try {
-        // Guardamos SIEMPRE en UTC (ISO String)
-        // El dashboardController se encarga de pasarlo a Hora Chile al leerlo.
+        // Guardamos SIEMPRE en formato ISO (UTC) estándar.
+        // Esto evita líos de zonas horarias en la base de datos.
         await supabase.from('activity_logs').insert([{
             user_id: userId,
             user_name: userName,
