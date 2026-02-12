@@ -11,6 +11,7 @@
     --c-text: #334155;
     --font: 'Satoshi', sans-serif;
     --shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    --space-md: 24px;
 }
 
 /* ---------- RESET Y GLOBAL ---------- */
@@ -44,7 +45,8 @@ body {
     margin-top: 20px;
 }
 
-.col-left, .col-right {
+.col-left,
+.col-right {
     min-width: 0;
 }
 
@@ -831,7 +833,7 @@ body {
 }
 
 /* =========================================
-   MEDIA QUERIES – MÓVIL Y TABLET
+   MEDIA QUERIES – MÓVIL Y TABLET (≤900px)
    ========================================= */
 @media (max-width: 900px) {
     /* Contenedor principal: más ancho en móvil */
@@ -839,19 +841,19 @@ body {
         padding: 20px 12px;
     }
 
-    /* Convertir grid en flujo vertical */
+    /* Grid se convierte en flujo vertical */
     .content-grid {
         display: flex;
         flex-direction: column;
     }
 
-    /* Ocultar cajas contenedoras para reordenar con order */
+    /* Ocultar columnas para reordenar con order */
     .col-left,
     .col-right {
         display: contents;
     }
 
-    /* Asignar orden a cada bloque */
+    /* ORDEN DE LOS BLOQUES */
     .block-header {
         order: 1;
     }
@@ -875,6 +877,23 @@ body {
     }
     .block-map {
         order: 8;
+    }
+
+    /* Espaciado uniforme entre bloques */
+    .block-header,
+    .block-gallery,
+    .block-price,
+    .block-surface,
+    .block-specs,
+    .block-description,
+    .block-features,
+    .block-map {
+        margin-bottom: 24px;
+    }
+
+    /* La galería no necesita margen inferior adicional */
+    .block-gallery {
+        margin-bottom: 0;
     }
 
     /* Imagen principal: 16:9 sin recortes */
@@ -919,7 +938,7 @@ body {
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
 
-    /* Ajustes de miniaturas */
+    /* Miniaturas */
     .thumb-scroll-wrapper {
         padding: 0 30px;
     }
@@ -928,19 +947,23 @@ body {
     .sticky-widget {
         position: static !important;
         top: auto;
-        margin-bottom: 20px;
         width: 100%;
     }
 
-    /* Superficie: separación y ancho completo */
+    /* ---------- TARJETA DE SUPERFICIE (MÓVIL) ---------- */
     .surface-mini-card {
         margin-top: 0;
-        margin-bottom: 20px;
-        width: 100%;
+        margin-bottom: 0;
+        justify-content: center;
         gap: 24px;
+        padding: 16px 20px;
     }
 
-    /* FICHA TÉCNICA: 2 columnas fijas en móvil */
+    /* ---------- FICHA TÉCNICA (MÓVIL) ---------- */
+    .specs-section {
+        padding: 20px;
+        margin-bottom: 0;
+    }
     .specs-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
@@ -951,31 +974,33 @@ body {
     .spec-card {
         padding: 10px;
     }
-    .spec-value {
-        font-size: 1rem;
-    }
 
-    /* Características: 1 columna para mejor legibilidad */
+    /* ---------- CARACTERÍSTICAS DESTACADAS (MÓVIL) ---------- */
+    .features-widget {
+        margin-top: 0;
+        margin-bottom: 0;
+        padding: 20px;
+    }
     .fw-list {
         grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .fw-item {
+        width: 100%;
+        padding: 8px 12px;
+        font-size: 0.85rem;
     }
 
-    /* Ajuste de mapa */
+    /* ---------- MAPA (MÓVIL) ---------- */
     .map-frame {
-        height: 280px;
+        height: 240px;
+        margin-bottom: 0;
     }
 }
 
 @media (max-width: 480px) {
-    /* Ajustes para pantallas muy pequeñas */
     .surface-mini-card {
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: 16px;
-    }
-    .surface-mini-item {
-        flex: 0 0 auto;
+        gap: 20px;
     }
     .surface-mini-value {
         font-size: 1.2rem;
@@ -988,7 +1013,10 @@ body {
 @media (max-width: 360px) {
     .surface-mini-card {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
         gap: 12px;
+    }
+    .surface-mini-item {
+        align-items: center;
     }
 }
