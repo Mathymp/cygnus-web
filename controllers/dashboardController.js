@@ -16,6 +16,7 @@ const manualDateChile = (utcDateString) => {
 };
 
 // --- HELPER: MONEDA ($ CLP) ---
+// Solo lo usaremos para elementos visuales que no requieren cálculo (como precios de lista)
 const formatMoney = (amount) => {
     const num = Number(amount);
     if (isNaN(num) || num === 0) return '$ ---';
@@ -26,9 +27,19 @@ const dashboardController = {
     getDashboard: async (req, res) => {
         try {
             // 1. OBTENER INDICADORES DE MEMORIA (APP.JS)
-            // Si por milagro están vacíos, usamos ceros, pero app.js ya los inicializó.
-            const indicators = req.app.locals.indicators || { uf: 0, usd: 0, utm: 0, ipc: 0 };
-            console.log("📊 [DASHBOARD] Cargando indicadores:", indicators);
+            // app.js ya garantiza que estos son números, pero hacemos un fallback seguro.
+            const appIndicators = req.app.locals.indicators || {};
+            
+            // Aseguramos que sean NÚMEROS para que la vista pueda calcular
+            const indicators = {
+                uf: Number(appIndicators.uf) || 0,
+                usd: Number(appIndicators.usd) || 0,
+                utm: Number(appIndicators.utm) || 0,
+                ipc: Number(appIndicators.ipc) || 0,
+                date: appIndicators.date
+            };
+
+            console.log("📊 [DASHBOARD] Cargando indicadores (Numericos):", indicators);
 
             // 2. OBTENER LOGS DE ACTIVIDAD
             const { data: logsData } = await supabase
@@ -62,7 +73,7 @@ const dashboardController = {
                 .from('properties')
                 .select('*', { count: 'exact', head: true });
 
-            // 5. RENDERIZAR VISTA (Ruta corregida: 'dashboard')
+            // 5. RENDERIZAR VISTA
             res.render('dashboard', {
                 title: 'Panel de Control',
                 page: 'dashboard',
@@ -73,11 +84,13 @@ const dashboardController = {
                 properties,
                 totalProperties: count || 0,
 
-                // INDICADORES (Formateados directo para las tarjetas)
-                ufValue: formatMoney(indicators.uf),
-                dolarValue: formatMoney(indicators.usd),
-                utmValue: formatMoney(indicators.utm),
-                ipcValue: (indicators.ipc || 0) + '%',
+                // --- CORRECCIÓN CRÍTICA AQUÍ ---
+                // Pasamos los valores CRUDOS (Number) para que la vista pueda hacer Math
+                // La vista se encarga de ponerles el "$" con .toLocaleString()
+                ufValue: indicators.uf,
+                dolarValue: indicators.usd,
+                utmValue: indicators.utm,
+                ipcValue: indicators.ipc, // Se pasa el número (0.8), la vista añade el '%'
                 
                 // Fecha de última actualización de indicadores
                 lastUpdate: indicators.date ? manualDateChile(indicators.date) : 'Inicio'
@@ -93,7 +106,8 @@ const dashboardController = {
                 activityLogs: [],
                 properties: [],
                 totalProperties: 0,
-                ufValue: '$ ---', dolarValue: '$ ---', utmValue: '$ ---', ipcValue: '0%',
+                // En caso de error, pasamos 0 numérico para evitar NaN en vista
+                ufValue: 0, dolarValue: 0, utmValue: 0, ipcValue: 0,
                 lastUpdate: 'Error'
             });
         }
