@@ -1,3 +1,4 @@
+// Archivo: helpers/logger.js
 const supabase = require('../config/supabaseClient');
 
 const logActivity = async (userId, userName, action, entity, details) => {
@@ -7,7 +8,10 @@ const logActivity = async (userId, userName, action, entity, details) => {
             user_name: userName,
             action_type: action,
             entity: entity,
-            details: details
+            details: details,
+            // Guardamos la fecha actual del servidor (UTC) explícitamente.
+            // La conversión a hora Chile la hace el Dashboard al leerla.
+            created_at: new Date() 
         }]);
     } catch (error) {
         console.error("Error guardando log:", error.message);
