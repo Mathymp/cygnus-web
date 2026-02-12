@@ -7,7 +7,12 @@ const cookieParser = require('cookie-parser');
 const cron = require('node-cron');
 const axios = require('axios');
 const multer = require('multer'); // Necesario para detectar errores de upload
+const moment = require('moment-timezone'); // REFUERZO: Control total de tiempo
 require('dotenv').config();
+
+// --- CONFIGURACIÓN DE ZONA HORARIA GLOBAL (RENDER/VERCEL FIX) ---
+const CHILE_TZ = 'America/Santiago';
+process.env.TZ = CHILE_TZ;
 
 // --- NUEVOS REQUERIMIENTOS PARA SESIONES EN VERCEL ---
 const pgSession = require('connect-pg-simple')(session);
@@ -23,7 +28,6 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // --- Middlewares de Parseo (AUMENTADOS A 100MB) ---
-// Esto es para JSON y URL-Encoded. Multer maneja el Multipart (archivos).
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
@@ -58,61 +62,64 @@ app.use(session({
 app.use(flash());
 
 // =========================================================
-// --- SISTEMA DE INDICADORES ECONÓMICOS ---
+// --- SISTEMA DE INDICADORES ECONÓMICOS (REFORZADO) ---
 // =========================================================
 
 const BACKUP_INDICATORS = {
-    uf: 39700,      
-    usd: 975,       
-    utm: 69500,     
+    uf: 38200.50,      
+    usd: 960.00,       
+    utm: 69500.00,     
     ipc: 0.8,       
     source: 'Respaldo Manual (Offline)',
-    date: new Date()
+    date: moment().tz(CHILE_TZ).format()
 };
 
+// Inicialización para evitar el $NaN en el arranque
 app.locals.indicators = { ...BACKUP_INDICATORS };
 
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const updateEconomicIndicators = async () => {
-    console.log('🔄 [ECONOMÍA] Iniciando ciclo de actualización...');
+    const nowInChile = moment().tz(CHILE_TZ);
+    console.log(`🔄 [ECONOMÍA] Actualizando: ${nowInChile.format('DD-MM-YYYY HH:mm:ss')}`);
 
-    // INSTANCIA 1: mindicador.cl
+    // INSTANCIA 1: mindicador.cl (Con reintentos y validación de tipos)
     for (let i = 1; i <= 4; i++) {
         try {
-            const response = await axios.get('https://mindicador.cl/api', { timeout: 5000 });
+            const response = await axios.get('https://mindicador.cl/api', { timeout: 8000 });
             const data = response.data;
-            if (data && data.uf) {
+            if (data && data.uf && data.uf.valor) {
                 app.locals.indicators = {
-                    uf: data.uf.valor,
-                    usd: data.dolar ? data.dolar.valor : app.locals.indicators.usd,
-                    utm: data.utm ? data.utm.valor : app.locals.indicators.utm,
-                    ipc: data.ipc ? data.ipc.valor : app.locals.indicators.ipc,
+                    uf: Number(data.uf.valor),
+                    usd: data.dolar ? Number(data.dolar.valor) : app.locals.indicators.usd,
+                    utm: data.utm ? Number(data.utm.valor) : app.locals.indicators.utm,
+                    ipc: data.ipc ? Number(data.ipc.valor) : app.locals.indicators.ipc,
                     source: 'API Principal (mindicador.cl)',
-                    date: new Date()
+                    date: nowInChile.format()
                 };
                 console.log('✅ [ECONOMÍA] Éxito con API Principal.');
                 logIndicators();
                 return; 
             }
         } catch (error) {
-            console.warn(`   ⚠️ Intento ${i} fallido.`);
-            if (i < 4) await wait(2000); 
+            console.warn(`   ⚠️ Intento ${i} fallido mindicador.`);
+            if (i < 4) await wait(3000); 
         }
     }
 
-    // INSTANCIA 2: findic.cl
+    // INSTANCIA 2: gael.cl (Más confiable que findic para producción)
     try {
-        const response2 = await axios.get('https://findic.cl/api/', { timeout: 5000 });
-        const data2 = response2.data;
-        if (data2 && data2.uf) {
+        const response2 = await axios.get('https://api.gael.cl/general/public/indicadores', { timeout: 8000 });
+        if (response2.data && Array.isArray(response2.data)) {
+            const getVal = (code) => response2.data.find(idx => idx.Codigo === code)?.Valor;
+            
             app.locals.indicators = {
-                uf: parseFloat(data2.uf.valor),
-                usd: parseFloat(data2.dolar.valor),
-                utm: parseFloat(data2.utm.valor),
-                ipc: parseFloat(data2.ipc.valor || 0),
-                source: 'API Secundaria (findic.cl)',
-                date: new Date()
+                uf: Number(getVal('UF')) || app.locals.indicators.uf,
+                usd: Number(getVal('Dolar')) || app.locals.indicators.usd,
+                utm: Number(getVal('UTM')) || app.locals.indicators.utm,
+                ipc: app.locals.indicators.ipc,
+                source: 'API Secundaria (Gael)',
+                date: nowInChile.format()
             };
             console.log('✅ [ECONOMÍA] Éxito con API Secundaria.');
             logIndicators();
@@ -121,18 +128,23 @@ const updateEconomicIndicators = async () => {
     } catch (error) {
         console.error(`   ❌ Fallo total indicadores.`);
     }
-    app.locals.indicators.source = 'Modo Respaldo';
+    app.locals.indicators.source = 'Modo Respaldo Activo';
 };
 
 function logIndicators() {
     console.log(`   📊 UF: $${app.locals.indicators.uf} | USD: $${app.locals.indicators.usd}`);
 }
 
+// Carga inicial
 updateEconomicIndicators();
 
+// Cron configurado para las 02:00 AM hora de CHILE
 cron.schedule('0 2 * * *', () => {
     updateEconomicIndicators();
-}, { timezone: "America/Santiago" });
+}, { 
+    scheduled: true,
+    timezone: CHILE_TZ 
+});
 
 app.get('/api/cron-update', async (req, res) => {
     try {
@@ -144,7 +156,7 @@ app.get('/api/cron-update', async (req, res) => {
 });
 
 // =========================================================
-// --- Middleware Global ---
+// --- Middleware Global (Seguridad de Datos para Vistas) ---
 // =========================================================
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
@@ -152,12 +164,17 @@ app.use((req, res, next) => {
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');
     
+    // Inyección blindada de indicadores
     const current = app.locals.indicators || BACKUP_INDICATORS;
     res.locals.indicators = current;
-    res.locals.ufValue = current.uf || BACKUP_INDICATORS.uf;
-    res.locals.dolarValue = current.usd || BACKUP_INDICATORS.usd;
-    res.locals.utmValue = current.utm || BACKUP_INDICATORS.utm;
-    res.locals.ipcValue = (current.ipc !== undefined) ? current.ipc : BACKUP_INDICATORS.ipc; 
+    res.locals.ufValue = Number(current.uf) || BACKUP_INDICATORS.uf;
+    res.locals.dolarValue = Number(current.usd) || BACKUP_INDICATORS.usd;
+    res.locals.utmValue = Number(current.utm) || BACKUP_INDICATORS.utm;
+    res.locals.ipcValue = (current.ipc !== undefined) ? Number(current.ipc) : BACKUP_INDICATORS.ipc; 
+    
+    // Pasar moment y zona horaria a todas las vistas EJS
+    res.locals.moment = moment;
+    res.locals.CHILE_TZ = CHILE_TZ;
     
     next();
 });
@@ -172,9 +189,7 @@ app.use('/', webRoutes);
 app.use((err, req, res, next) => {
     console.error("🔥 Error detectado:", err);
 
-    // Detección específica de errores de Multer (Tamaño)
     if (err instanceof multer.MulterError) {
-        console.error("📸 Error de Multer:", err.code);
         if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(413).json({ success: false, message: 'El archivo es demasiado grande (Máx 100MB).' });
         }
@@ -184,7 +199,6 @@ app.use((err, req, res, next) => {
         return res.status(500).json({ success: false, message: `Error de subida: ${err.message}` });
     }
 
-    // Error 413 Genérico (Body Parser o Nginx)
     if (err.type === 'entity.too.large' || err.statusCode === 413) {
         return res.status(413).json({ success: false, message: 'La solicitud es demasiado pesada para el servidor.' });
     }
@@ -199,7 +213,6 @@ app.use((err, req, res, next) => {
     res.status(500).render('index', { 
         title: 'Error del Servidor',
         activePage: 'home',
-        ufValue: 0, dolarValue: 0, utmValue: 0, ipcValue: 0,
         error: 'Ocurrió un problema inesperado.'
     });
 });
@@ -216,7 +229,7 @@ const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {
     app.listen(PORT, () => {
-        console.log(`✅ Servidor Cygnus listo en http://localhost:${PORT}`);
+        console.log(`✅ Servidor Cygnus Profesional listo en Puerto ${PORT} | Zona: ${CHILE_TZ}`);
     });
 }
 

@@ -1,14 +1,11 @@
-// Archivo: controllers/dashboardController.js
 const supabase = require('../config/supabaseClient');
 
-// --- HELPER 1: FECHA CHILE FORZADA (DD/MM/AAAA) ---
-// Usamos 'en-GB' porque siempre es Día/Mes. 'es-CL' a veces falla en Linux.
+// --- HELPER 1: FECHA CHILE FORZADA (DD/MM/AAAA HH:mm) ---
+// Usamos 'en-GB' para asegurar formato Día/Mes y forzamos la zona horaria de Chile.
 const manualDateChile = (utcDateString) => {
     if (!utcDateString) return '-';
-    
     try {
         const date = new Date(utcDateString);
-        
         const formatter = new Intl.DateTimeFormat('en-GB', {
             timeZone: 'America/Santiago',
             year: 'numeric',
@@ -16,108 +13,120 @@ const manualDateChile = (utcDateString) => {
             day: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
+            second: '2-digit',
             hour12: false
         });
-
-        // Retorna "12/02/2026, 16:30" (Día/Mes confirmado)
+        // Formato resultante: "12/02/2026 16:30:00"
         return formatter.format(date).replace(',', '');
-        
     } catch (e) {
-        console.error("Error fecha:", e);
-        return utcDateString.substring(0, 16).replace('T', ' ');
+        console.error("❌ Error formateando fecha:", e);
+        return utcDateString; 
     }
 };
 
-// --- HELPER 2: MONEDA SEGURA (Anti-NAAN) ---
+// --- HELPER 2: MONEDA CHILENA BLINDADA (Anti-NaN) ---
 const formatMoney = (amount) => {
-    // Convertimos a número por si viene como string
     const num = Number(amount);
-    
-    // Si no es número o es 0, devolvemos un placeholder o $0
-    if (isNaN(num)) return '$ ---';
+    // Si no es un número válido, devolvemos un string seguro para no romper la UI
+    if (isNaN(num) || num === 0) return '$ ---';
 
-    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(num);
+    return new Intl.NumberFormat('es-CL', {
+        style: 'currency',
+        currency: 'CLP',
+        minimumFractionDigits: 0
+    }).format(num);
 };
 
 const dashboardController = {
     getDashboard: async (req, res) => {
+        // Variables iniciales de seguridad
         let properties = [];
         let activityLogs = []; 
         let totalProperties = 0; 
 
         try {
-            // 1. LEER INDICADORES DESDE TU APP.JS
-            // Tu app.js guarda esto en app.locals.indicators
-            // Estructura esperada: { uf: 39700, usd: 975, ... }
+            // 1. RESCATE DE INDICADORES (Desde app.locals configurado en app.js)
+            // Usamos las claves exactas: uf, usd, utm, ipc
             const current = req.app.locals.indicators || { uf: 0, usd: 0, utm: 0, ipc: 0 };
 
-            // 2. OBTENER LOGS
-            const { data: logsData } = await supabase
+            // 2. OBTENER LOGS DE ACTIVIDAD
+            // Nota: He usado 'activity_logs' como en tu código, asegúrate que la tabla sea esa.
+            const { data: logsData, error: logsError } = await supabase
                 .from('activity_logs')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(10);
 
             if (logsData) {
-                // Aplicamos la corrección de fecha a cada log
                 activityLogs = logsData.map(log => ({
                     ...log,
-                    created_at: manualDateChile(log.created_at)
+                    // Blindamos la fecha para que se vea bien en Chile
+                    fecha_display: manualDateChile(log.created_at)
                 }));
             }
 
-            // 3. OBTENER PROPIEDADES (Para la tabla resumen)
-            const { data: propsData } = await supabase
+            // 3. OBTENER ÚLTIMAS PROPIEDADES (Resumen de tabla)
+            const { data: propsData, error: propsError } = await supabase
                 .from('properties')
                 .select(`*, agent:users ( name )`)
                 .order('created_at', { ascending: false })
                 .limit(5);
 
             if (propsData) {
-                // Aplicamos la corrección de fecha a las propiedades
                 properties = propsData.map(prop => ({
                     ...prop,
-                    created_at: manualDateChile(prop.created_at)
+                    // Blindamos la fecha de creación de la propiedad
+                    fecha_display: manualDateChile(prop.created_at),
+                    // Blindamos el precio si viene en CLP
+                    precio_display: formatMoney(prop.price) 
                 }));
             }
 
-            // 4. TOTAL PROPIEDADES (KPI)
-            const { count } = await supabase
+            // 4. KPI: TOTAL PROPIEDADES
+            const { count, error: countError } = await supabase
                 .from('properties')
                 .select('*', { count: 'exact', head: true }); 
             
             totalProperties = count || 0;
 
-            // 5. RENDERIZAR
-            res.render('dashboard', {
-                title: 'Panel ERP | Cygnus',
+            // 5. RENDERIZADO FINAL CON DATOS PRE-PROCESADOS
+            res.render('admin/dashboard', {
+                title: 'Panel de Control Profesional | CygnusGroup',
                 page: 'dashboard',
                 user: req.session.user,
                 
-                // Datos procesados
+                // Colecciones procesadas
                 activityLogs,   
                 properties,     
                 totalProperties,
                 
-                // INDICADORES ECONÓMICOS (Formateados aquí mismo)
-                // Usamos las claves exactas que tienes en app.js: uf, usd, utm, ipc
+                // INDICADORES ECONÓMICOS BLINDADOS (Listos para mostrar)
+                // Se procesan aquí para que la vista reciba solo texto limpio
                 ufValue: formatMoney(current.uf),
-                dolarValue: formatMoney(current.usd), // Ojo: en tu app.js es .usd
+                dolarValue: formatMoney(current.usd), 
                 utmValue: formatMoney(current.utm),
-                ipcValue: (current.ipc || 0) + '%'
+                ipcValue: (current.ipc || 0) + '%',
+                
+                // Metadatos de actualización
+                lastUpdate: current.date ? manualDateChile(current.date) : 'No disponible'
             });
 
         } catch (error) {
-            console.error('❌ Error Dashboard:', error);
-            // Render de seguridad
-            res.render('dashboard', {
-                title: 'Panel ERP',
+            console.error('🔥 Error Crítico en Dashboard Controller:', error);
+            
+            // Render de emergencia para que el sitio no se caiga (Failsafe)
+            res.render('admin/dashboard', {
+                title: 'Panel ERP (Modo Seguro)',
                 page: 'dashboard',
                 user: req.session.user,
                 activityLogs: [],
                 properties: [],
                 totalProperties: 0,
-                ufValue: '$ ---', dolarValue: '$ ---', utmValue: '$ ---', ipcValue: '0%'
+                ufValue: '$ ---', 
+                dolarValue: '$ ---', 
+                utmValue: '$ ---', 
+                ipcValue: '0%',
+                lastUpdate: 'Error de conexión'
             });
         }
     }
