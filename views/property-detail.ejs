@@ -7,7 +7,7 @@
     <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-50">
+<body>
 
     <%- include('partials/navbar') %>
 
@@ -21,7 +21,7 @@
         if(!images || images.length === 0) images = [{url: '/img/logo.png'}];
         images = images.map(img => img.url ? img.url : img);
 
-        // --- PROCESAMIENTO DE PRECIOS E INDICADORES ---
+        // --- PROCESAMIENTO DE PRECIOS ---
         const fmtCLP = (valor) => '$ ' + Number(valor).toLocaleString('es-CL', { maximumFractionDigits: 0 });
         const fmtUF = (valor) => 'UF ' + Number(valor).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
         
@@ -140,7 +140,7 @@
 
     <div class="main-container">
         <div class="content-grid">
-            <!-- COLUMNA IZQUIERDA - Parte 1: Header y Galería -->
+            <!-- COLUMNA IZQUIERDA: TODO EL CONTENIDO (HEADER, GALERÍA, SUPERFICIE, FICHA, DESCRIPCIÓN, MAPA) -->
             <div class="col-left">
                 <header class="prop-header">
                     <h1 class="prop-title"><%= prop.title %></h1>
@@ -203,9 +203,131 @@
                         <button class="thumb-nav right" onclick="scrollThumbs('right')"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
-            </div> <!-- /.col-left (parte 1) -->
 
-            <!-- COLUMNA DERECHA (Tarjeta de precio + características + superficie) -->
+                <!-- SUPERFICIE (DESTACADA, JUSTO DEBAJO DE LAS FOTOS) -->
+                <% if(hasSurface) { %>
+                <div class="surface-mini-card">
+                    <% if(prop.surface_util > 0) { %>
+                    <div class="surface-mini-item">
+                        <span class="surface-mini-label"><i class="fas fa-vector-square"></i> Útil</span>
+                        <span class="surface-mini-value"><%= prop.surface_util %><span class="surface-mini-unit">m²</span></span>
+                    </div>
+                    <% } %>
+                    <% if(prop.surface_total > 0) { %>
+                    <div class="surface-mini-item">
+                        <span class="surface-mini-label"><i class="fas fa-vector-square"></i> Total</span>
+                        <span class="surface-mini-value"><%= prop.surface_total %><span class="surface-mini-unit">m²</span></span>
+                    </div>
+                    <% } %>
+                    <% if(prop.surface_terrace > 0) { %>
+                    <div class="surface-mini-item">
+                        <span class="surface-mini-label"><i class="fas fa-umbrella-beach"></i> Terraza</span>
+                        <span class="surface-mini-value"><%= prop.surface_terrace %><span class="surface-mini-unit">m²</span></span>
+                    </div>
+                    <% } %>
+                </div>
+                <% } %>
+
+                <!-- FICHA TÉCNICA (DISTRIBUCIÓN Y DETALLES) -->
+                <% if(showSpecsSection) { %>
+                <div class="specs-section compact">
+                    <% if(hasDistrib) { %>
+                    <div class="specs-row">
+                        <h4 class="specs-title"><i class="fas fa-door-open"></i> Distribución</h4>
+                        <div class="specs-grid">
+                            <div class="spec-card">
+                                <i class="fas fa-bed spec-icon"></i>
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.bedrooms || 0 %></strong>
+                                    <span class="spec-label">Dormitorios</span>
+                                </div>
+                            </div>
+                            <div class="spec-card">
+                                <i class="fas fa-bath spec-icon"></i>
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.bathrooms || 0 %></strong>
+                                    <span class="spec-label">Baños</span>
+                                </div>
+                            </div>
+                            <% if(prop.parking > 0) { %>
+                            <div class="spec-card">
+                                <i class="fas fa-car spec-icon"></i>
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.parking %></strong>
+                                    <span class="spec-label">Estacionamientos</span>
+                                </div>
+                            </div>
+                            <% } %>
+                            <% if(prop.storage_units > 0) { %>
+                            <div class="spec-card">
+                                <i class="fas fa-box spec-icon"></i>
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.storage_units %></strong>
+                                    <span class="spec-label">Bodegas</span>
+                                </div>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% } %>
+
+                    <% if(hasDistrib && hasDetails) { %> <div class="h-line-soft"></div> <% } %>
+
+                    <% if(hasDetails) { %>
+                    <div class="specs-row">
+                        <h4 class="specs-title"><i class="fas fa-info-circle"></i> Detalles</h4>
+                        <div class="specs-grid">
+                            <% if(prop.condition) { %>
+                            <div class="spec-card wide">
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.condition %></strong>
+                                    <span class="spec-label">Estado</span>
+                                </div>
+                            </div>
+                            <% } %>
+                            <% if(prop.orientation) { %>
+                            <div class="spec-card wide">
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.orientation %></strong>
+                                    <span class="spec-label">Orientación</span>
+                                </div>
+                            </div>
+                            <% } %>
+                            <% if(prop.property_age > 0) { %>
+                            <div class="spec-card">
+                                <div class="spec-data">
+                                    <strong class="spec-value"><%= prop.property_age %> Años</strong>
+                                    <span class="spec-label">Antigüedad</span>
+                                </div>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+                    <% } %>
+                </div>
+                <% } %>
+                
+                <!-- DESCRIPCIÓN -->
+                <div class="specs-section">
+                    <h3 class="section-title"><i class="fas fa-align-left"></i> Descripción</h3>
+                    <div class="desc-text">
+                        <%- prop.description %>
+                    </div>
+                </div>
+
+                <!-- MAPA DE UBICACIÓN -->
+                <section class="info-section">
+                    <h3 class="section-title"><i class="fas fa-map-marked-alt"></i> Ubicación</h3>
+                    <div class="map-frame">
+                        <div id="google-map"></div>
+                        <% if(!prop.show_exact_address) { %>
+                            <div class="map-warning"><i class="fas fa-info-circle"></i> Ubicación aproximada</div>
+                        <% } %>
+                    </div>
+                </section>
+            </div> <!-- /.col-left -->
+
+            <!-- COLUMNA DERECHA: TARJETA DE PRECIO, AGENTE, CARACTERÍSTICAS -->
             <div class="col-right">
                 <div class="sticky-widget">
                     
@@ -239,7 +361,7 @@
                     <div class="h-line-soft"></div>
                     
                     <div class="agent-row">
-                        <div class="agent-img-wrap"><img src="<%= contactInfo.photo %>" alt="Empresa"></div>
+                        <div class="agent-img-wrap"><img src="<%= contactInfo.photo %>" alt="Agente"></div>
                         <div class="agent-txt">
                             <span class="tiny-lbl">Publicado por</span>
                             <h4><%= contactInfo.displayName %></h4>
@@ -257,11 +379,11 @@
                     </div>
                 </div>
 
-                <!-- CARACTERÍSTICAS (COMPACTAS) -->
+                <!-- CARACTERÍSTICAS (WIDGET COMPACTO) -->
                 <% if(hasFeatures) { %>
                     <div class="features-widget">
                         <div class="fw-header">
-                            <h3 class="fw-title">Características</h3>
+                            <h3 class="fw-title">Características destacadas</h3>
                         </div>
                         <% Object.keys(featureGroups).forEach(groupTitle => { %>
                             <div class="fw-group">
@@ -278,131 +400,7 @@
                         <% }) %>
                     </div>
                 <% } %>
-
-                <!-- SUPERFICIE (INTEGRADA JUSTO DEBAJO) -->
-                <% if(hasSurface) { %>
-                <div class="surface-mini-card">
-                    <% if(prop.surface_util > 0) { %>
-                    <div class="surface-mini-item">
-                        <span class="surface-mini-label">Útil</span>
-                        <span class="surface-mini-value"><%= prop.surface_util %> <span class="surface-mini-unit">m²</span></span>
-                    </div>
-                    <% } %>
-                    <% if(prop.surface_total > 0) { %>
-                    <div class="surface-mini-item">
-                        <span class="surface-mini-label">Total</span>
-                        <span class="surface-mini-value"><%= prop.surface_total %> <span class="surface-mini-unit">m²</span></span>
-                    </div>
-                    <% } %>
-                    <% if(prop.surface_terrace > 0) { %>
-                    <div class="surface-mini-item">
-                        <span class="surface-mini-label">Terraza</span>
-                        <span class="surface-mini-value"><%= prop.surface_terrace %> <span class="surface-mini-unit">m²</span></span>
-                    </div>
-                    <% } %>
-                </div>
-                <% } %>
-
             </div> <!-- /.col-right -->
-
-            <!-- COLUMNA IZQUIERDA - Parte 2: Distribución, Detalles, Descripción, Mapa -->
-            <div class="col-left">
-                <% if(showSpecsSection) { %>
-                <div class="specs-section compact">
-                    <% if(hasDistrib) { %>
-                    <div class="specs-row">
-                        <h4 class="specs-title">Distribución</h4>
-                        <div class="specs-grid">
-                            <div class="spec-card">
-                                <i class="fas fa-bed spec-icon"></i>
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.bedrooms || 0 %></strong>
-                                    <span class="spec-label">Dorms</span>
-                                </div>
-                            </div>
-                            <div class="spec-card">
-                                <i class="fas fa-bath spec-icon"></i>
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.bathrooms || 0 %></strong>
-                                    <span class="spec-label">Baños</span>
-                                </div>
-                            </div>
-                            <% if(prop.parking > 0) { %>
-                            <div class="spec-card">
-                                <i class="fas fa-car spec-icon"></i>
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.parking %></strong>
-                                    <span class="spec-label">Estac.</span>
-                                </div>
-                            </div>
-                            <% } %>
-                            <% if(prop.storage_units > 0) { %>
-                            <div class="spec-card">
-                                <i class="fas fa-box spec-icon"></i>
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.storage_units %></strong>
-                                    <span class="spec-label">Bodegas</span>
-                                </div>
-                            </div>
-                            <% } %>
-                        </div>
-                    </div>
-                    <% } %>
-
-                    <% if(hasDistrib && hasDetails) { %> <div style="height: 1px; background: #e2e8f0; margin: 20px 0; opacity: 0.6;"></div> <% } %>
-
-                    <% if(hasDetails) { %>
-                    <div class="specs-row">
-                        <h4 class="specs-title">Detalles</h4>
-                        <div class="specs-grid">
-                            <% if(prop.condition) { %>
-                            <div class="spec-card wide">
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.condition %></strong>
-                                    <span class="spec-label">Estado</span>
-                                </div>
-                            </div>
-                            <% } %>
-                            <% if(prop.orientation) { %>
-                            <div class="spec-card wide">
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.orientation %></strong>
-                                    <span class="spec-label">Orientación</span>
-                                </div>
-                            </div>
-                            <% } %>
-                            <% if(prop.property_age > 0) { %>
-                            <div class="spec-card">
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.property_age %> Años</strong>
-                                    <span class="spec-label">Antigüedad</span>
-                                </div>
-                            </div>
-                            <% } %>
-                        </div>
-                    </div>
-                    <% } %>
-                </div>
-                <% } %>
-                
-                <div class="specs-section">
-                    <h3 style="font-size: 1.4rem; color: #0f172a; margin-bottom: 20px; font-weight: 800;">Descripción</h3>
-                    <div class="desc-text">
-                        <%- prop.description %>
-                    </div>
-                </div>
-
-                <section class="info-section">
-                    <h3 style="font-size: 1.4rem; color: #0f172a; margin-bottom: 20px; font-weight: 800;">Ubicación</h3>
-                    <div class="map-frame">
-                        <div id="google-map"></div>
-                        <% if(!prop.show_exact_address) { %>
-                            <div class="map-warning"><i class="fas fa-info-circle"></i> Ubicación aproximada</div>
-                        <% } %>
-                    </div>
-                </section>
-            </div> <!-- /.col-left (parte 2) -->
-
         </div> <!-- /.content-grid -->
     </div> <!-- /.main-container -->
 
@@ -422,7 +420,7 @@
             document.getElementById('btnWsp').href = link;
         });
 
-        // --- GALERÍA LOGIC ---
+        // --- GALERÍA ---
         const images = <%- JSON.stringify(images) %>;
         let currentIdx = 0;
         const stageImg = document.getElementById('stageImg');

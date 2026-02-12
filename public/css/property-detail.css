@@ -11,6 +11,7 @@
     --c-text: #334155;
     --font: 'Satoshi', sans-serif;
     --shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    --surface-bg: #eff6ff;   /* Fondo para tarjeta de superficie */
 }
 
 /* ---------- RESET Y GLOBAL ---------- */
@@ -100,7 +101,7 @@ body {
 
 /* ---------- GALERÍA – CARRUSEL ---------- */
 .gallery-container {
-    margin-bottom: 0; /* SIN ESPACIO ENTRE CARRUSEL Y FICHA */
+    margin-bottom: 0; /* ← CERO ESPACIO DEBAJO */
 }
 
 .main-stage {
@@ -328,6 +329,46 @@ body {
     box-shadow: none;
 }
 
+/* ---------- TARJETA DE SUPERFICIE – DESTACADA ---------- */
+.surface-mini-card {
+    background: var(--surface-bg);
+    border: 1px solid var(--c-primary);
+    border-radius: 16px;
+    padding: 18px 24px;
+    margin-top: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 32px;
+    box-shadow: 0 4px 10px rgba(37,99,235,0.08);
+}
+.surface-mini-item {
+    display: flex;
+    flex-direction: column;
+}
+.surface-mini-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #1e4b8a;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+.surface-mini-value {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--c-dark);
+    line-height: 1;
+}
+.surface-mini-unit {
+    font-size: 0.85rem;
+    color: #2c5f9a;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
 /* ---------- FICHA TÉCNICA (DISTRIBUCIÓN Y DETALLES) ---------- */
 .specs-section {
     background: #ffffff;
@@ -476,43 +517,6 @@ body {
 }
 .fw-item span {
     font-weight: 600;
-}
-
-/* ---------- SUPERFICIE (TARJETA MINI) ---------- */
-.surface-mini-card {
-    background: white;
-    border: 1px solid var(--c-border);
-    border-radius: 16px;
-    padding: 16px 20px;
-    margin-top: 12px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-}
-.surface-mini-item {
-    display: flex;
-    flex-direction: column;
-}
-.surface-mini-label {
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    color: #94a3b8;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-}
-.surface-mini-value {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: var(--c-dark);
-    line-height: 1.2;
-}
-.surface-mini-unit {
-    font-size: 0.75rem;
-    color: #64748b;
-    font-weight: 500;
-    margin-left: 2px;
 }
 
 /* ---------- TARJETA DE PRECIO Y AGENTE (STICKY) ---------- */
@@ -713,7 +717,7 @@ body {
 }
 
 /* ---------- DESCRIPCIÓN Y MAPA ---------- */
-.info-section h3 {
+.section-title {
     font-size: 1.4rem;
     color: var(--c-dark);
     margin-bottom: 20px;
@@ -724,18 +728,14 @@ body {
     font-size: 1.05rem;
     color: #475569;
 }
-.desc-text sup {
-    top: -0.5em;
-    vertical-align: baseline;
-    font-size: smaller;
-    position: relative;
-}
+.desc-text sup,
 .desc-text sub {
-    bottom: -0.25em;
-    vertical-align: baseline;
     font-size: smaller;
     position: relative;
+    vertical-align: baseline;
 }
+.desc-text sup { top: -0.5em; }
+.desc-text sub { bottom: -0.25em; }
 
 .map-frame {
     height: 350px;
@@ -777,7 +777,7 @@ body {
     transition: opacity 0.2s;
 }
 
-/* ---------- SCROLLBAR PERSONALIZADO (GLOBAL) ---------- */
+/* ---------- SCROLLBAR PERSONALIZADO ---------- */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -805,11 +805,11 @@ body {
         gap: 30px;
     }
 
-    /* ----- IMAGEN PRINCIPAL: 16:9 SIN RECORTES (object-fit: contain) ----- */
+    /* IMAGEN PRINCIPAL: 16:9 SIN RECORTES */
     .main-stage {
         height: auto;
         aspect-ratio: 16 / 9;
-        background: #cbd5e1; /* color de relleno para las bandas */
+        background: #cbd5e1;
     }
     .main-stage img {
         object-fit: contain;
@@ -831,7 +831,7 @@ body {
         display: none !important;
     }
 
-    /* Ajuste overlays móvil */
+    /* Overlays en móvil */
     .img-overlay-left,
     .img-overlay-right {
         z-index: 60 !important;
@@ -858,7 +858,6 @@ body {
 
     .features-widget {
         margin-top: 30px;
-        order: 2;
     }
 
     .fw-list {
@@ -866,9 +865,9 @@ body {
     }
 
     .surface-mini-card {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 20px;
     }
 }
 
@@ -892,5 +891,10 @@ body {
 @media (max-width: 400px) {
     .fw-list {
         grid-template-columns: 1fr;
+    }
+    .surface-mini-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
     }
 }
