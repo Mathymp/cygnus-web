@@ -35,9 +35,9 @@ body {
    ========================================= */
 .content-grid {
     display: grid;
-    grid-template-columns: 2fr 1.1fr; 
+    grid-template-columns: 2fr 1.1fr;
     gap: 40px;
-    align-items: start;
+    align-items: start;   /* ✅ EVITA EL ESTIRAMIENTO VERTICAL */
     margin-top: 20px;
 }
 
