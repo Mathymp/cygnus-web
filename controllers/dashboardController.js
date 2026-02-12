@@ -1,16 +1,72 @@
 // Archivo: controllers/dashboardController.js
 const supabase = require('../config/supabaseClient');
 
+// Función auxiliar para formatear fecha a Chile (DD/MM/YYYY HH:mm)
+const formatDateChile = (utcDateString) => {
+    if (!utcDateString) return 'Fecha inválida';
+    
+    const date = new Date(utcDateString);
+    
+    // Usamos Intl.DateTimeFormat que es nativo y robusto para zonas horarias
+    const options = { 
+        timeZone: 'America/Santiago', 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        hour12: false 
+    };
+    
+    // Esto devuelve algo como "12/02/2026, 18:30"
+    // Lo limpiamos para que quede "12/02/2026 18:30"
+    return new Intl.DateTimeFormat('es-CL', options).format(date).replace(',', '');
+};
+
 const dashboardController = {
     getDashboard: async (req, res) => {
-        // Variables iniciales para la vista
         let properties = [];
         let activityLogs = []; 
         let totalProperties = 0; 
+        let ufValue = '---'; // Valor por defecto
 
         try {
             // =========================================================
-            // 1. Obtener Propiedades Recientes (Para la tabla - Máx 5)
+            // 1. OBTENER UF (Indicador Económico)
+            // =========================================================
+            try {
+                const response = await fetch('https://mindicador.cl/api/uf');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.serie && data.serie.length > 0) {
+                        // Formateamos a pesos chilenos (ej: $38.000,00)
+                        ufValue = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(data.serie[0].valor);
+                    }
+                }
+            } catch (ufError) {
+                console.error("⚠️ Error obteniendo UF:", ufError.message);
+                // Si falla, mostramos un valor guardado o '---'
+            }
+
+            // =========================================================
+            // 2. OBTENER LOGS DE ACTIVIDAD (Formato Chile Forzado)
+            // =========================================================
+            const { data: logsData, error: logsError } = await supabase
+                .from('activity_logs')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (logsData) {
+                activityLogs = logsData.map(log => ({
+                    ...log,
+                    // AQUÍ APLICAMOS LA CORRECCIÓN
+                    created_at: formatDateChile(log.created_at)
+                }));
+            }
+
+            // =========================================================
+            // 3. OBTENER PROPIEDADES RECIENTES (Tabla)
             // =========================================================
             const { data: propsData, error: propsError } = await supabase
                 .from('properties')
@@ -18,72 +74,38 @@ const dashboardController = {
                 .order('created_at', { ascending: false })
                 .limit(5);
 
-            if (propsError) {
-                console.error("❌ Error cargando tabla dashboard:", propsError.message);
-            } else if (propsData) {
-                properties = propsData; 
+            if (propsData) {
+                properties = propsData.map(prop => ({
+                    ...prop,
+                    // También formateamos la fecha de las propiedades por si acaso
+                    created_at: formatDateChile(prop.created_at)
+                }));
             }
 
             // =========================================================
-            // 2. OBTENER LOGS DE ACTIVIDAD (Con Conversión Horaria)
-            // =========================================================
-            const { data: logsData, error: logsError } = await supabase
-                .from('activity_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(10); // Traemos los últimos 10 movimientos
-
-            if (logsData) {
-                // AQUÍ ESTÁ LA MAGIA: Convertimos la hora UTC a Hora Chile
-                activityLogs = logsData.map(log => {
-                    // Creamos fecha a partir del dato crudo
-                    const utcDate = new Date(log.created_at);
-                    
-                    // La formateamos forzando la zona horaria de Santiago
-                    const chileTime = utcDate.toLocaleString('es-CL', { 
-                        timeZone: 'America/Santiago',
-                        day: '2-digit', 
-                        month: '2-digit', 
-                        year: 'numeric', 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        hour12: false // Formato 24hrs (14:00) o true para (02:00 PM)
-                    });
-
-                    return {
-                        ...log,
-                        // Sobreescribimos created_at con el string ya formateado
-                        // Así la vista lo mostrará directo sin tener que cambiar el EJS
-                        created_at: chileTime 
-                    };
-                });
-            }
-
-            // =========================================================
-            // 3. Obtener el total real de Propiedades (KPI)
+            // 4. ESTADÍSTICAS (KPIs)
             // =========================================================
             const { count, error: countError } = await supabase
                 .from('properties')
                 .select('*', { count: 'exact', head: true }); 
 
-            if (!countError) {
-                totalProperties = count;
-            }
+            if (!countError) totalProperties = count;
 
         } catch (error) {
-            console.error('❌ Error General Dashboard:', error);
+            console.error('❌ Error Crítico Dashboard:', error);
         }
 
-        // 4. Renderizar
+        // 5. Renderizar Vista
         res.render('dashboard', {
             title: 'Panel ERP | Cygnus',
             page: 'dashboard',
             user: req.session.user,
             
-            // Datos
-            activityLogs,   // Ahora llevan la hora chilena
+            // Datos procesados
+            activityLogs,   
             properties,     
-            totalProperties 
+            totalProperties,
+            ufValue // Enviamos la UF
         });
     }
 };
