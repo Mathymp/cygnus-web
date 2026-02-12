@@ -3,76 +3,76 @@
 <head>
     <%- include('partials/head') %>
     <title><%= prop.title %> | Cygnus Group</title>
-    <!-- CSS externo (si existe, se usa; si no, el style interno lo sobreescribe) -->
     <link rel="stylesheet" href="/css/property-detail.css">
     <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         /* =========================================
-           CYGNUS DETAIL – ESTILOS COMPACTOS DEFINITIVOS
+           CYGNUS DETAIL – DEFINITIVO (ULTRA COMPACTO)
            ========================================= */
         
-        /* ---------- GRID PRINCIPAL: elimina espacio bajo carrusel ---------- */
+        /* ----- GRID PRINCIPAL: SIN ESPACIO BAJO CARRUSEL ----- */
         .content-grid {
             display: grid;
             grid-template-columns: 2fr 1.1fr;
             gap: 40px;
-            align-items: start;        /* ← EVITA ESTIRAMIENTO VERTICAL */
+            align-items: start;        /* ← CLAVE: elimina estiramiento */
             margin-top: 20px;
         }
-        
-        /* ---------- FEATURES WIDGET – COMPACTADO Y PROFESIONAL ---------- */
+
+        /* ----- FEATURES WIDGET – COMPACTADO MÁXIMO ----- */
         .features-widget {
             background: white;
-            padding: 24px;              /* ↓ de 30px */
-            border-radius: 24px;
+            padding: 20px;              /* ↓ reducido de 24px */
+            border-radius: 20px;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
             border: 1px solid var(--c-border);
-            margin-top: 20px;           /* ↓ de 25px */
+            margin-top: 16px;           /* ↓ menos separación superior */
+            margin-bottom: 0;
         }
 
         .fw-header {
-            margin-bottom: 16px;        /* ↓ de 20px */
-            padding-bottom: 12px;       /* ↓ de 15px */
+            margin-bottom: 12px;
+            padding-bottom: 8px;
             border-bottom: 1px solid var(--c-border);
         }
 
         .fw-title {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 800;
             color: var(--c-dark);
             margin: 0;
         }
 
         .fw-group {
-            margin-bottom: 20px;        /* ↓ de 25px */
+            margin-bottom: 16px;        /* ↓ reducido */
         }
         .fw-group:last-child {
             margin-bottom: 0;
         }
 
         .fw-cat-title {
-            font-size: 0.75rem;        /* ↓ de 0.8rem */
+            font-size: 0.7rem;         /* más pequeño */
             text-transform: uppercase;
             color: #94a3b8;
             font-weight: 700;
-            margin: 0 0 10px 0;        /* ↓ de 12px */
+            margin: 0 0 8px 0;
             letter-spacing: 0.5px;
             display: flex;
             align-items: center;
-            gap: 6px;                 /* ↓ de 8px */
+            gap: 4px;
         }
         .fw-cat-title i {
             color: var(--c-primary);
             opacity: 0.7;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
 
         .fw-list {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;                 /* ↓ de 10px */
+            gap: 6px;                 /* ↓ mínimo */
             padding: 0;
             margin: 0;
             list-style: none;
@@ -81,14 +81,14 @@
         .fw-item {
             display: flex;
             align-items: center;
-            gap: 8px;                 /* ↓ de 10px */
-            font-size: 0.85rem;       /* ↓ de 0.9rem */
+            gap: 6px;
+            font-size: 0.8rem;        /* más pequeño */
             color: #475569;
             line-height: 1.2;
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
-            padding: 6px 10px;        /* ↓ de 8px 12px */
-            border-radius: 8px;
+            padding: 5px 8px;         /* más compacto */
+            border-radius: 6px;
             transition: all 0.2s ease;
         }
 
@@ -97,12 +97,11 @@
             border-color: #cbd5e1;
             box-shadow: 0 2px 5px rgba(0,0,0,0.03);
             transform: translateY(-1px);
-            color: var(--c-dark);
         }
 
         .fw-item i {
             color: #10b981;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             flex-shrink: 0;
         }
 
@@ -110,6 +109,48 @@
             font-weight: 600;
         }
 
+        /* ----- NUEVO: BLOQUE DE SUPERFICIE (junto a características) ----- */
+        .surface-mini-card {
+            background: white;
+            border: 1px solid var(--c-border);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .surface-mini-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .surface-mini-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .surface-mini-value {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--c-dark);
+            line-height: 1.2;
+        }
+
+        .surface-mini-unit {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 500;
+            margin-left: 2px;
+        }
+
+        /* ----- RESPONSIVE: móvil 1 columna ----- */
         @media (max-width: 900px) {
             .content-grid {
                 grid-template-columns: 1fr;
@@ -131,10 +172,14 @@
             }
             .features-widget {
                 margin-top: 30px;
-                order: 2;
             }
             .fw-list {
                 grid-template-columns: 1fr;  /* 1 columna en móvil */
+            }
+            .surface-mini-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
             }
         }
 
@@ -144,7 +189,7 @@
             }
         }
 
-        /* ---------- RESTO DE ESTILOS (sin cambios) ---------- */
+        /* ----- RESTO DE ESTILOS (sin cambios, pero compactados) ----- */
         :root {
             --c-dark: #0f172a;
             --c-primary: #2563eb; 
@@ -319,6 +364,7 @@
         .thumb-nav.left { left: 0; }
         .thumb-nav.right { right: 0; }
 
+        /* SECCIÓN ESPECIFICACIONES (ahora solo distribución y detalles, porque superficie se movió) */
         .specs-section {
             background: #ffffff;
             border: 1px solid var(--c-border);
@@ -327,8 +373,6 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
             margin-bottom: 30px;
         }
-
-        .specs-group { margin-bottom: 10px; }
 
         .specs-title {
             font-size: 0.85rem;
@@ -391,19 +435,10 @@
         }
 
         .h-line-soft { height: 1px; background: var(--c-border); margin: 20px 0; opacity: 0.6; }
-
         .h-line { height: 1px; background: var(--c-border); margin: 35px 0; }
 
         .info-section h3 { font-size: 1.4rem; color: var(--c-dark); margin-bottom: 20px; font-weight: 800; }
         .desc-text { line-height: 1.75; font-size: 1.05rem; color: #475569; }
-
-        .features-wrap { display: flex; flex-wrap: wrap; gap: 10px; }
-        .feat-tag {
-            background: white; border: 1px solid var(--c-border);
-            padding: 8px 16px; border-radius: 50px; font-size: 0.9rem;
-            display: flex; gap: 8px; align-items: center; color: #475569;
-        }
-        .feat-tag i { color: #10b981; }
 
         .map-frame {
             height: 350px; background: #e2e8f0; border-radius: 16px;
@@ -632,7 +667,7 @@
             subPriceDisplay = fmtUF(price / ufVal);
         }
 
-        // --- LÓGICA DE ESTADO CORREGIDA ---
+        // --- LÓGICA DE ESTADO ---
         let statusRaw = (prop.status || prop.state || 'disponible').toLowerCase().trim();
         const activeKeywords = ['disponible', 'publicada', 'publicado', 'activa', 'activo', 'en venta', 'en arriendo'];
         let isAvailable = activeKeywords.some(s => statusRaw.includes(s));
@@ -699,10 +734,10 @@
         } catch(e) {}
 
         const joinAddr = (...parts) => parts.filter(p => p && p.toString().trim().length > 0).join(', ');
-        const hasSurface = (prop.surface_util > 0 || prop.surface_total > 0 || prop.surface_terrace > 0);
+        const hasSurface = (prop.surface_util > 0 || prop.surface_total > 0);
         const hasDistrib = (prop.bedrooms > 0 || prop.bathrooms > 0 || prop.parking > 0 || prop.storage_units > 0);
         const hasDetails = (prop.condition || prop.orientation || (prop.property_age && prop.property_age > 0));
-        const showSpecsSection = (hasSurface || hasDistrib || hasDetails);
+        const showSpecsSection = (hasDistrib || hasDetails); // superficie ya no va aquí
 
         // --- LÓGICA AGENTE ---
         const cleanTitle = prop.title.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
@@ -794,7 +829,7 @@
                 </div>
             </div> <!-- /.col-left (parte 1) -->
 
-            <!-- COLUMNA DERECHA (Tarjeta de precio + características compactas) -->
+            <!-- COLUMNA DERECHA (Tarjeta de precio + características + superficie) -->
             <div class="col-right">
                 <div class="sticky-widget">
                     
@@ -846,8 +881,8 @@
                     </div>
                 </div>
 
+                <!-- CARACTERÍSTICAS (COMPACTAS) -->
                 <% if(hasFeatures) { %>
-                    <!-- FEATURES WIDGET – AHORA COMPACTO Y SIN ESPACIOS EXCESIVOS -->
                     <div class="features-widget">
                         <div class="fw-header">
                             <h3 class="fw-title">Características</h3>
@@ -867,46 +902,37 @@
                         <% }) %>
                     </div>
                 <% } %>
+
+                <!-- SUPERFICIE (INTEGRADA JUSTO DEBAJO) -->
+                <% if(hasSurface) { %>
+                <div class="surface-mini-card">
+                    <% if(prop.surface_util > 0) { %>
+                    <div class="surface-mini-item">
+                        <span class="surface-mini-label">Útil</span>
+                        <span class="surface-mini-value"><%= prop.surface_util %> <span class="surface-mini-unit">m²</span></span>
+                    </div>
+                    <% } %>
+                    <% if(prop.surface_total > 0) { %>
+                    <div class="surface-mini-item">
+                        <span class="surface-mini-label">Total</span>
+                        <span class="surface-mini-value"><%= prop.surface_total %> <span class="surface-mini-unit">m²</span></span>
+                    </div>
+                    <% } %>
+                    <% if(prop.surface_terrace > 0) { %>
+                    <div class="surface-mini-item">
+                        <span class="surface-mini-label">Terraza</span>
+                        <span class="surface-mini-value"><%= prop.surface_terrace %> <span class="surface-mini-unit">m²</span></span>
+                    </div>
+                    <% } %>
+                </div>
+                <% } %>
+
             </div> <!-- /.col-right -->
 
-            <!-- COLUMNA IZQUIERDA - Parte 2: Especificaciones, Descripción, Mapa -->
+            <!-- COLUMNA IZQUIERDA - Parte 2: Distribución, Detalles, Descripción, Mapa -->
             <div class="col-left">
                 <% if(showSpecsSection) { %>
                 <div class="specs-section compact">
-                    <% if(hasSurface) { %>
-                    <div class="specs-row">
-                        <h4 class="specs-title">Superficie</h4>
-                        <div class="specs-grid">
-                            <% if(prop.surface_util > 0) { %>
-                            <div class="spec-card">
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.surface_util %> m²</strong>
-                                    <span class="spec-label">Útil</span>
-                                </div>
-                            </div>
-                            <% } %>
-                            <% if(prop.surface_total > 0) { %>
-                            <div class="spec-card">
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.surface_total %> m²</strong>
-                                    <span class="spec-label">Total</span>
-                                </div>
-                            </div>
-                            <% } %>
-                            <% if(prop.surface_terrace > 0) { %>
-                            <div class="spec-card">
-                                <div class="spec-data">
-                                    <strong class="spec-value"><%= prop.surface_terrace %> m²</strong>
-                                    <span class="spec-label">Terraza</span>
-                                </div>
-                            </div>
-                            <% } %>
-                        </div>
-                    </div>
-                    <% } %>
-
-                    <% if(hasSurface && hasDistrib) { %> <div style="height: 1px; background: #e2e8f0; margin: 20px 0; opacity: 0.6;"></div> <% } %>
-
                     <% if(hasDistrib) { %>
                     <div class="specs-row">
                         <h4 class="specs-title">Distribución</h4>
@@ -947,7 +973,7 @@
                     </div>
                     <% } %>
 
-                    <% if((hasSurface || hasDistrib) && hasDetails) { %> <div style="height: 1px; background: #e2e8f0; margin: 20px 0; opacity: 0.6;"></div> <% } %>
+                    <% if(hasDistrib && hasDetails) { %> <div style="height: 1px; background: #e2e8f0; margin: 20px 0; opacity: 0.6;"></div> <% } %>
 
                     <% if(hasDetails) { %>
                     <div class="specs-row">
