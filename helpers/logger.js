@@ -9,7 +9,9 @@ const logActivity = async (userId, userName, action, entity, details) => {
             action_type: action,
             entity: entity,
             details: details,
-            created_at: new Date().toISOString() // Guardamos en UTC estándar
+            // Guardamos la fecha actual del servidor (UTC) explícitamente.
+            // La conversión a hora Chile la hace el Dashboard al leerla.
+            created_at: new Date() 
         }]);
     } catch (error) {
         console.error("Error guardando log:", error.message);
