@@ -2,32 +2,79 @@
 <html lang="es">
 <head>
     <%- include('../partials/head') %>
-    <!-- TEAM.CSS con !important (lo cargamos igual) -->
     <link rel="stylesheet" href="/css/team.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- ESTILOS INLINE DE EMERGENCIA (se aplican inmediatamente) -->
+    
     <style>
-        /* RESPALDO ABSOLUTO: si el CSS externo falla, esto lo pisa */
-        .app-layout { display: flex !important; height: 100vh !important; width: 100vw !important; overflow: hidden !important; }
-        aside.sidebar { width: 280px !important; height: 100vh !important; position: sticky !important; top: 0 !important; left: 0 !important; flex-shrink: 0 !important; overflow-y: auto !important; background: white !important; border-right: 1px solid #e2e8f0 !important; }
-        .main-content { flex: 1 1 0 !important; height: 100vh !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; background: #f8fafc !important; }
-        .dashboard-scroll { flex: 1 1 0 !important; overflow-y: auto !important; height: 0 !important; min-height: 0 !important; padding: 2rem !important; }
+        /* --- CORRECCIÓN DE SCROLL (LAYOUT DEFINITIVO) --- */
+        
+        /* 1. Bloqueamos el scroll del navegador principal */
+        html, body {
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            overflow: hidden !important;
+            background-color: #f8fafc;
+        }
+
+        /* 2. Contenedor Maestro: Flex horizontal (Sidebar | Contenido) */
+        .app-layout {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* 3. Sidebar: Fijo a la izquierda, altura completa */
+        aside.sidebar {
+            width: 280px;
+            height: 100vh;
+            flex-shrink: 0;
+            overflow-y: auto; /* Scroll interno si el menú es muy largo */
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            z-index: 50;
+        }
+
+        /* 4. Main Content: Columna vertical, SIN scroll propio */
+        .main-content {
+            flex: 1;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* IMPORTANTE: El scroll lo hace el hijo */
+            background-color: #f8fafc;
+            position: relative;
+        }
+
+        /* 5. Dashboard Scroll: El ÚNICO que hace scroll */
+        .dashboard-scroll {
+            flex: 1; /* Ocupa todo el espacio disponible */
+            overflow-y: auto !important; /* Fuerza el scroll vertical */
+            padding: 2rem;
+            height: 100%; /* Asegura altura para calcular el overflow */
+            scroll-behavior: smooth;
+        }
+
+        /* Ajustes Responsivos */
+        @media (max-width: 768px) {
+            aside.sidebar { display: none; } /* O manejar menú móvil */
+            .dashboard-scroll { padding: 1rem; }
+            .modern-table { min-width: 100%; }
+        }
     </style>
 </head>
-<body class="dashboard-body" style="margin:0; padding:0; height:100vh; overflow:hidden;">
-    <!-- ESTRUCTURA CON !important EN CADA ESTILO INLINE (anula todo) -->
-    <div class="app-layout" style="display: flex !important; height: 100vh !important; width: 100vw !important; overflow: hidden !important;">
+<body>
+    
+    <div class="app-layout">
         
-        <!-- SIDEBAR - Se asume que el partial genera un <aside class="sidebar"> -->
         <%- include('../partials/sidebar-admin') %>
 
-        <!-- MAIN: ALTURA COMPLETA Y SCREEN -->
-        <main class="main-content" style="flex: 1 1 0 !important; height: 100vh !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; background-color: #f8fafc !important;">
+        <main class="main-content">
             
-            <!-- CONTENEDOR SCROLL (EL ÚNICO QUE HACE SCROLL) -->
-            <div class="dashboard-scroll" style="flex: 1 1 0 !important; overflow-y: auto !important; height: 0 !important; min-height: 0 !important; padding: 2rem 2rem 3rem 2rem !important;">
+            <div class="dashboard-scroll">
                 
-                <!-- TOP BAR -->
                 <div class="dash-top-bar">
                     <div class="welcome-text">
                         <h1>Gestión de Talento</h1>
@@ -40,13 +87,12 @@
                     </div>
                 </div>
 
-                <!-- ALERTAS -->
-                <div style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
+                <div style="max-width: 1200px; margin: 0 auto; margin-bottom: 20px;">
                     <%- include('../partials/alerts') %>
                 </div>
 
-                <!-- TABLA DE AGENTES -->
                 <div class="team-table-container">
+                    
                     <div class="team-panel-header">
                         <h3 class="panel-title" style="margin: 0;">Directorio de Personal</h3>
                     </div>
@@ -121,12 +167,10 @@
                     </table>
                 </div>
 
-            </div> <!-- /.dashboard-scroll -->
-        </main>
-    </div> <!-- /.app-layout -->
+                <div style="height: 50px;"></div>
 
-    <!-- MODAL ELIMINAR -->
-    <div id="deleteModal" class="modal-overlay">
+            </div> </main>
+    </div> <div id="deleteModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-icon-warning">
                 <i class="ph-bold ph-warning"></i>
@@ -186,57 +230,6 @@
         window.onclick = function(event) {
             if (event.target == deleteModal) closeDeleteModal();
         };
-
-        // === NUCLEAR SCRIPT: FORZAR SIDEBAR 100% Y SCROLL ===
-        (function forcePerfectLayout() {
-            // Forzar en app-layout
-            const appLayout = document.querySelector('.app-layout');
-            if (appLayout) {
-                appLayout.style.setProperty('display', 'flex', 'important');
-                appLayout.style.setProperty('height', '100vh', 'important');
-                appLayout.style.setProperty('width', '100vw', 'important');
-                appLayout.style.setProperty('overflow', 'hidden', 'important');
-            }
-
-            // Forzar sidebar
-            const sidebar = document.querySelector('aside.sidebar');
-            if (sidebar) {
-                sidebar.style.setProperty('width', '280px', 'important');
-                sidebar.style.setProperty('height', '100vh', 'important');
-                sidebar.style.setProperty('position', 'sticky', 'important');
-                sidebar.style.setProperty('top', '0', 'important');
-                sidebar.style.setProperty('left', '0', 'important');
-                sidebar.style.setProperty('flex-shrink', '0', 'important');
-                sidebar.style.setProperty('overflow-y', 'auto', 'important');
-                sidebar.style.setProperty('background', '#ffffff', 'important');
-            }
-
-            // Forzar main-content
-            const mainContent = document.querySelector('.main-content');
-            if (mainContent) {
-                mainContent.style.setProperty('flex', '1 1 0', 'important');
-                mainContent.style.setProperty('height', '100vh', 'important');
-                mainContent.style.setProperty('display', 'flex', 'important');
-                mainContent.style.setProperty('flex-direction', 'column', 'important');
-                mainContent.style.setProperty('overflow', 'hidden', 'important');
-            }
-
-            // Forzar dashboard-scroll (el que debe scrollear)
-            const scrollContainer = document.querySelector('.dashboard-scroll');
-            if (scrollContainer) {
-                scrollContainer.style.setProperty('flex', '1 1 0', 'important');
-                scrollContainer.style.setProperty('overflow-y', 'auto', 'important');
-                scrollContainer.style.setProperty('height', '0', 'important');
-                scrollContainer.style.setProperty('min-height', '0', 'important');
-                scrollContainer.style.setProperty('padding', '2rem', 'important');
-                
-                // Opcional: forzar barra siempre visible (para debug)
-             scrollContainer.style.setProperty('overflow-y', 'scroll', 'important');
-            }
-
-            // Mensaje de éxito
-            console.log('🔥 LAYOUT NUCLEAR APLICADO: sidebar 100% y scroll listo');
-        })();
     </script>
 </body>
 </html>
