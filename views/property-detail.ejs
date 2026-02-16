@@ -1,8 +1,142 @@
+<% 
+    // --- PROCESAMIENTO DE IMÁGENES ---
+    let images = [];
+    try {
+        if (typeof prop.images === 'string') images = JSON.parse(prop.images);
+        else if (Array.isArray(prop.images)) images = prop.images;
+    } catch(e) {}
+    if(!images || images.length === 0) images = [{url: '/img/logo.png'}];
+    images = images.map(img => img.url ? img.url : img);
+
+    // --- PREPARACIÓN PARA OPEN GRAPH (WHATSAPP) ---
+    // Usamos la primera imagen procesada como portada
+    let ogImage = images[0]; 
+    let ogTitle = prop.title + ' | Cygnus Group';
+    // Limpiamos la descripción de HTML para la meta tag
+    let rawDesc = prop.description || '';
+    let ogDesc = rawDesc.replace(/<[^>]*>?/gm, '').substring(0, 150) + '...';
+
+    // --- PROCESAMIENTO DE PRECIOS ---
+    const fmtCLP = (valor) => '$ ' + Number(valor).toLocaleString('es-CL', { maximumFractionDigits: 0 });
+    const fmtUF = (valor) => 'UF ' + Number(valor).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    
+    let ufVal = 39000;
+    if (typeof indicators !== 'undefined' && indicators.uf) ufVal = indicators.uf;
+    else if (typeof ufValue !== 'undefined') ufVal = ufValue;
+    
+    let price = parseFloat(prop.price) || 0;
+    let currency = prop.currency || 'UF';
+    let isRent = (prop.operation_type && prop.operation_type.toLowerCase().includes('arriendo'));
+    let rentSuffix = isRent ? '<span class="period">/mes</span>' : '';
+
+    let mainPriceDisplay, subPriceDisplay;
+    if (currency === 'UF') {
+        mainPriceDisplay = fmtUF(price);
+        subPriceDisplay = fmtCLP(price * ufVal);
+    } else {
+        mainPriceDisplay = fmtCLP(price);
+        subPriceDisplay = fmtUF(price / ufVal);
+    }
+
+    // --- LÓGICA DE ESTADO ---
+    let statusRaw = (prop.status || prop.state || 'disponible').toLowerCase().trim();
+    const activeKeywords = ['disponible', 'publicada', 'publicado', 'activa', 'activo', 'en venta', 'en arriendo'];
+    let isAvailable = activeKeywords.some(s => statusRaw.includes(s));
+    if (statusRaw.includes('vend') || statusRaw.includes('arrendad') || statusRaw.includes('reserv') || statusRaw.includes('borrador')) {
+        isAvailable = false;
+    }
+
+    let statusConfig = { 
+        text: 'DISPONIBLE', 
+        glassClass: '', 
+        solidClass: 'bg-available',
+        showOverlay: false
+    };
+
+    if (!isAvailable) {
+        statusConfig.showOverlay = true;
+        if (statusRaw.includes('vend')) {
+            statusConfig.text = 'VENDIDA';
+            statusConfig.glassClass = 'glass-sold';
+            statusConfig.solidClass = 'bg-sold';
+        } else if (statusRaw.includes('arrend')) {
+            statusConfig.text = 'ARRENDADA';
+            statusConfig.glassClass = 'glass-rented';
+            statusConfig.solidClass = 'bg-rented';
+        } else if (statusRaw.includes('reserv')) {
+            statusConfig.text = 'RESERVADA';
+            statusConfig.glassClass = 'glass-reserved';
+            statusConfig.solidClass = 'bg-reserved';
+        } else {
+            statusConfig.text = 'NO DISPONIBLE';
+            statusConfig.glassClass = 'glass-inactive';
+            statusConfig.solidClass = 'bg-inactive';
+        }
+    }
+    
+    // --- LÓGICA DE CARACTERÍSTICAS (FEATURES) ---
+    let featureGroups = {};
+    let hasFeatures = false;
+    try {
+        if (prop.features && typeof prop.features === 'object') {
+            Object.entries(prop.features).forEach(([groupKey, groupData]) => {
+                if (typeof groupData === 'object' && groupData !== null) {
+                    let activeItems = [];
+                    Object.entries(groupData).forEach(([key, val]) => {
+                        if (val === true || val === 'on' || val === 1) {
+                            let label = key.replace(/_/g, ' ');
+                            label = label.charAt(0).toUpperCase() + label.slice(1);
+                            activeItems.push(label);
+                        }
+                    });
+                    if (activeItems.length > 0) {
+                        let title = groupKey.replace(/_/g, ' ').replace(/features/i, '').trim();
+                        if(title.toLowerCase().includes('indoor') || title.toLowerCase().includes('interior')) title = 'Interiores';
+                        else if(title.toLowerCase().includes('outdoor') || title.toLowerCase().includes('exterior')) title = 'Exteriores';
+                        else if(title.toLowerCase().includes('security') || title.toLowerCase().includes('seguridad')) title = 'Seguridad';
+                        else if(title.toLowerCase().includes('general')) title = 'General';
+                        else title = title.charAt(0).toUpperCase() + title.slice(1);
+                        featureGroups[title] = activeItems;
+                        hasFeatures = true;
+                    }
+                }
+            });
+        }
+    } catch(e) {}
+
+    const joinAddr = (...parts) => parts.filter(p => p && p.toString().trim().length > 0).join(', ');
+    const hasSurface = (prop.surface_util > 0 || prop.surface_total > 0);
+    const hasDistrib = (prop.bedrooms > 0 || prop.bathrooms > 0 || prop.parking > 0 || prop.storage_units > 0);
+    const hasDetails = (prop.condition || prop.orientation || (prop.property_age && prop.property_age > 0));
+    const showSpecsSection = (hasDistrib || hasDetails);
+
+    // --- LÓGICA AGENTE ---
+    const cleanTitle = prop.title.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
+    
+    let contactInfo = {
+        displayName: 'Cygnus Group Propiedades',
+        role: 'Corredor de Propiedades',
+        photo: '/img/logo.png',
+        phone: '+56923830830',
+        email: 'contacto@cygnusgroup.cl',
+        wspNumber: '56923830830'
+    };
+
+    if (prop.agent && prop.agent.name) {
+        let phoneClean = prop.agent.phone ? prop.agent.phone.replace(/\D/g,'') : '56923830830';
+        contactInfo.displayName = prop.agent.name;
+        contactInfo.subtitle = 'Cygnus Group Propiedades';
+        contactInfo.role = 'Corredor Inmobiliario';
+        contactInfo.phone = prop.agent.phone || '+56923830830';
+        contactInfo.email = prop.agent.email || 'contacto@cygnusgroup.cl';
+        contactInfo.wspNumber = phoneClean;
+    }
+%>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <%- include('partials/head') %>
-    <!-- META VIEWPORT OBLIGATORIO PARA MÓVIL -->
+    <%- include('partials/head', { ogTitle: ogTitle, ogImage: ogImage, ogDesc: ogDesc }) %>
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title><%= prop.title %> | Cygnus Group</title>
     <link rel="stylesheet" href="/css/property-detail.css">
@@ -13,138 +147,9 @@
 
     <%- include('partials/navbar') %>
 
-    <% 
-        // --- PROCESAMIENTO DE IMÁGENES ---
-        let images = [];
-        try {
-            if (typeof prop.images === 'string') images = JSON.parse(prop.images);
-            else if (Array.isArray(prop.images)) images = prop.images;
-        } catch(e) {}
-        if(!images || images.length === 0) images = [{url: '/img/logo.png'}];
-        images = images.map(img => img.url ? img.url : img);
-
-        // --- PROCESAMIENTO DE PRECIOS ---
-        const fmtCLP = (valor) => '$ ' + Number(valor).toLocaleString('es-CL', { maximumFractionDigits: 0 });
-        const fmtUF = (valor) => 'UF ' + Number(valor).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-        
-        let ufVal = 39000;
-        if (typeof indicators !== 'undefined' && indicators.uf) ufVal = indicators.uf;
-        else if (typeof ufValue !== 'undefined') ufVal = ufValue;
-        
-        let price = parseFloat(prop.price) || 0;
-        let currency = prop.currency || 'UF';
-        let isRent = (prop.operation_type && prop.operation_type.toLowerCase().includes('arriendo'));
-        let rentSuffix = isRent ? '<span class="period">/mes</span>' : '';
-
-        let mainPriceDisplay, subPriceDisplay;
-        if (currency === 'UF') {
-            mainPriceDisplay = fmtUF(price);
-            subPriceDisplay = fmtCLP(price * ufVal);
-        } else {
-            mainPriceDisplay = fmtCLP(price);
-            subPriceDisplay = fmtUF(price / ufVal);
-        }
-
-        // --- LÓGICA DE ESTADO ---
-        let statusRaw = (prop.status || prop.state || 'disponible').toLowerCase().trim();
-        const activeKeywords = ['disponible', 'publicada', 'publicado', 'activa', 'activo', 'en venta', 'en arriendo'];
-        let isAvailable = activeKeywords.some(s => statusRaw.includes(s));
-        if (statusRaw.includes('vend') || statusRaw.includes('arrendad') || statusRaw.includes('reserv') || statusRaw.includes('borrador')) {
-            isAvailable = false;
-        }
-
-        let statusConfig = { 
-            text: 'DISPONIBLE', 
-            glassClass: '', 
-            solidClass: 'bg-available',
-            showOverlay: false
-        };
-
-        if (!isAvailable) {
-            statusConfig.showOverlay = true;
-            if (statusRaw.includes('vend')) {
-                statusConfig.text = 'VENDIDA';
-                statusConfig.glassClass = 'glass-sold';
-                statusConfig.solidClass = 'bg-sold';
-            } else if (statusRaw.includes('arrend')) {
-                statusConfig.text = 'ARRENDADA';
-                statusConfig.glassClass = 'glass-rented';
-                statusConfig.solidClass = 'bg-rented';
-            } else if (statusRaw.includes('reserv')) {
-                statusConfig.text = 'RESERVADA';
-                statusConfig.glassClass = 'glass-reserved';
-                statusConfig.solidClass = 'bg-reserved';
-            } else {
-                statusConfig.text = 'NO DISPONIBLE';
-                statusConfig.glassClass = 'glass-inactive';
-                statusConfig.solidClass = 'bg-inactive';
-            }
-        }
-        
-        // --- LÓGICA DE CARACTERÍSTICAS (FEATURES) ---
-        let featureGroups = {};
-        let hasFeatures = false;
-        try {
-            if (prop.features && typeof prop.features === 'object') {
-                Object.entries(prop.features).forEach(([groupKey, groupData]) => {
-                    if (typeof groupData === 'object' && groupData !== null) {
-                        let activeItems = [];
-                        Object.entries(groupData).forEach(([key, val]) => {
-                            if (val === true || val === 'on' || val === 1) {
-                                let label = key.replace(/_/g, ' ');
-                                label = label.charAt(0).toUpperCase() + label.slice(1);
-                                activeItems.push(label);
-                            }
-                        });
-                        if (activeItems.length > 0) {
-                            let title = groupKey.replace(/_/g, ' ').replace(/features/i, '').trim();
-                            if(title.toLowerCase().includes('indoor') || title.toLowerCase().includes('interior')) title = 'Interiores';
-                            else if(title.toLowerCase().includes('outdoor') || title.toLowerCase().includes('exterior')) title = 'Exteriores';
-                            else if(title.toLowerCase().includes('security') || title.toLowerCase().includes('seguridad')) title = 'Seguridad';
-                            else if(title.toLowerCase().includes('general')) title = 'General';
-                            else title = title.charAt(0).toUpperCase() + title.slice(1);
-                            featureGroups[title] = activeItems;
-                            hasFeatures = true;
-                        }
-                    }
-                });
-            }
-        } catch(e) {}
-
-        const joinAddr = (...parts) => parts.filter(p => p && p.toString().trim().length > 0).join(', ');
-        const hasSurface = (prop.surface_util > 0 || prop.surface_total > 0);
-        const hasDistrib = (prop.bedrooms > 0 || prop.bathrooms > 0 || prop.parking > 0 || prop.storage_units > 0);
-        const hasDetails = (prop.condition || prop.orientation || (prop.property_age && prop.property_age > 0));
-        const showSpecsSection = (hasDistrib || hasDetails);
-
-        // --- LÓGICA AGENTE ---
-        const cleanTitle = prop.title.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
-        
-        let contactInfo = {
-            displayName: 'Cygnus Group Propiedades',
-            role: 'Corredor de Propiedades',
-            photo: '/img/logo.png',
-            phone: '+56923830830',
-            email: 'contacto@cygnusgroup.cl',
-            wspNumber: '56923830830'
-        };
-
-        if (prop.agent && prop.agent.name) {
-            let phoneClean = prop.agent.phone ? prop.agent.phone.replace(/\D/g,'') : '56923830830';
-            contactInfo.displayName = prop.agent.name;
-            contactInfo.subtitle = 'Cygnus Group Propiedades';
-            contactInfo.role = 'Corredor Inmobiliario';
-            contactInfo.phone = prop.agent.phone || '+56923830830';
-            contactInfo.email = prop.agent.email || 'contacto@cygnusgroup.cl';
-            contactInfo.wspNumber = phoneClean;
-        }
-    %>
-
     <div class="main-container">
         <div class="content-grid">
-            <!-- COLUMNA IZQUIERDA (DESKTOP) – TODOS LOS BLOQUES CON CLASES DE ORDEN -->
             <div class="col-left">
-                <!-- HEADER -->
                 <header class="prop-header block-header">
                     <h1 class="prop-title"><%= prop.title %></h1>
                     <div class="address-inline">
@@ -164,7 +169,6 @@
                     </div>
                 </header>
 
-                <!-- GALERÍA -->
                 <div class="gallery-container block-gallery">
                     <div class="main-stage" id="mainStage" onclick="toggleZoom(event)">
                         <% if(statusConfig.showOverlay) { %>
@@ -205,7 +209,6 @@
                     </div>
                 </div>
 
-                <!-- SUPERFICIE (solo si hay datos) -->
                 <% if(hasSurface) { %>
                 <div class="surface-mini-card block-surface">
                     <% if(prop.surface_util > 0) { %>
@@ -229,7 +232,6 @@
                 </div>
                 <% } %>
 
-                <!-- FICHA TÉCNICA (DISTRIBUCIÓN Y DETALLES) -->
                 <% if(showSpecsSection) { %>
                 <div class="specs-section compact block-specs">
                     <% if(hasDistrib) { %>
@@ -308,7 +310,6 @@
                 </div>
                 <% } %>
 
-                <!-- DESCRIPCIÓN -->
                 <div class="specs-section block-description">
                     <h3 class="section-title"><i class="fas fa-align-left"></i> Descripción</h3>
                     <div class="desc-text">
@@ -316,7 +317,6 @@
                     </div>
                 </div>
 
-                <!-- MAPA -->
                 <section class="info-section block-map">
                     <h3 class="section-title"><i class="fas fa-map-marked-alt"></i> Ubicación</h3>
                     <div class="map-frame">
@@ -326,11 +326,7 @@
                         <% } %>
                     </div>
                 </section>
-            </div> <!-- /.col-left -->
-
-            <!-- COLUMNA DERECHA (DESKTOP) – PRECIO Y CARACTERÍSTICAS -->
-            <div class="col-right">
-                <!-- TARJETA DE PRECIO -->
+            </div> <div class="col-right">
                 <div class="sticky-widget block-price">
                     <div class="status-pill-widget <%= statusConfig.solidClass %>">
                         <%= statusConfig.text %>
@@ -374,7 +370,6 @@
                     </div>
                 </div>
 
-                <!-- CARACTERÍSTICAS DESTACADAS -->
                 <% if(hasFeatures) { %>
                     <div class="features-widget block-features">
                         <div class="fw-header">
@@ -395,11 +390,7 @@
                         <% }) %>
                     </div>
                 <% } %>
-            </div> <!-- /.col-right -->
-        </div> <!-- /.content-grid -->
-    </div> <!-- /.main-container -->
-
-    <%- include('partials/footer') %>
+            </div> </div> </div> <%- include('partials/footer') %>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg&callback=initMap" async defer></script>
     <script>

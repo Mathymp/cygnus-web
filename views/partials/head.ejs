@@ -5,6 +5,14 @@
 <title><%= typeof title !== 'undefined' ? title : 'Cygnus Group | Gestión Inmobiliaria' %></title>
 <link rel="icon" type="image/png" href="/img/fav.png">
 
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cygnus Group Propiedades">
+<meta property="og:title" content="<%= typeof ogTitle !== 'undefined' ? ogTitle : (typeof title !== 'undefined' ? title : 'Cygnus Group Propiedades') %>">
+<meta property="og:description" content="<%= typeof ogDesc !== 'undefined' ? ogDesc : 'Gestión Inmobiliaria Profesional. Encuentra tu propiedad con nosotros.' %>">
+<meta property="og:image" content="<%= typeof ogImage !== 'undefined' ? ogImage : 'https://cygnusgroup.cl/img/logo.png' %>">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -46,10 +54,13 @@
     }
 
     /* Animación de entrada suave */
-    body { opacity: 0; animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    @keyframes fadeIn { to { opacity: 1; } }
+    body { opacity: 0;
+        animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes fadeIn { to { opacity: 1;
+        } }
     
-    img { max-width: 100%; height: auto; }
+    img { max-width: 100%; height: auto;
+        }
 
 
     .swal2-icon,
@@ -80,7 +91,8 @@
 
     /* 4. Botones Modernos */
     div:where(.swal2-container) .swal2-confirm {
-        background-color: #2563EB !important; /* Azul Cygnus */
+        background-color: #2563EB !important;
+        /* Azul Cygnus */
         box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3) !important;
         border-radius: 8px !important;
         padding: 12px 28px !important;
@@ -118,5 +130,6 @@
     }
 
     /* Eliminar borde de foco feo en botones */
-    button:focus { outline: none !important; box-shadow: none !important; }
+    button:focus { outline: none !important;
+        box-shadow: none !important; }
 </style>
