@@ -1,11 +1,47 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <% 
+        // --- CONFIGURACIÓN SEO ESPECÍFICA PARA EL HOME ---
+        // Si no vienen definidos desde el controlador, los forzamos aquí para el home
+        if(typeof title === 'undefined') {
+            title = 'Corredores de Propiedades en Concepción, Chillán y Biobío | Cygnus Group';
+        }
+        if(typeof ogTitle === 'undefined') {
+            ogTitle = 'Venta y Arriendo de Propiedades en Biobío y Ñuble - Cygnus Group';
+        }
+        if(typeof ogDesc === 'undefined') {
+            ogDesc = 'Encuentra casas, departamentos, parcelas y terrenos en Concepción, Chillán, Los Ángeles y toda la región. Gestión inmobiliaria experta.';
+        }
+    %>
     <%- include('partials/head') %>
+    
+    <meta name="keywords" content="corredores de propiedades, venta de casas concepción, arriendo departamentos chillan, propiedades biobio, parcelas ñuble, gestión inmobiliaria, compraventa propiedades">
+    <meta name="geo.region" content="CL-BI">
+    <meta name="geo.placename" content="Concepción">
+    
     <link rel="stylesheet" href="/css/index.css">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css" />
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "RealEstateAgent",
+      "name": "Cygnus Group Propiedades",
+      "image": "https://cygnusgroup.cl/img/logo.png",
+      "description": "Corredores de propiedades expertos en venta y arriendo en regiones de Biobío y Ñuble.",
+      "address": {
+        "@type": "PostalAddress",
+        "addressRegion": "Biobío",
+        "addressCountry": "CL"
+      },
+      "url": "https://cygnusgroup.cl",
+      "telephone": "+56923830830",
+      "priceRange": "$$$"
+    }
+    </script>
 </head>
 <body class="bg-slate-50">
 
@@ -16,7 +52,6 @@
         let props = (typeof properties !== 'undefined') ? properties : [];
         let activeFilters = (typeof filters !== 'undefined') ? filters : {};
         let hasFilters = (typeof scrollResults !== 'undefined') ? scrollResults : false;
-
         // Valor UF
         let ufVal = 38000;
         if(typeof indicators !== 'undefined' && indicators.uf) ufVal = indicators.uf;
@@ -26,7 +61,6 @@
         siteConfig.banners = siteConfig.banners || [];
         siteConfig.slider_speed = siteConfig.slider_speed || 5;
         siteConfig.announcement_active = siteConfig.announcement_active || false;
-
         // Formateadores
         const fmtCLP = (v) => '$ ' + Number(v).toLocaleString('es-CL', { maximumFractionDigits: 0 });
         const fmtUF = (v) => 'UF ' + Number(v).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -41,17 +75,18 @@
     <% } %>
 
     <header class="hero-section">
+       
         <div class="swiper hero-slider">
             <div class="swiper-wrapper">
                 <% if(siteConfig.banners && siteConfig.banners.length > 0) { %>
                     <% siteConfig.banners.forEach(banner => { %>
                         <div class="swiper-slide">
-                            <div class="slide-bg" style="background-image: url('<%= banner.url %>'); background-position: <%= banner.align || '50% 50%' %>;"></div>
+                            <div class="slide-bg" role="img" aria-label="Propiedades destacadas en Biobío y Ñuble" style="background-image: url('<%= banner.url %>'); background-position: <%= banner.align || '50% 50%' %>;"></div>
                         </div>
                     <% }) %>
                 <% } else { %>
                     <div class="swiper-slide">
-                        <div class="slide-bg" style="background-image: url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2000&auto=format&fit=crop'); background-position: center;"></div>
+                        <div class="slide-bg" role="img" aria-label="Casas y Departamentos en Venta" style="background-image: url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2000&auto=format&fit=crop'); background-position: center;"></div>
                     </div>
                 <% } %>
             </div>
@@ -60,8 +95,8 @@
         <div class="hero-overlay"></div>
         
         <div class="hero-content">
-            <h1 class="hero-title">Encuentra tu lugar<br>en el mundo.</h1>
-            <p class="hero-subtitle">Gestión inmobiliaria transparente, experta y cercana.</p>
+            <h1 class="hero-title">Encuentra tu propiedad<br>en Biobío y Ñuble.</h1>
+            <p class="hero-subtitle">Gestión inmobiliaria transparente en Concepción, Chillán y alrededores.</p>
         </div>
     </header>
 
@@ -171,7 +206,7 @@
 
                 <button type="submit" class="search-btn-modern">
                     <i class="ph-bold ph-magnifying-glass"></i> 
-                    <span class="btn-text">Buscar</span>
+                    <span class="btn-text">Buscar Propiedades</span>
                 </button>
             </div>
         </form>
@@ -179,7 +214,7 @@
 
     <section class="results-section" id="propiedades-anchor">
         <div class="results-header">
-            <h2 class="results-title">Propiedades Destacadas <span class="count-badge"><%= props.length %></span></h2>
+            <h2 class="results-title">Propiedades Destacadas en Venta y Arriendo <span class="count-badge"><%= props.length %></span></h2>
         </div>
 
         <% if(props.length === 0) { %>
@@ -200,6 +235,10 @@
                 try { 
                     if(p.images && p.images.length) {
                         img = (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].url);
+                        // SEO Imagen: Si es de Cloudinary, optimizar tamaño
+                        if(img.includes('cloudinary') && !img.includes('w_')) {
+                             img = img.replace('/upload/', '/upload/w_400,h_300,c_fill,q_auto/');
+                        }
                     }
                 } catch(e){}
 
@@ -225,18 +264,21 @@
                 if (statusRaw.includes('vend') || statusRaw.includes('arrendad') || statusRaw.includes('reserv')) {
                     statusConfig.showOverlay = true;
                     if (statusRaw.includes('vend')) {
-                        statusConfig.text = 'VENDIDO'; statusConfig.glassClass = 'glass-sold';
+                        statusConfig.text = 'VENDIDO';
+                        statusConfig.glassClass = 'glass-sold';
                     } else if (statusRaw.includes('arrend')) {
-                        statusConfig.text = 'ARRENDADO'; statusConfig.glassClass = 'glass-rented';
+                        statusConfig.text = 'ARRENDADO';
+                        statusConfig.glassClass = 'glass-rented';
                     } else if (statusRaw.includes('reserv')) {
-                        statusConfig.text = 'RESERVADO'; statusConfig.glassClass = 'glass-reserved';
+                        statusConfig.text = 'RESERVADO';
+                        statusConfig.glassClass = 'glass-reserved';
                     }
                 }
             %>
             
             <article class="property-card" onclick="window.location.href='/propiedad/<%= p.id %>'">
                 <div class="card-image-wrapper">
-                    <img src="<%= img %>" alt="<%= p.title %>" loading="lazy">
+                    <img src="<%= img %>" alt="<%= p.title %> en <%= p.address_commune %>" loading="lazy">
                     
                     <div class="card-badges-top">
                         <div class="card-badge op-badge <%= p.operation_type === 'Arriendo' ? 'rent' : 'sale' %>">
@@ -276,6 +318,20 @@
                 </div>
             </article>
             <% }) %>
+        </div>
+    </section>
+    
+    <section class="seo-links-section" style="padding: 4rem 1rem; background-color: #f8fafc; text-align: center;">
+        <div style="max-width: 1200px; margin: 0 auto;">
+            <h4 style="font-family: 'Satoshi', sans-serif; margin-bottom: 1.5rem; color: #334155;">Encuentra propiedades en las mejores zonas</h4>
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem;">
+                <a href="/propiedades?operacion=Venta&region=Biobío&comuna=Concepción" style="color: #64748b; text-decoration: none; font-size: 0.9rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 20px;">Casas en Concepción</a>
+                <a href="/propiedades?operacion=Venta&region=Ñuble&comuna=Chillán" style="color: #64748b; text-decoration: none; font-size: 0.9rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 20px;">Propiedades en Chillán</a>
+                <a href="/propiedades?operacion=Arriendo&region=Biobío&comuna=Concepción" style="color: #64748b; text-decoration: none; font-size: 0.9rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 20px;">Arriendo en Concepción</a>
+                <a href="/propiedades?operacion=Venta&tipo=Parcela" style="color: #64748b; text-decoration: none; font-size: 0.9rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 20px;">Parcelas en Venta</a>
+                <a href="/propiedades?operacion=Venta&region=Biobío&comuna=Los+Ángeles" style="color: #64748b; text-decoration: none; font-size: 0.9rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 20px;">Casas en Los Ángeles</a>
+                <a href="/propiedades?operacion=Arriendo&tipo=Departamento" style="color: #64748b; text-decoration: none; font-size: 0.9rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 20px;">Departamentos en Arriendo</a>
+            </div>
         </div>
     </section>
 
