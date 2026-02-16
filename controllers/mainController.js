@@ -43,7 +43,7 @@ const mainController = {
         }
     },
 
-    // 2. PÁGINA DE PROPIEDADES
+    // 2. PÁGINA DE PROPIEDADES (CON INYECCIÓN SEO)
     propertiesPage: async (req, res) => {
         try {
             const { operacion, tipo, region, comuna, dorms, banos, min_price, max_price } = req.query;
@@ -74,12 +74,41 @@ const mainController = {
             let ufVal = 38000;
             if (req.app.locals.indicators && req.app.locals.indicators.uf) ufVal = req.app.locals.indicators.uf;
 
+            // --- INICIO INYECCIÓN SEO ---
+            // Lógica para que el título de la pestaña cambie según la búsqueda (Ej: "Casas en Concepción")
+            let seoTitle = 'Propiedades en Venta y Arriendo | Cygnus Group';
+            let seoDesc = 'Encuentra tu propiedad en Biobío y Ñuble. Gestión inmobiliaria experta.';
+
+            const q = req.query; 
+            
+            if (q.operacion || q.tipo || q.comuna || q.region) {
+                let parts = [];
+                
+                // Tipo (ej: "Casas", "Departamentos")
+                if (q.tipo) parts.push(q.tipo + 's'); 
+                else parts.push('Propiedades');
+                
+                // Operación (ej: "en Venta")
+                if (q.operacion) parts.push('en ' + q.operacion);
+                
+                // Ubicación (ej: "en Concepción")
+                if (q.comuna) parts.push('en ' + q.comuna);
+                else if (q.region) parts.push('en ' + q.region);
+
+                // Título Final: "Casas en Venta en Concepción | Cygnus Group"
+                seoTitle = parts.join(' ') + ' | Cygnus Group';
+                seoDesc = `Resultados de ${parts.join(' ')}. Revisa nuestro catálogo actualizado en la región.`;
+            }
+            // --- FIN INYECCIÓN SEO ---
+
             res.render('properties', { 
-                title: 'Propiedades | Cygnus Group',
+                title: seoTitle,   // Usamos el título dinámico
                 activePage: 'propiedades',
                 properties: properties || [],
                 filters: req.query,
-                ufVal: ufVal
+                ufVal: ufVal,
+                ogTitle: seoTitle, // Para compartir en redes
+                ogDesc: seoDesc    // Descripción dinámica
             });
         } catch (error) {
             console.error('Error properties:', error);

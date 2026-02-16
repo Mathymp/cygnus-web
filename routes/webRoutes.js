@@ -103,4 +103,70 @@ router.get('/admin/marca', requireAuth, (req, res) => {
 router.post('/recover-password', authController.recoverPassword);
 router.get('/update-password', authController.showUpdatePassword);
 router.post('/update-password', authController.updatePassword);
+// --- AGREGAR EN routes/webRoutes.js ---
+
+// --- INICIO CÓDIGO SITEMAP (PEGA ESTO AL FINAL DE webRoutes.js, ANTES DEL EXPORT) ---
+
+// Asegúrate de que 'supabase' esté importado arriba en este archivo. 
+// Si no está, agrega: const supabase = require('../config/supabaseClient');
+
+router.get('/sitemap.xml', async (req, res) => {
+    try {
+        // 1. Obtener propiedades publicadas
+        const { data: properties, error } = await supabase
+            .from('properties') // Asegúrate que tu tabla se llama 'properties'
+            .select('id, created_at') // Usamos created_at o updated_at
+            .eq('status', 'publicado'); // Solo las publicadas
+
+        if (error) throw error;
+
+        const baseUrl = 'https://cygnusgroup.cl'; // TU DOMINIO REAL
+        const staticUrls = [
+            '',
+            '/propiedades',
+            '/contacto',
+            '/nosotros',
+            // URLs SEO estratégicas
+            '/propiedades?operacion=Venta&region=Biobío&comuna=Concepción',
+            '/propiedades?operacion=Arriendo&region=Biobío&comuna=Concepción',
+            '/propiedades?operacion=Venta&region=Ñuble&comuna=Chillán'
+        ];
+
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+        // Agregar estáticas
+        staticUrls.forEach(url => {
+            xml += `
+            <url>
+                <loc>${baseUrl}${url.replace(/&/g, '&amp;')}</loc>
+                <changefreq>daily</changefreq>
+                <priority>0.8</priority>
+            </url>`;
+        });
+
+        // Agregar propiedades dinámicas
+        if (properties) {
+            properties.forEach(prop => {
+                const date = new Date(prop.created_at).toISOString();
+                xml += `
+                <url>
+                    <loc>${baseUrl}/propiedad/${prop.id}</loc>
+                    <lastmod>${date}</lastmod>
+                    <changefreq>weekly</changefreq>
+                    <priority>1.0</priority>
+                </url>`;
+            });
+        }
+
+        xml += '</urlset>';
+        res.header('Content-Type', 'application/xml');
+        res.send(xml);
+
+    } catch (err) {
+        console.error("Error sitemap:", err);
+        res.status(500).end();
+    }
+});
+// --- FIN CÓDIGO SITEMAP ---
 module.exports = router;
