@@ -1,7 +1,8 @@
 const supabase = require('../config/supabaseClient');
 const cloudinary = require('../config/cloudinaryConfig');
 const fs = require('fs');
-const nodemailer = require('nodemailer'); // RECUERDA: npm install nodemailer
+// Importamos tu helper de emails (Resend) en lugar de nodemailer
+const sendEmail = require('../helpers/emailHelper'); 
 
 const mainController = {
     // 1. HOME (Landing Page)
@@ -103,54 +104,57 @@ const mainController = {
         });
     },
 
-    // 5. ENVIAR CONTACTO (Lógica SMTP Corporativo)
+    // 5. ENVIAR CONTACTO (CORREGIDO: Usa emailHelper / Resend)
     sendContactEmail: async (req, res) => {
         const { nombre, email, telefono, asunto, mensaje } = req.body;
 
         try {
-            // Configuración SMTP para mail.cygnusgroup.cl
-            const transporter = nodemailer.createTransport({
-                host: process.env.SMTP_HOST, // Lee mail.cygnusgroup.cl
-                port: process.env.SMTP_PORT, // Lee 465
-                secure: true, // True para puerto 465 (SSL/TLS)
-                auth: {
-                    user: process.env.SMTP_USER, // contacto@cygnusgroup.cl
-                    pass: process.env.SMTP_PASS  // Tu contraseña real
-                },
-                tls: {
-                    // Ayuda si el certificado SSL tiene algún problema menor, 
-                    // aunque en producción idealmente no se usa rejectUnauthorized: false
-                    rejectUnauthorized: false 
-                }
-            });
+            // A. ENVÍO AL ADMINISTRADOR (A ti)
+            const adminContent = `
+                <p>Has recibido un nuevo mensaje desde el formulario web.</p>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: left;">
+                    <p><strong>👤 Nombre:</strong> ${nombre}</p>
+                    <p><strong>✉️ Email:</strong> ${email}</p>
+                    <p><strong>📱 Teléfono:</strong> ${telefono || 'No especificado'}</p>
+                    <p><strong>📝 Asunto:</strong> ${asunto}</p>
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 10px 0;">
+                    <p><strong>Mensaje:</strong></p>
+                    <p style="color: #475569;">${mensaje}</p>
+                </div>
+            `;
 
-            const mailOptions = {
-                from: `"Web Cygnus" <${process.env.SMTP_USER}>`,
-                to: 'contacto@cygnusgroup.cl', // Se envía a sí mismo (o a quien deba recibir las alertas)
-                replyTo: email, // Para que al dar "Responder" le escribas al cliente
-                subject: `Nuevo Mensaje Web: ${asunto} - ${nombre}`,
-                html: `
-                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                        <h2 style="color: #2563eb;">Nuevo contacto desde la web</h2>
-                        <hr>
-                        <p><strong>Nombre:</strong> ${nombre}</p>
-                        <p><strong>Email:</strong> ${email}</p>
-                        <p><strong>Teléfono:</strong> ${telefono}</p>
-                        <p><strong>Asunto:</strong> ${asunto}</p>
-                        <br>
-                        <p><strong>Mensaje:</strong></p>
-                        <div style="background:#f4f6f8; padding:15px; border-radius: 8px; border-left: 4px solid #2563eb;">
-                            ${mensaje}
-                        </div>
-                    </div>
-                `
-            };
+            // Enviar a contacto@cygnusgroup.cl
+            await sendEmail(
+                'contacto@cygnusgroup.cl', 
+                `Nuevo Lead Web: ${nombre}`, 
+                'Nuevo Contacto Web', 
+                adminContent,
+                'Responder al Cliente',
+                `mailto:${email}`
+            );
 
-            await transporter.sendMail(mailOptions);
+            // B. ENVÍO DE CONFIRMACIÓN AL CLIENTE (Auto-respuesta bonita)
+            const clientContent = `
+                <p>Hola <strong>${nombre}</strong>,</p>
+                <p>Gracias por escribirnos. Hemos recibido tu mensaje correctamente y nuestro equipo lo está revisando.</p>
+                <p>Nos pondremos en contacto contigo a la brevedad posible para responder a tu consulta sobre: <em>${asunto}</em>.</p>
+                <p>Si es urgente, puedes llamarnos directamente o escribirnos por WhatsApp.</p>
+            `;
+
+            // Enviar al cliente
+            await sendEmail(
+                email,
+                'Hemos recibido tu mensaje - Cygnus Group',
+                '¡Gracias por contactarnos!',
+                clientContent,
+                'Ir al Sitio Web',
+                'https://www.cygnusgroup.cl'
+            );
+
             res.redirect('/contacto?msg=success');
 
         } catch (error) {
-            console.error("Error enviando correo SMTP:", error);
+            console.error("Error enviando correo de contacto:", error);
             res.redirect('/contacto?msg=error');
         }
     },
