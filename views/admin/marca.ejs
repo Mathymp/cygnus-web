@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* --- ESTILOS V13: FORMAT MASTER --- */
+        /* --- ESTILOS V14: FORMAT MASTER + ENCUADRE --- */
         :root {
             --panel-bg: #ffffff;
             --accent: #2563eb; 
@@ -24,45 +24,53 @@
             height: calc(100vh - 85px);
             display: flex; flex-direction: column;
             gap: 10px; padding-bottom: 0 !important;
-            overflow: hidden; 
+            overflow: hidden;
         }
 
         /* HEADER & BOTONES */
         .header-bar {
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex;
+            justify-content: space-between; align-items: center;
             padding: 0 0.5rem; flex-shrink: 0; height: 50px;
         }
         .header-title h1 { font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin: 0; }
         
         .btn-header-primary {
-            background: white; border: 1px solid #e2e8f0; color: var(--accent);
+            background: white;
+            border: 1px solid #e2e8f0; color: var(--accent);
             padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.85rem;
-            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
         }
         .btn-header-primary:hover { 
-            background: var(--accent); color: white; border-color: var(--accent); 
+            background: var(--accent);
+            color: white; border-color: var(--accent); 
             transform: translateY(-1px); box-shadow: 0 2px 5px rgba(37, 99, 235, 0.2);
         }
 
         .btn-header-danger {
-            background: white; border: 1px solid #fecaca; color: var(--danger);
+            background: white;
+            border: 1px solid #fecaca; color: var(--danger);
             padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem;
-            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
         }
         .btn-header-danger:hover { background: #fef2f2; border-color: var(--danger); }
 
         /* ZONA DE CARGA */
         .upload-zone {
-            flex: 1; border: 2px dashed #cbd5e1; border-radius: 16px;
+            flex: 1;
+            border: 2px dashed #cbd5e1; border-radius: 16px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: #f8fafc; cursor: pointer; transition: 0.2s; margin: 0 10px 10px 10px;
+            background: #f8fafc; cursor: pointer; transition: 0.2s;
+            margin: 0 10px 10px 10px;
         }
         .upload-zone:hover { border-color: var(--accent); background: #eff6ff; }
         .upload-icon { font-size: 3rem; color: #94a3b8; margin-bottom: 1rem; }
 
         /* 2. EDITOR GRID */
         .editor-grid {
-            display: none; 
+            display: none;
             grid-template-columns: 340px 1fr;
             gap: 15px; height: 100%; min-height: 0;
             padding-bottom: 10px;
@@ -70,19 +78,22 @@
 
         /* 3. SIDEBAR CONTROLES */
         .controls-sidebar {
-            background: white; border-radius: 12px; border: 1px solid var(--border);
+            background: white;
+            border-radius: 12px; border: 1px solid var(--border);
             display: flex; flex-direction: column; overflow: hidden; height: 100%;
         }
 
         .scroll-area {
-            flex: 1; overflow-y: auto; padding: 15px;
+            flex: 1;
+            overflow-y: auto; padding: 15px;
             display: flex; flex-direction: column; gap: 15px;
         }
         .scroll-area::-webkit-scrollbar { width: 4px; }
         .scroll-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
         .btn-magic {
-            background: linear-gradient(135deg, #3b82f6, #4f46e5); color: white; border: none;
+            background: linear-gradient(135deg, #3b82f6, #4f46e5);
+            color: white; border: none;
             padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 8px;
             box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2); font-size: 0.9rem; margin-bottom: 5px;
@@ -92,7 +103,8 @@
         /* SECCIONES Y SLIDERS */
         .control-section { display: flex; flex-direction: column; gap: 10px; }
         .section-header { 
-            font-size: 0.75rem; font-weight: 800; color: var(--text-main); 
+            font-size: 0.75rem;
+            font-weight: 800; color: var(--text-main); 
             display: flex; align-items: center; gap: 6px; 
             text-transform: uppercase; letter-spacing: 0.5px;
         }
@@ -102,71 +114,111 @@
         .slider-block { display: flex; flex-direction: column; gap: 4px; }
         
         .slider-top { 
-            display: flex; justify-content: space-between; align-items: center;
-            font-size: 0.8rem; font-weight: 600; color: var(--text-muted); 
+            display: flex;
+            justify-content: space-between; align-items: center;
+            font-size: 0.8rem; font-weight: 600; color: var(--text-muted);
         }
         
         .val-badge {
-            background: #eff6ff; color: var(--accent); padding: 1px 6px; 
+            background: #eff6ff;
+            color: var(--accent); padding: 1px 6px; 
             border-radius: 4px; font-size: 0.75rem; font-weight: 700; min-width: 30px; text-align: center;
         }
         
         .slider-row { display: flex; align-items: center; gap: 8px; height: 24px; }
         
         input[type=range] {
-            flex: 1; -webkit-appearance: none; background: transparent; cursor: pointer; height: 20px; margin: 0;
+            flex: 1;
+            -webkit-appearance: none; background: transparent; cursor: pointer; height: 20px; margin: 0;
         }
         input[type=range]::-webkit-slider-runnable-track {
-            width: 100%; height: 5px; background: #e2e8f0; border-radius: 10px;
+            width: 100%;
+            height: 5px; background: #e2e8f0; border-radius: 10px;
         }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
+            -webkit-appearance: none;
+            height: 18px; width: 18px; border-radius: 50%;
             background: white; border: 2px solid var(--accent); margin-top: -6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.1s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
         }
         input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); background: var(--accent); }
         
         /* Reset individual */
         .btn-reset-single {
-            background: #f8fafc; border: 1px solid var(--border); color: var(--text-muted);
+            background: #f8fafc;
+            border: 1px solid var(--border); color: var(--text-muted);
             width: 100%; padding: 8px; border-radius: 8px; font-weight: 600; font-size: 0.8rem;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+            cursor: pointer; display: flex;
+            align-items: center; justify-content: center; gap: 6px;
             margin-top: 5px;
         }
         .btn-reset-single:hover { background: #e2e8f0; color: var(--text-main); }
+        .btn-reset-single.active { background: #dbeafe; color: var(--accent); border-color: var(--accent); }
 
         /* Footer Sidebar */
         .bottom-action { padding: 15px; border-top: 1px solid var(--border); background: #f8fafc; margin-top: auto; }
         .btn-download {
-            width: 100%; background: #0f172a; color: white; border: none;
+            width: 100%;
+            background: #0f172a; color: white; border: none;
             padding: 14px; border-radius: 10px; font-size: 1rem; font-weight: 700;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            cursor: pointer; display: flex; align-items: center;
+            justify-content: center; gap: 8px;
             transition: 0.2s;
         }
         .btn-download:hover { background: #1e293b; transform: translateY(-1px); }
 
         /* 4. VISOR CENTRAL */
         .stage-column {
-            display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; overflow: hidden;
+            display: flex;
+            flex-direction: column; gap: 10px; height: 100%; min-height: 0; overflow: hidden;
         }
         .preview-box {
-            flex: 1; background: white; border: 1px solid var(--border); border-radius: 12px;
+            flex: 1;
+            background: white; border: 1px solid var(--border); border-radius: 12px;
             position: relative; overflow: hidden;
             display: flex; align-items: center; justify-content: center; min-height: 0;
+            /* Patrón de fondo para transparencias/recortes */
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
         }
         #mainCanvas {
-            max-width: 100%; max-height: 100%; object-fit: contain;
+            max-width: 100%;
+            max-height: 100%; object-fit: contain;
             box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
+            z-index: 2;
         }
+
+        /* GRID OVERLAY PARA ENDEREZAR */
+        .grid-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .grid-overlay.active { opacity: 1; }
+        
+        /* Líneas Guía 3x3 */
+        .grid-lines {
+            width: 100%; height: 100%; position: relative;
+        }
+        .g-line-v { position: absolute; top:0; bottom:0; width: 1px; background: rgba(255,255,255,0.8); box-shadow: 0 0 2px rgba(0,0,0,0.5); }
+        .g-line-h { position: absolute; left:0; right:0; height: 1px; background: rgba(255,255,255,0.8); box-shadow: 0 0 2px rgba(0,0,0,0.5); }
+
 
         /* 5. CARRUSEL MINIATURAS */
         .carousel-wrapper {
-            background: white; border: 1px solid var(--border); border-radius: 12px;
+            background: white;
+            border: 1px solid var(--border); border-radius: 12px;
             padding: 8px; display: flex; align-items: center; gap: 8px; 
             height: 90px; flex-shrink: 0;
         }
         .nav-arrow {
-            background: #f1f5f9; border: none; color: var(--text-muted);
+            background: #f1f5f9;
+            border: none; color: var(--text-muted);
             width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             transition: 0.2s;
@@ -174,34 +226,41 @@
         .nav-arrow:hover { background: var(--accent); color: white; }
 
         .thumbs-track {
-            flex: 1; display: flex; gap: 8px; overflow-x: auto; scroll-behavior: smooth;
+            flex: 1;
+            display: flex; gap: 8px; overflow-x: auto; scroll-behavior: smooth;
             height: 100%; align-items: center; scrollbar-width: none;
         }
         .thumbs-track::-webkit-scrollbar { display: none; }
 
         .thumb-item {
-            position: relative; width: 64px; height: 64px; flex-shrink: 0;
+            position: relative;
+            width: 64px; height: 64px; flex-shrink: 0;
             border-radius: 8px; overflow: hidden; cursor: pointer;
-            border: 2px solid transparent; opacity: 0.6; transition: 0.2s; background: #e2e8f0;
+            border: 2px solid transparent; opacity: 0.6; transition: 0.2s;
+            background: #e2e8f0;
         }
         .thumb-item img { width: 100%; height: 100%; object-fit: cover; }
         .thumb-item.active { border-color: var(--accent); opacity: 1; transform: scale(1.05); }
         
         /* ETIQUETA "EDITADA" */
         .edit-tag {
-            position: absolute; bottom: 0; left: 0; right: 0;
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
             background: var(--success); color: white;
             font-size: 9px; font-weight: 800; text-align: center;
-            text-transform: uppercase; padding: 2px 0;
+            text-transform: uppercase;
+            padding: 2px 0;
             display: none; letter-spacing: 0.5px;
         }
         .thumb-item.is-edited { border-color: var(--success); opacity: 1; }
         .thumb-item.is-edited .edit-tag { display: block; }
 
         .del-thumb-btn {
-            position: absolute; top: 0; right: 0; width: 20px; height: 20px;
+            position: absolute;
+            top: 0; right: 0; width: 20px; height: 20px;
             background: rgba(239, 68, 68, 0.9); color: white;
-            display: flex; align-items: center; justify-content: center; font-size: 10px;
+            display: flex; align-items: center;
+            justify-content: center; font-size: 10px;
             cursor: pointer; opacity: 0; transition: 0.2s; border-bottom-left-radius: 8px; z-index: 5;
         }
         .thumb-item:hover .del-thumb-btn { opacity: 1; }
@@ -209,34 +268,41 @@
 
         /* LOADERS & MODAL */
         .loader-overlay {
-            position: absolute; inset: 0; background: rgba(255,255,255,0.95); z-index: 50;
+            position: absolute;
+            inset: 0; background: rgba(255,255,255,0.95); z-index: 50;
             display: none; align-items: center; justify-content: center; flex-direction: column; font-weight: 600; color: var(--text-main);
         }
         
         .progress-container {
-            width: 200px; height: 10px; background: #e2e8f0; border-radius: 20px;
+            width: 200px;
+            height: 10px; background: #e2e8f0; border-radius: 20px;
             margin-top: 15px; overflow: hidden;
         }
         .progress-bar {
-            height: 100%; background: var(--accent); width: 0%; 
+            height: 100%;
+            background: var(--accent); width: 0%; 
             transition: width 0.3s ease; border-radius: 20px;
         }
         .progress-text { font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; }
 
         .upload-loading {
-            position: absolute; inset: 0; background: rgba(255,255,255,0.9); z-index: 20;
+            position: absolute;
+            inset: 0; background: rgba(255,255,255,0.9); z-index: 20;
             display: none; align-items: center; justify-content: center; flex-direction: column; border-radius: 16px;
         }
         .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+            position: fixed;
+            inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
             display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px);
         }
         .modal-box {
-            background: white; width: 90%; max-width: 380px; padding: 25px;
+            background: white;
+            width: 90%; max-width: 380px; padding: 25px;
             border-radius: 16px; text-align: center; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.2);
         }
         .modal-input {
-            width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 8px;
+            width: 100%;
+            padding: 10px; border: 2px solid var(--border); border-radius: 8px;
             font-size: 1rem; margin: 15px 0; outline: none;
         }
         .modal-input:focus { border-color: var(--accent); }
@@ -244,45 +310,12 @@
         .btn-modal { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; }
         .btn-cancel { background: #f1f5f9; color: var(--text-muted); }
         .btn-confirm { background: var(--accent); color: white; }
-        /* --- CORRECCIÓN DE LAYOUT Y SIDEBAR --- */
         
-        /* 1. Asegura que el contenedor principal use Flexbox */
-        .app-layout {
-            display: flex;
-            min-height: 100vh; /* Ocupa al menos el 100% de la pantalla */
-            width: 100%;
-            overflow-x: hidden;
-        }
-
-        /* 2. Corrige el Sidebar para que sea Sticky (se queda fijo al bajar) */
-        aside.sidebar {
-            width: 280px; /* Mismo ancho que tu variable --sb-width */
-            height: 100vh; /* Altura completa de la ventana */
-            position: sticky; /* Se pega al borde superior */
-            top: 0;
-            left: 0;
-            flex-shrink: 0; /* Evita que se encoja */
-            overflow-y: auto; /* Permite scroll interno si el menú es muy alto */
-            z-index: 1000;
-            background: #ffffff; /* Asegura fondo blanco */
-            border-right: 1px solid #e2e8f0;
-        }
-
-        /* 3. Ajusta el contenido principal para que fluya a la derecha */
-        .main-content {
-            flex: 1; /* Toma el espacio restante */
-            width: calc(100% - 280px); /* Resta el ancho del sidebar */
-            min-height: 100vh;
-            background-color: #f8fafc; /* Color de fondo general */
-            display: block; /* Asegura flujo normal */
-        }
-
-        /* 4. Ajuste específico para el wrapper de publicar */
-        .publish-wrapper-fluid {
-            padding: 2rem;
-            max-width: 1600px;
-            margin: 0 auto;
-        }
+        /* Layout Fixes */
+        .app-layout { display: flex; min-height: 100vh; width: 100%; overflow-x: hidden; }
+        aside.sidebar { width: 280px; height: 100vh; position: sticky; top: 0; left: 0; flex-shrink: 0; overflow-y: auto; z-index: 1000; background: #ffffff; border-right: 1px solid #e2e8f0; }
+        .main-content { flex: 1; width: calc(100% - 280px); min-height: 100vh; background-color: #f8fafc; display: block; }
+        .publish-wrapper-fluid { padding: 2rem; max-width: 1600px; margin: 0 auto; }
 
     </style>
 </head>
@@ -293,7 +326,6 @@
             <div class="dashboard-scroll" style="padding: 10px 20px;">
                 
                 <div class="marca-container">
-                    
                     <div class="header-bar">
                         <div class="header-title">
                             <h1>Centro de Marca</h1>
@@ -331,6 +363,30 @@
                                     <i class="ph-fill ph-sparkle"></i> Mejora Automática
                                 </button>
                                 
+                                <div class="section-divider"></div>
+
+                                <div class="control-section">
+                                    <div class="section-header"><i class="ph-bold ph-crop"></i> ENCUADRE</div>
+                                    <div class="section-desc">Enderezar y Voltear.</div>
+
+                                    <div class="slider-block">
+                                        <div class="slider-top"><span>Enderezar</span> <span id="v-rot" class="val-badge">0°</span></div>
+                                        <div class="slider-row">
+                                            <i class="ph-bold ph-arrow-counter-clockwise" style="font-size:0.8rem; color:#94a3b8;"></i>
+                                            <input type="range" id="rot" min="-45" max="45" value="0" step="0.5">
+                                            <i class="ph-bold ph-arrow-clockwise" style="font-size:0.8rem; color:#94a3b8;"></i>
+                                        </div>
+                                    </div>
+
+                                    <div style="display:flex; gap:10px; margin-top:5px;">
+                                        <button class="btn-reset-single" id="btnFlipX" onclick="toggleFlip('x')">
+                                            <i class="ph-bold ph-arrows-left-right"></i> Flip H
+                                        </button>
+                                        <button class="btn-reset-single" id="btnFlipY" onclick="toggleFlip('y')">
+                                            <i class="ph-bold ph-arrows-down-up"></i> Flip V
+                                        </button>
+                                    </div>
+                                </div>
                                 <div class="section-divider"></div>
 
                                 <div class="control-section">
@@ -424,6 +480,16 @@
                         <div class="stage-column">
                             <div class="preview-box">
                                 <img id="mainCanvas" src="" alt="">
+                                
+                                <div id="gridOverlay" class="grid-overlay">
+                                    <div class="grid-lines">
+                                        <div class="g-line-v" style="left: 33.3%;"></div>
+                                        <div class="g-line-v" style="left: 66.6%;"></div>
+                                        <div class="g-line-h" style="top: 33.3%;"></div>
+                                        <div class="g-line-h" style="top: 66.6%;"></div>
+                                    </div>
+                                </div>
+
                                 <div class="loader-overlay" id="procLoader">
                                     <i class="fas fa-cog fa-spin" style="font-size: 2rem; color:var(--accent);"></i>
                                     <div style="margin-top:15px; font-size:1.1rem;">Procesando imágenes...</div>
@@ -482,8 +548,9 @@
         let wm = new Image();
         let wmReady = false;
         
-        // Settings Default
+        // Settings Default + Transform (NUEVO: rot, flipX, flipY)
         const defSet = { 
+            rot: 0, flipX: 1, flipY: 1, // Nuevos
             exp: 0, bright: 0, con: 0, high: 0, shadow: 0, black: 0, 
             temp: 0, sat: 0, green: 0, blue: 0 
         };
@@ -501,7 +568,11 @@
             pLoad: document.getElementById('procLoader'),
             pBar: document.getElementById('progBar'),
             pText: document.getElementById('progText'),
+            grid: document.getElementById('gridOverlay'), // NUEVO
+            btnFlipX: document.getElementById('btnFlipX'), // NUEVO
+            btnFlipY: document.getElementById('btnFlipY'), // NUEVO
             sliders: {
+                rot: document.getElementById('rot'), // NUEVO
                 exp: document.getElementById('exp'),
                 bright: document.getElementById('bright'),
                 con: document.getElementById('con'),
@@ -530,36 +601,57 @@
 
         // Bind Sliders & Badges
         Object.keys(els.sliders).forEach(k => {
-            els.sliders[k].oninput = (e) => {
+            const slider = els.sliders[k];
+            
+            // Evento para mostrar Grid al mover rotación
+            if(k === 'rot') {
+                slider.addEventListener('mousedown', () => els.grid.classList.add('active'));
+                slider.addEventListener('mouseup', () => els.grid.classList.remove('active'));
+                slider.addEventListener('touchstart', () => els.grid.classList.add('active'));
+                slider.addEventListener('touchend', () => els.grid.classList.remove('active'));
+            }
+
+            slider.oninput = (e) => {
                 if(!photos[currentIdx]) return;
-                const val = parseInt(e.target.value);
+                const val = parseFloat(e.target.value); // float para rotacion
                 photos[currentIdx].set[k] = val;
                 photos[currentIdx].edited = true;
                 
                 // Update badge text
                 const badge = document.getElementById(`v-${k}`);
-                if(badge) badge.innerText = val > 0 ? `+${val}` : val;
+                if(badge) {
+                    if(k === 'rot') badge.innerText = val + '°';
+                    else badge.innerText = val > 0 ? `+${val}` : val;
+                }
 
                 updateThumbUI(currentIdx);
                 renderFastPreview();
             };
         });
 
+        // NUEVO: Toggle Flips
+        window.toggleFlip = (axis) => {
+            if(!photos[currentIdx]) return;
+            const key = axis === 'x' ? 'flipX' : 'flipY';
+            photos[currentIdx].set[key] *= -1;
+            photos[currentIdx].edited = true;
+            updateUIControls(photos[currentIdx].set); // Actualizar botones visualmente
+            updateThumbUI(currentIdx);
+            renderFastPreview();
+        };
+
         // --- CARGA ---
         function loadFiles(files, append) {
             if(!files.length) return;
-            
             // Check formato
             const valid = Array.from(files).filter(f => {
-                // Aceptar solo imagenes
                 return f.type.startsWith('image/') || f.name.match(/\.(heic|heif|avif)$/i);
             });
-
             if(valid.length === 0) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Formato no soportado',
-                    text: 'Solo puedes subir imágenes (JPG, PNG, WebP, HEIC). Los videos o documentos serán ignorados.',
+                    text: 'Solo puedes subir imágenes (JPG, PNG, WebP, HEIC).',
                     confirmButtonColor: '#2563eb'
                 });
                 return;
@@ -567,7 +659,7 @@
 
             if(!append) { photos = []; currentIdx = 0; els.uLoad.style.display = 'flex'; }
             else els.pLoad.style.display = 'flex';
-
+            
             let loaded = 0;
             
             valid.forEach(f => {
@@ -598,15 +690,7 @@
                             initUI();
                         }
                     };
-                    img.onerror = () => {
-                        // Si falla (ej HEIC sin soporte), pasar al siguiente
-                        loaded++;
-                        if(loaded === valid.length) {
-                            els.uLoad.style.display = 'none';
-                            els.pLoad.style.display = 'none';
-                            initUI();
-                        }
-                    }
+                    img.onerror = () => { loaded++; if(loaded === valid.length) { els.uLoad.style.display = 'none'; els.pLoad.style.display = 'none'; initUI(); } }
                 };
                 reader.readAsDataURL(f);
             });
@@ -651,13 +735,23 @@
             currentIdx = i;
             Array.from(els.track.children).forEach((el, idx) => el.classList.toggle('active', idx === i));
             
-            const s = photos[i].set;
+            updateUIControls(photos[i].set);
+            renderFastPreview();
+        }
+
+        function updateUIControls(s) {
+            // Update Sliders
             Object.keys(els.sliders).forEach(k => {
                 els.sliders[k].value = s[k];
                 const badge = document.getElementById(`v-${k}`);
-                if(badge) badge.innerText = s[k] > 0 ? `+${s[k]}` : s[k];
+                if(badge) {
+                    if(k === 'rot') badge.innerText = s[k] + '°';
+                    else badge.innerText = s[k] > 0 ? `+${s[k]}` : s[k];
+                }
             });
-            renderFastPreview();
+            // Update Buttons Flip
+            if(s.flipX === -1) els.btnFlipX.classList.add('active'); else els.btnFlipX.classList.remove('active');
+            if(s.flipY === -1) els.btnFlipY.classList.add('active'); else els.btnFlipY.classList.remove('active');
         }
 
         function updateThumbUI(i) {
@@ -670,36 +764,76 @@
 
         window.scrollThumbs = (dir) => els.track.scrollBy({ left: dir * 120, behavior: 'smooth' });
 
-        // --- PREVIEW ---
+        // --- PREVIEW RENDERER (MODIFICADO PARA TRANSFORMACIONES) ---
         const cv = document.createElement('canvas');
         const ctx = cv.getContext('2d', { willReadFrequently: true });
 
         function renderFastPreview() {
             const p = photos[currentIdx];
+            
+            // 1. Setup Canvas
             cv.width = p.previewW;
             cv.height = p.previewH;
-            ctx.drawImage(p.original, 0, 0, cv.width, cv.height); 
+
+            // 2. Limpiar
+            ctx.clearRect(0, 0, cv.width, cv.height);
+            ctx.save();
+
+            // 3. TRANSFORMACIONES GEOMÉTRICAS (Centro -> Rotar -> Escalar -> Flip -> Back)
+            const cx = cv.width / 2;
+            const cy = cv.height / 2;
+            
+            ctx.translate(cx, cy);
+            
+            // Rotación
+            const deg = p.set.rot;
+            const rad = deg * Math.PI / 180;
+            ctx.rotate(rad);
+
+            // Zoom automático (Crop to fit)
+            // Calculamos el factor de escala necesario para que el cuadro rotado cubra todo el lienzo
+            if(deg !== 0) {
+                const absCos = Math.abs(Math.cos(rad));
+                const absSin = Math.abs(Math.sin(rad));
+                
+                // El factor de escala es el máximo necesario para cubrir ancho O alto
+                const scaleW = (p.previewW * absCos + p.previewH * absSin) / p.previewW;
+                const scaleH = (p.previewW * absSin + p.previewH * absCos) / p.previewH;
+                const scale = Math.max(scaleW, scaleH);
+                
+                ctx.scale(scale, scale);
+            }
+
+            // Flips
+            ctx.scale(p.set.flipX, p.set.flipY);
+
+            // Dibujar imagen centrada
+            ctx.drawImage(p.original, -cx, -cy, p.previewW, p.previewH);
+            
+            ctx.restore();
+
+            // 4. APLICAR FILTROS DE COLOR (Sobre los pixeles ya transformados)
             applyFilters(ctx, cv.width, cv.height, p.set);
+            
+            // 5. Mostrar
             els.img.src = cv.toDataURL();
         }
 
-        // --- FILTERS ---
+        // --- FILTERS (Pixel Manipulation) ---
         function applyFilters(ctx, w, h, s) {
             const d = ctx.getImageData(0,0,w,h);
             const data = d.data;
             
             const expF = 1 + (s.exp / 100);
-            const brightVal = s.bright; 
+            const brightVal = s.bright;
             const conF = (100 + s.con) / 100;
             const conOff = 128 * (1 - conF);
-            
             const highReduc = s.high / 100;
             const shadowBoost = s.shadow * 1.5;
-            const blackCrush = s.black; 
-
+            const blackCrush = s.black;
             const satMul = 1 + (s.sat / 100);
             const temp = s.temp;
-            const greenB = s.green / 50; 
+            const greenB = s.green / 50;
             const blueB = s.blue / 50;
 
             for(let i=0; i<data.length; i+=4) {
@@ -760,20 +894,23 @@
         // --- ACTIONS ---
         document.getElementById('btnAuto').onclick = () => {
             const s = photos[currentIdx].set;
+            // No reseteamos rotación ni flips en auto, solo color
             s.exp = 10; s.high = 30; s.shadow = 15; 
-            s.con = 10; s.black = 5; s.sat = 15; 
+            s.con = 10; s.black = 5; s.sat = 15;
             s.blue = 10; s.green = 10;
             
             photos[currentIdx].edited = true;
+            updateUIControls(s);
             updateThumbUI(currentIdx);
-            selectPhoto(currentIdx);
+            renderFastPreview();
         };
 
         window.resetCurrent = () => {
             photos[currentIdx].set = { ...defSet };
             photos[currentIdx].edited = false;
+            updateUIControls(photos[currentIdx].set);
             updateThumbUI(currentIdx);
-            selectPhoto(currentIdx);
+            renderFastPreview();
         };
         
         window.showResetModal = () => document.getElementById('resetModal').style.display = 'flex';
@@ -807,13 +944,34 @@
                 const h = p.original.naturalHeight;
                 wCv.width = w; wCv.height = h;
 
-                wCtx.drawImage(p.original, 0, 0);
+                // 1. TRANSFORMACIONES FULL RES
+                wCtx.save();
+                wCtx.translate(w/2, h/2);
+                
+                const rad = p.set.rot * Math.PI / 180;
+                wCtx.rotate(rad);
+                
+                if(p.set.rot !== 0) {
+                    const absCos = Math.abs(Math.cos(rad));
+                    const absSin = Math.abs(Math.sin(rad));
+                    const scaleW = (w * absCos + h * absSin) / w;
+                    const scaleH = (w * absSin + h * absCos) / h;
+                    const scale = Math.max(scaleW, scaleH);
+                    wCtx.scale(scale, scale);
+                }
+                
+                wCtx.scale(p.set.flipX, p.set.flipY);
+                wCtx.drawImage(p.original, -w/2, -h/2);
+                wCtx.restore();
+
+                // 2. FILTROS
                 applyFilters(wCtx, w, h, p.set);
 
+                // 3. MARCA DE AGUA
                 if(wmReady) {
                     let ww, wx, wy;
                     const r = wm.naturalHeight / wm.naturalWidth;
-                    if(h > w) ww = w * 1.5; else ww = w * 1.1;
+                    if(h > w) ww = w * 1.5; else ww = w * 1.1; // Ajuste para marca
                     const wh = ww * r;
                     wx = (w - ww) / 2;
                     wy = h - wh;
