@@ -10,6 +10,7 @@ const propertiesController = require('../controllers/propertiesController');
 const editPropertyController = require('../controllers/editPropertyController'); 
 const inventoryController = require('../controllers/inventoryController');
 const pdfController = require('../controllers/pdfController');
+const supabase = require('../config/supabaseClient');
 
 // --- CONFIGURACIÓN DE UPLOAD ---
 const upload = require('../config/cloudinaryConfig');

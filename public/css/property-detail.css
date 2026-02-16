@@ -61,6 +61,7 @@ body {
     line-height: 1.1;
     margin: 0 0 10px 0;
     letter-spacing: -1px;
+    word-break: break-word; /* Evita desbordamiento en títulos largos */
 }
 .address-inline {
     display: flex;
@@ -838,7 +839,7 @@ body {
 @media (max-width: 900px) {
     /* Contenedor principal: más ancho en móvil */
     .main-container {
-        padding: 20px 12px;
+        padding: 20px 16px; /* Ajuste de padding lateral */
     }
 
     /* Grid se convierte en flujo vertical */
@@ -896,14 +897,20 @@ body {
         margin-bottom: 0;
     }
 
-    /* Imagen principal: 16:9 sin recortes */
+    /* Ajustes de título */
+    .prop-title {
+        font-size: 1.8rem; /* Reducido para móvil */
+        letter-spacing: -0.5px;
+    }
+
+    /* Imagen principal: aspect ratio y cover para llenar */
     .main-stage {
         height: auto;
         aspect-ratio: 16 / 9;
         background: #cbd5e1;
     }
     .main-stage img {
-        object-fit: contain;
+        object-fit: cover; /* Cambiado a cover para que llene el contenedor */
         width: 100%;
         height: 100%;
     }
@@ -938,9 +945,17 @@ body {
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
 
-    /* Miniaturas */
+    /* Miniaturas: reducimos tamaño para que quepan mejor */
     .thumb-scroll-wrapper {
         padding: 0 30px;
+    }
+    .thumb {
+        flex: 0 0 100px; /* Un poco más pequeñas */
+        height: 70px;
+    }
+    .thumb-nav {
+        width: 28px;
+        height: 28px;
     }
 
     /* Tarjeta de precio: estática y ancho completo */
@@ -950,23 +965,26 @@ body {
         width: 100%;
     }
 
-    /* ---------- TARJETA DE SUPERFICIE (MÓVIL) ---------- */
+    /* Tarjeta de superficie: menos padding y gap */
     .surface-mini-card {
         margin-top: 0;
         margin-bottom: 0;
         justify-content: center;
-        gap: 24px;
-        padding: 16px 20px;
+        gap: 20px;
+        padding: 16px 16px;
+    }
+    .surface-mini-value {
+        font-size: 1.2rem;
     }
 
-    /* ---------- FICHA TÉCNICA (MÓVIL) ---------- */
+    /* Ficha técnica: padding reducido */
     .specs-section {
-        padding: 20px;
+        padding: 20px 16px;
         margin-bottom: 0;
     }
     .specs-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        gap: 10px;
     }
     .spec-card.wide {
         grid-column: span 2;
@@ -975,11 +993,11 @@ body {
         padding: 10px;
     }
 
-    /* ---------- CARACTERÍSTICAS DESTACADAS (MÓVIL) ---------- */
+    /* Características destacadas: padding reducido */
     .features-widget {
         margin-top: 0;
         margin-bottom: 0;
-        padding: 20px;
+        padding: 16px;
     }
     .fw-list {
         grid-template-columns: 1fr;
@@ -991,32 +1009,41 @@ body {
         font-size: 0.85rem;
     }
 
-    /* ---------- MAPA (MÓVIL) ---------- */
+    /* Mapa: altura reducida */
     .map-frame {
         height: 240px;
         margin-bottom: 0;
     }
-}
 
-@media (max-width: 480px) {
-    .surface-mini-card {
-        gap: 20px;
+    /* Ajustes para pantallas muy pequeñas */
+    @media (max-width: 480px) {
+        .surface-mini-card {
+            gap: 16px;
+            padding: 14px 12px;
+        }
+        .surface-mini-value {
+            font-size: 1.1rem;
+        }
+        .price-main {
+            font-size: 2rem;
+        }
+        .prop-title {
+            font-size: 1.6rem;
+        }
     }
-    .surface-mini-value {
-        font-size: 1.2rem;
-    }
-    .price-main {
-        font-size: 2rem;
-    }
-}
 
-@media (max-width: 360px) {
-    .surface-mini-card {
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
-    }
-    .surface-mini-item {
-        align-items: center;
+    @media (max-width: 360px) {
+        .surface-mini-card {
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .surface-mini-item {
+            align-items: center;
+        }
+        .thumb {
+            flex: 0 0 80px;
+            height: 60px;
+        }
     }
 }

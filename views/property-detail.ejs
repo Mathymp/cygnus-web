@@ -349,7 +349,8 @@
                         <% } %>
                     </div>
                 </section>
-            </div> <div class="col-right">
+            </div> <!-- col-left -->
+            <div class="col-right">
                 <div class="sticky-widget block-price">
                     <div class="status-pill-widget <%= statusConfig.solidClass %>">
                         <%= statusConfig.text %>
@@ -413,7 +414,11 @@
                         <% }) %>
                     </div>
                 <% } %>
-            </div> </div> </div> <%- include('partials/footer') %>
+            </div> <!-- col-right -->
+        </div> <!-- content-grid -->
+    </div> <!-- main-container -->
+
+    <%- include('partials/footer') %>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg&callback=initMap" async defer></script>
     <script>
