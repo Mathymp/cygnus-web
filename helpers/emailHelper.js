@@ -2,23 +2,53 @@
 const sendEmail = async (to, subject, title, messageHtml, buttonText = null, buttonLink = null) => {
     
     const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = 'contacto@cygnusgroup.cl'; // Tu dominio verificado
+    
+    // Configuración del remitente (Debe coincidir con tu dominio verificado)
+    const fromEmail = 'contacto@cygnusgroup.cl'; 
 
-    // IMPORTANTE: URL absoluta del logo
+    // IMPORTANTE: URL absoluta del logo (Asegúrate que esta imagen exista y cargue rápido)
     const logoUrl = 'https://www.cygnusgroup.cl/img/logo.png'; 
 
-    // --- DISEÑO "CLEAN TECH" (Estilo Netflix / Airbnb) ---
+    // --- 1. GENERAR VERSIÓN TEXTO PLANO (CRÍTICO PARA ANTI-SPAM) ---
+    // Los filtros de correo revisan esto primero. Si no existe, es bandera roja.
+    let textVersion = `${title.toUpperCase()}\n\n`;
+    // Eliminamos etiquetas HTML para dejar solo el texto limpio
+    textVersion += messageHtml.replace(/<[^>]*>?/gm, ''); 
+    
+    if (buttonText && buttonLink) {
+        textVersion += `\n\n--------------------------------------------------\n`;
+        textVersion += `${buttonText}: ${buttonLink}`;
+        textVersion += `\n--------------------------------------------------\n`;
+    }
+    
+    textVersion += `\n\n© 2026 Cygnus Group Propiedades.\nEste es un mensaje automático, por favor no responder directamente si no es necesario.`;
+
+
+    // --- 2. DISEÑO "CLEAN TECH" (Tu estilo original Netflix / Airbnb) ---
     const htmlTemplate = `
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
         <style>
             /* Reset y Fuentes */
-            body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f5; color: #334155; -webkit-font-smoothing: antialiased; }
+            body { 
+                margin: 0; 
+                padding: 0; 
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+                background-color: #f4f4f5; 
+                color: #334155; 
+                -webkit-font-smoothing: antialiased; 
+            }
             
             /* Contenedor Principal (Fondo Gris Claro) */
-            .email-wrapper { width: 100%; padding: 60px 0; background-color: #f4f4f5; }
+            .email-wrapper { 
+                width: 100%; 
+                padding: 60px 0; 
+                background-color: #f4f4f5; 
+            }
             
             /* Tarjeta Central (Blanca y Flotante) */
             .email-card { 
@@ -43,10 +73,14 @@ const sendEmail = async (to, subject, title, messageHtml, buttonText = null, but
                 width: auto; 
                 display: block; 
                 margin: 0 auto; 
+                border: 0;
             }
             
             /* CUERPO */
-            .content { padding: 40px 40px 50px; text-align: center; }
+            .content { 
+                padding: 40px 40px 50px; 
+                text-align: center; 
+            }
             
             /* Título Grande y Limpio */
             .h1-title { 
@@ -142,34 +176,48 @@ const sendEmail = async (to, subject, title, messageHtml, buttonText = null, but
     </html>
     `;
 
+    // --- 3. VALIDACIÓN Y ENVÍO ---
     if (!apiKey) {
-        console.error("❌ ERROR: Falta RESEND_API_KEY en .env");
+        console.error("❌ ERROR CRÍTICO: Falta RESEND_API_KEY en el archivo .env");
         return false;
     }
 
     try {
+        const payload = {
+            from: `Cygnus Group <${fromEmail}>`, // Nombre + Email para mejor presentación
+            to: [to],
+            subject: subject,
+            html: htmlTemplate,
+            text: textVersion, // IMPORTANTE: Versión texto plano para filtros anti-spam
+            tags: [
+                { name: 'category', value: 'transactional' } // Categoría ayuda a reputación
+            ]
+        };
+
+        // Manejo especial para "Responder a" si es un formulario de contacto
+        if (buttonLink && buttonLink.startsWith('mailto:')) {
+            const replyEmail = buttonLink.replace('mailto:', '');
+            payload.reply_to = replyEmail;
+        }
+
         const response = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({
-                from: `Soporte Cygnus <${fromEmail}>`,
-                to: [to],
-                subject: subject,
-                html: htmlTemplate
-            })
+            body: JSON.stringify(payload)
         });
 
         if (response.ok) {
             return true;
         } else {
-            console.error("❌ Error Resend:", await response.json());
+            const errorData = await response.json();
+            console.error("❌ Error devuelto por Resend:", errorData);
             return false;
         }
     } catch (error) {
-        console.error("❌ Error de red:", error);
+        console.error("❌ Error de red al enviar correo:", error);
         return false;
     }
 };
