@@ -1,22 +1,45 @@
 <% 
-    // --- PROCESAMIENTO DE IMÁGENES ---
+    // --- 1. PROCESAMIENTO DE IMÁGENES ---
     let images = [];
     try {
         if (typeof prop.images === 'string') images = JSON.parse(prop.images);
         else if (Array.isArray(prop.images)) images = prop.images;
     } catch(e) {}
+    
+    // Si no hay imágenes, usamos el logo por defecto
     if(!images || images.length === 0) images = [{url: '/img/logo.png'}];
+    
+    // Extraemos solo las URLs limpias
     images = images.map(img => img.url ? img.url : img);
 
-    // --- PREPARACIÓN PARA OPEN GRAPH (WHATSAPP) ---
-    // Usamos la primera imagen procesada como portada
+    // --- 2. PREPARACIÓN PARA OPEN GRAPH (WHATSAPP) ---
     let ogImage = images[0]; 
     let ogTitle = prop.title + ' | Cygnus Group';
-    // Limpiamos la descripción de HTML para la meta tag
+    
+    // Limpiamos la descripción de HTML
     let rawDesc = prop.description || '';
     let ogDesc = rawDesc.replace(/<[^>]*>?/gm, '').substring(0, 150) + '...';
 
-    // --- PROCESAMIENTO DE PRECIOS ---
+    // --- 3. LÓGICA DE OPTIMIZACIÓN DE URL (NUEVO) ---
+    const siteDomain = 'https://cygnusgroup.cl'; // Tu dominio real
+
+    if (ogImage) {
+        // A) Si es Cloudinary: Optimizamos tamaño y peso para WhatsApp
+        if (ogImage.includes('cloudinary.com') && ogImage.includes('/upload/')) {
+            // Insertamos "w_1200,h_630,c_fill,q_auto" después de /upload/ para reducir peso
+            // Solo si no tiene ya transformaciones aplicadas
+            if (!ogImage.includes('/w_') && !ogImage.includes('/h_')) {
+                ogImage = ogImage.replace('/upload/', '/upload/w_1200,h_630,c_fill,q_auto/');
+            }
+        } 
+        // B) Si es Local (ej: /img/logo.png): Agregamos el dominio https
+        else if (!ogImage.startsWith('http')) {
+            if (!ogImage.startsWith('/')) ogImage = '/' + ogImage;
+            ogImage = siteDomain + ogImage;
+        }
+    }
+
+    // --- 4. PROCESAMIENTO DE PRECIOS ---
     const fmtCLP = (valor) => '$ ' + Number(valor).toLocaleString('es-CL', { maximumFractionDigits: 0 });
     const fmtUF = (valor) => 'UF ' + Number(valor).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     
@@ -38,7 +61,7 @@
         subPriceDisplay = fmtUF(price / ufVal);
     }
 
-    // --- LÓGICA DE ESTADO ---
+    // --- 5. LÓGICA DE ESTADO ---
     let statusRaw = (prop.status || prop.state || 'disponible').toLowerCase().trim();
     const activeKeywords = ['disponible', 'publicada', 'publicado', 'activa', 'activo', 'en venta', 'en arriendo'];
     let isAvailable = activeKeywords.some(s => statusRaw.includes(s));
@@ -74,7 +97,7 @@
         }
     }
     
-    // --- LÓGICA DE CARACTERÍSTICAS (FEATURES) ---
+    // --- 6. LÓGICA DE CARACTERÍSTICAS (FEATURES) ---
     let featureGroups = {};
     let hasFeatures = false;
     try {
@@ -110,7 +133,7 @@
     const hasDetails = (prop.condition || prop.orientation || (prop.property_age && prop.property_age > 0));
     const showSpecsSection = (hasDistrib || hasDetails);
 
-    // --- LÓGICA AGENTE ---
+    // --- 7. LÓGICA AGENTE ---
     const cleanTitle = prop.title.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
     
     let contactInfo = {
