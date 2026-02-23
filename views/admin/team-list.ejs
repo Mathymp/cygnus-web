@@ -4,66 +4,6 @@
     <%- include('../partials/head') %>
     <link rel="stylesheet" href="/css/team.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
-    <style>
-        /* --- CORRECCIÓN DE SCROLL (LAYOUT DEFINITIVO) --- */
-        
-        /* 1. Bloqueamos el scroll del navegador principal */
-        html, body {
-            height: 100vh;
-            width: 100vw;
-            margin: 0;
-            padding: 0;
-            overflow: hidden !important;
-            background-color: #f8fafc;
-        }
-
-        /* 2. Contenedor Maestro: Flex horizontal (Sidebar | Contenido) */
-        .app-layout {
-            display: flex;
-            height: 100vh;
-            width: 100%;
-            overflow: hidden;
-        }
-
-        /* 3. Sidebar: Fijo a la izquierda, altura completa */
-        aside.sidebar {
-            width: 280px;
-            height: 100vh;
-            flex-shrink: 0;
-            overflow-y: auto; /* Scroll interno si el menú es muy largo */
-            background: white;
-            border-right: 1px solid #e2e8f0;
-            z-index: 50;
-        }
-
-        /* 4. Main Content: Columna vertical, SIN scroll propio */
-        .main-content {
-            flex: 1;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden; /* IMPORTANTE: El scroll lo hace el hijo */
-            background-color: #f8fafc;
-            position: relative;
-        }
-
-        /* 5. Dashboard Scroll: El ÚNICO que hace scroll */
-        .dashboard-scroll {
-            flex: 1; /* Ocupa todo el espacio disponible */
-            overflow-y: auto !important; /* Fuerza el scroll vertical */
-            padding: 2rem;
-            height: 100%; /* Asegura altura para calcular el overflow */
-            scroll-behavior: smooth;
-        }
-
-        /* Ajustes Responsivos */
-        @media (max-width: 768px) {
-            aside.sidebar { display: none; } /* O manejar menú móvil */
-            .dashboard-scroll { padding: 1rem; }
-            .modern-table { min-width: 100%; }
-        }
-    </style>
 </head>
 <body>
     
@@ -169,8 +109,11 @@
 
                 <div style="height: 50px;"></div>
 
-            </div> </main>
-    </div> <div id="deleteModal" class="modal-overlay">
+            </div> <!-- .dashboard-scroll -->
+        </main>
+    </div> <!-- .app-layout -->
+
+    <div id="deleteModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-icon-warning">
                 <i class="ph-bold ph-warning"></i>

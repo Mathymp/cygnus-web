@@ -1,6 +1,6 @@
 /* ============================================
-   TEAM.CSS - VERSIÓN NUCLEAR (100% FUNCIONAL)
-   Sidebar alto completo + Scroll garantizado
+   TEAM.CSS - VERSIÓN CORREGIDA (SCROLL GARANTIZADO)
+   Sidebar alto completo + Scroll en dashboard-scroll
    ============================================ */
 
 /* RESET ABSOLUTO */
@@ -11,58 +11,58 @@
 }
 
 html, body {
-    height: 100vh !important;      /* Fuerza alto total */
-    width: 100vw !important;
-    overflow: hidden !important;   /* Elimina scroll no deseado */
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
     font-family: 'Satoshi', 'Inter', sans-serif;
     background-color: #f8fafc;
 }
 
 /* ----- LAYOUT PRINCIPAL ----- */
 .app-layout {
-    display: flex !important;
-    height: 100vh !important;      /* Usa viewport */
-    width: 100vw !important;
-    overflow: hidden !important;
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
 }
 
 /* ----- SIDEBAR: SIEMPRE 100% ALTO ----- */
 aside.sidebar {
-    width: 280px !important;
-    height: 100vh !important;      /* Fuerza alto total */
-    position: sticky !important;
-    top: 0 !important;
-    left: 0 !important;
-    flex-shrink: 0 !important;
-    overflow-y: auto !important;   /* Scroll interno si es necesario */
-    background: #ffffff !important;
-    border-right: 1px solid #e2e8f0 !important;
-    z-index: 9999 !important;
+    width: 280px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    left: 0;
+    flex-shrink: 0;
+    overflow-y: auto;
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+    z-index: 9999;
 }
 
 /* ----- CONTENIDO PRINCIPAL (SCROLL EN HIJO) ----- */
 .main-content {
-    flex: 1 1 0 !important;
-    height: 100vh !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;   /* El scroll va en .dashboard-scroll */
+    flex: 1 1 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;      /* El scroll lo maneja .dashboard-scroll */
     background-color: #f8fafc;
     position: relative;
+    min-height: 0;         /* Crucial para que el hijo con scroll funcione */
 }
 
 /* CONTENEDOR DE SCROLL (ÚNICO LUGAR CON overflow-y: auto) */
 .dashboard-scroll {
-    flex: 1 1 0 !important;
-    overflow-y: auto !important;   /* ¡AQUÍ HACE SCROLL! */
-    height: 0 !important;          /* Truco flexbox */
-    min-height: 0 !important;
-    padding: 2rem 2rem 3rem 2rem !important;
-    width: 100% !important;
+    flex: 1 1 0;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 2rem 2rem 3rem 2rem;
+    width: 100%;
 }
 
 /* ============================================
-   ESTILOS DE TABLA Y COMPONENTES (TUS ESTILOS)
+   ESTILOS DE TABLA Y COMPONENTES
    ============================================ */
 
 .team-panel-header {
