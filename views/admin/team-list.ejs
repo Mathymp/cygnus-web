@@ -6,42 +6,35 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    
     <div class="app-layout">
         
         <%- include('../partials/sidebar-admin') %>
 
         <main class="main-content">
-            
             <div class="dashboard-scroll">
                 
-                <!-- Cabecera con título y botón de acción -->
+                <!-- Cabecera -->
                 <div class="dash-top-bar">
                     <div class="welcome-text">
                         <h1>Gestión de Talento</h1>
                         <p>Administra los accesos y roles de tu equipo.</p>
                     </div>
-                    <div>
-                        <a href="/admin/add-agent" class="btn-publish-big">
-                            <i class="ph-bold ph-user-plus"></i> Nuevo Agente
-                        </a>
-                    </div>
+                    <a href="/admin/add-agent" class="btn-publish-big">
+                        <i class="ph-bold ph-user-plus"></i> Nuevo Agente
+                    </a>
                 </div>
 
-                <!-- Alertas (centrado, pero sin max-width restrictivo) -->
+                <!-- Alertas -->
                 <div class="alerts-container">
                     <%- include('../partials/alerts') %>
                 </div>
 
-                <!-- Tarjeta que contiene la tabla -->
-                <div class="team-table-container">
-                    
-                    <div class="team-panel-header">
-                        <h3 class="panel-title">Directorio de Personal</h3>
-                        <!-- Puedes agregar un contador o filtros aquí si lo deseas -->
+                <!-- Tarjeta de la tabla -->
+                <div class="team-card">
+                    <div class="team-card-header">
+                        <h3>Directorio de Personal</h3>
                     </div>
 
-                    <!-- Tabla de agentes -->
                     <div class="table-responsive">
                         <table class="modern-table">
                             <thead>
@@ -49,7 +42,7 @@
                                     <th>Profesional</th>
                                     <th>Contacto</th>
                                     <th>Rol / Cargo</th>
-                                    <th class="actions-header">Acciones</th>
+                                    <th class="text-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -59,15 +52,15 @@
                                         <td>
                                             <div class="profile-cell">
                                                 <% if(agent.photo_url) { %>
-                                                    <img src="<%= agent.photo_url %>" class="agent-avatar" alt="<%= agent.name %>">
+                                                    <img src="<%= agent.photo_url %>" class="avatar" alt="">
                                                 <% } else { %>
-                                                    <div class="agent-avatar placeholder">
+                                                    <div class="avatar placeholder">
                                                         <%= agent.name.charAt(0).toUpperCase() %>
                                                     </div>
                                                 <% } %>
                                                 <div class="agent-info">
-                                                    <div class="agent-name"><%= agent.name %></div>
-                                                    <div class="agent-email"><%= agent.email %></div>
+                                                    <span class="agent-name"><%= agent.name %></span>
+                                                    <span class="agent-email"><%= agent.email %></span>
                                                 </div>
                                             </div>
                                         </td>
@@ -82,21 +75,22 @@
                                             <% } %>
                                         </td>
                                         <td>
-                                            <span class="badge-role <%= agent.role === 'admin' ? 'role-admin' : 'role-corredor' %>">
+                                            <span class="badge <%= agent.role === 'admin' ? 'badge-admin' : 'badge-corredor' %>">
                                                 <%= agent.position || (agent.role === 'admin' ? 'Administrador' : 'Corredor') %>
                                             </span>
                                         </td>
-                                        <td class="actions-cell">
-                                            <a href="/admin/edit-agent/<%= agent.id %>" class="btn-action btn-edit" title="Editar Perfil">
-                                                <i class="ph-bold ph-pencil-simple"></i>
-                                            </a>
-                                            
-                                            <% if (user.id !== agent.id) { %>
-                                                <button class="btn-action btn-delete" title="Desvincular" 
-                                                    onclick="openDeleteModal('<%= agent.id %>', '<%= agent.name %>')">
-                                                    <i class="ph-bold ph-trash"></i>
-                                                </button>
-                                            <% } %>
+                                        <td class="text-right">
+                                            <div class="actions-cell">
+                                                <a href="/admin/edit-agent/<%= agent.id %>" class="action-btn edit-btn" title="Editar">
+                                                    <i class="ph-bold ph-pencil-simple"></i>
+                                                </a>
+                                                <% if (user.id !== agent.id) { %>
+                                                    <button class="action-btn delete-btn" title="Desvincular" 
+                                                        onclick="openDeleteModal('<%= agent.id %>', '<%= agent.name %>')">
+                                                        <i class="ph-bold ph-trash"></i>
+                                                    </button>
+                                                <% } %>
+                                            </div>
                                         </td>
                                     </tr>
                                     <% }) %>
@@ -111,30 +105,24 @@
                         </table>
                     </div>
                 </div>
-
-                <!-- Espaciador inferior -->
-                <div style="height: 50px;"></div>
-
-            </div> <!-- .dashboard-scroll -->
+            </div>
         </main>
-    </div> <!-- .app-layout -->
+    </div>
 
-    <!-- Modal de confirmación de eliminación -->
+    <!-- Modal de eliminación -->
     <div id="deleteModal" class="modal-overlay">
         <div class="modal-container">
-            <div class="modal-icon-warning">
+            <div class="modal-icon">
                 <i class="ph-bold ph-warning"></i>
             </div>
-            <h2 class="modal-title">¿Desvincular Agente?</h2>
-            <p class="modal-desc">
+            <h2>¿Desvincular Agente?</h2>
+            <p>
                 Estás a punto de eliminar a <strong id="deleteAgentName"></strong>.<br>
                 Sus propiedades activas quedarán <strong>sin asignar</strong> hasta que las reasignes manualmente.
             </p>
             <div class="modal-actions">
-                <button type="button" class="btn-modal-cancel" onclick="closeDeleteModal()">Cancelar</button>
-                <button type="button" id="confirmDeleteBtn" class="btn-modal-confirm" onclick="confirmDelete()">
-                    Confirmar Baja
-                </button>
+                <button class="modal-btn cancel" onclick="closeDeleteModal()">Cancelar</button>
+                <button class="modal-btn confirm" id="confirmDeleteBtn" onclick="confirmDelete()">Confirmar Baja</button>
             </div>
         </div>
     </div>
