@@ -13,24 +13,21 @@
         <main class="main-content">
             <div class="dashboard-scroll">
                 
-                <!-- Cabecera -->
                 <div class="dash-top-bar">
                     <div class="welcome-text">
                         <h1>Gestión de Talento</h1>
-                        <p>Administra los accesos y roles de tu equipo.</p>
+                        <p>Administra los accesos y roles de tu equipo con facilidad.</p>
                     </div>
                     <a href="/admin/add-agent" class="btn-publish-big">
                         <i class="ph-bold ph-user-plus"></i> Nuevo Agente
                     </a>
                 </div>
 
-                <!-- Alertas -->
                 <div class="alerts-container">
                     <%- include('../partials/alerts') %>
                 </div>
 
-                <!-- Tarjeta de la tabla -->
-                <div class="team-card">
+                <div class="team-card fade-in-up">
                     <div class="team-card-header">
                         <h3>Directorio de Personal</h3>
                     </div>
@@ -47,12 +44,12 @@
                             </thead>
                             <tbody>
                                 <% if(agents && agents.length > 0) { %>
-                                    <% agents.forEach(agent => { %>
-                                    <tr class="agent-row" id="row-<%= agent.id %>">
+                                    <% agents.forEach((agent, index) => { %>
+                                    <tr class="agent-row" id="row-<%= agent.id %>" style="animation-delay: <%= index * 0.08 %>s">
                                         <td>
                                             <div class="profile-cell">
                                                 <% if(agent.photo_url) { %>
-                                                    <img src="<%= agent.photo_url %>" class="avatar" alt="">
+                                                    <img src="<%= agent.photo_url %>" class="avatar" alt="Foto de perfil">
                                                 <% } else { %>
                                                     <div class="avatar placeholder">
                                                         <%= agent.name.charAt(0).toUpperCase() %>
@@ -97,7 +94,8 @@
                                 <% } else { %>
                                     <tr>
                                         <td colspan="4" class="empty-state">
-                                            No hay agentes registrados.
+                                            <div class="empty-icon"><i class="ph-duotone ph-users"></i></div>
+                                            <p>No hay agentes registrados en la plataforma.</p>
                                         </td>
                                     </tr>
                                 <% } %>
@@ -109,7 +107,6 @@
         </main>
     </div>
 
-    <!-- Modal de eliminación -->
     <div id="deleteModal" class="modal-overlay">
         <div class="modal-container">
             <div class="modal-icon">
@@ -138,26 +135,34 @@
             deleteNameSpan.textContent = name;
             deleteModal.classList.add('active');
         }
+
         function closeDeleteModal() {
             agentIdToDelete = null;
             deleteModal.classList.remove('active');
         }
+
         async function confirmDelete() {
             if (!agentIdToDelete) return;
             const btn = document.getElementById('confirmDeleteBtn');
             const originalText = btn.innerText;
-            btn.innerText = "Procesando...";
+            btn.innerHTML = '<i class="ph-bold ph-spinner spinner-icon"></i> Procesando...';
             btn.disabled = true;
             btn.style.opacity = "0.7";
+
             try {
                 const response = await fetch(`/admin/agents/delete/${agentIdToDelete}`, { method: 'DELETE' });
                 const data = await response.json();
-                if (data.success) window.location.reload();
-                else { alert("Error: " + data.message); resetBtn(); }
+                if (data.success) {
+                    window.location.reload();
+                } else { 
+                    alert("Error: " + data.message); 
+                    resetBtn();
+                }
             } catch (error) {
                 alert("Error de conexión");
                 resetBtn();
             }
+
             function resetBtn() {
                 btn.innerText = originalText;
                 btn.disabled = false;
@@ -165,6 +170,7 @@
                 closeDeleteModal();
             }
         }
+
         window.onclick = function(event) {
             if (event.target == deleteModal) closeDeleteModal();
         };
