@@ -3,73 +3,54 @@
 <head>
     <%- include('../partials/head') %>
     <style>
-        /* ESTILOS ADAPTADOS A CYGNUS MODERN */
-        .projects-header {
-            display: flex; justify-content: space-between; align-items: center; 
-            margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
-        }
-        .projects-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;
-        }
+        .projects-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+        
         .project-card {
-            background: white; border-radius: 20px; overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #e2e8f0;
-            transition: all 0.3s ease; position: relative;
+            background: white; border-radius: 16px; overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;
+            display: flex; flex-direction: column; transition: all 0.2s ease;
         }
-        .project-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+        .project-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .project-img { width: 100%; height: 160px; object-fit: cover; background: #f1f5f9; }
+        .project-body { padding: 20px; flex: 1; display: flex; flex-direction: column; }
+        .project-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+        .project-meta { font-size: 0.85rem; color: #64748b; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; }
         
-        .project-img-wrapper {
-            height: 180px; width: 100%; position: relative; overflow: hidden; background: #f1f5f9;
-        }
-        .project-img {
-            width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s;
-        }
-        .project-card:hover .project-img { transform: scale(1.05); }
+        .project-actions { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: auto; border-top: 1px solid #f1f5f9; padding-top: 15px; }
         
-        .project-content { padding: 20px; }
-        .project-title { font-size: 1.2rem; font-weight: 800; color: #1e293b; margin-bottom: 5px; }
-        .project-location { font-size: 0.85rem; color: #64748b; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; }
-        
-        .project-actions { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #f1f5f9; padding-top: 15px; }
-        
-        /* Botones estilo Cygnus */
-        .btn-cygnus {
-            padding: 8px 16px; border-radius: 12px; font-weight: 600; font-size: 0.85rem;
-            display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border: none; transition: 0.2s;
-        }
-        .btn-primary-cygnus { background: #2563eb; color: white; }
-        .btn-primary-cygnus:hover { background: #1d4ed8; }
-        
-        .btn-outline-cygnus { background: transparent; color: #2563eb; border: 1px solid #bfdbfe; }
-        .btn-outline-cygnus:hover { background: #eff6ff; }
-        
-        .btn-danger-icon { background: #fee2e2; color: #dc2626; padding: 8px; border-radius: 10px; border: none; cursor: pointer; transition: 0.2s; }
-        .btn-danger-icon:hover { background: #fca5a5; color: white; }
-
-        /* Modales estilo Cygnus */
+        /* Modales limpios */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(5px);
+            background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px);
             display: flex; justify-content: center; align-items: center;
-            z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s;
+            z-index: 9999; opacity: 0; pointer-events: none; transition: 0.2s;
         }
         .modal-overlay.show { opacity: 1; pointer-events: auto; }
-        
-        .modal-card {
-            background: white; width: 100%; max-width: 500px; border-radius: 24px;
-            padding: 30px; transform: translateY(20px); transition: 0.3s;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-        }
-        .modal-overlay.show .modal-card { transform: translateY(0); }
-        
+        .modal-card { background: white; width: 100%; max-width: 500px; border-radius: 20px; padding: 24px; transform: scale(0.95); transition: 0.2s; }
+        .modal-overlay.show .modal-card { transform: scale(1); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .modal-title { font-size: 1.4rem; font-weight: 800; color: #0f172a; }
-        .btn-close-modal { background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; color: #64748b; }
+        .modal-title { font-size: 1.25rem; font-weight: 700; color: #0f172a; }
+        .btn-close { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b; }
         
-        .form-group { margin-bottom: 15px; }
-        .form-label { display: block; font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; }
-        .form-input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b; outline: none; transition: 0.2s; }
-        .form-input:focus { border-color: #3b82f6; background: white; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        /* Formularios y Botones estándar */
+        .form-label { font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px; display: block; }
+        .form-control { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; margin-bottom: 15px; font-family: inherit; }
+        .form-control:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        
+        .btn { padding: 10px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px; justify-content: center; transition: 0.2s; font-size: 0.9rem; text-decoration: none;}
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: #fee2e2; color: #ef4444; }
+        .btn-danger:hover { background: #fecaca; }
+        
+        /* Notificaciones Flotantes (Toast) */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 10000; }
+        .toast { background: #10b981; color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(100px); opacity: 0; transition: 0.3s; display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.error { background: #ef4444; }
     </style>
 </head>
 <body class="dashboard-body">
@@ -84,18 +65,18 @@
                 
                 <div class="projects-header">
                     <div>
-                        <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0;">Proyectos de Parcelación</h1>
-                        <p style="color: #64748b; margin: 5px 0 0 0;">Gestiona tus recorridos 360° y loteos.</p>
+                        <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0; color: #0f172a;">Proyectos 360</h1>
+                        <p style="color: #64748b; margin: 5px 0 0 0;">Crea y administra tus loteos virtuales.</p>
                     </div>
-                    <button class="btn-cygnus btn-primary-cygnus" onclick="openModal('project')">
+                    <button class="btn btn-primary" onclick="openModal('project')">
                         <i class="ph-bold ph-plus"></i> Nuevo Proyecto
                     </button>
                 </div>
 
                 <div class="projects-grid" id="projects-container">
-                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #94a3b8;">
-                        <div class="spinner-border" style="width: 2rem; height: 2rem; color: #3b82f6;"></div>
-                        <p>Cargando proyectos...</p>
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #64748b;">
+                        <i class="ph-duotone ph-spinner-gap ph-spin" style="font-size: 2rem;"></i>
+                        <p>Cargando información...</p>
                     </div>
                 </div>
 
@@ -103,64 +84,70 @@
         </main>
     </div>
 
+    <div id="toast-container"></div>
+
     <div class="modal-overlay" id="modal-project">
         <div class="modal-card">
             <div class="modal-header">
-                <div class="modal-title" id="modal-title" data-mode="create">Nuevo Proyecto 360</div>
-                <button class="btn-close-modal" onclick="closeModal('project')"><i class="ph-bold ph-x"></i></button>
+                <div class="modal-title" id="modal-title">Nuevo Proyecto</div>
+                <button class="btn-close" onclick="closeModal('project')"><i class="ph-bold ph-x"></i></button>
             </div>
             <form id="form-project">
                 <input type="hidden" id="project-id" name="project-id">
                 
-                <div class="form-group">
-                    <label class="form-label">Nombre del Proyecto</label>
-                    <input type="text" id="nombre" name="nombre" class="form-input" required placeholder="Ej: Hacienda Los Robles">
-                </div>
+                <label class="form-label">Nombre del Proyecto</label>
+                <input type="text" id="nombre" name="nombre" class="form-control" required placeholder="Ej: Hacienda Los Robles">
                 
-                <div class="form-group">
-                    <label class="form-label">Localidad / Ubicación</label>
-                    <input type="text" id="localidad" name="localidad" class="form-input" placeholder="Ej: Villarrica, Araucanía">
-                </div>
+                <label class="form-label">Ubicación</label>
+                <input type="text" id="localidad" name="localidad" class="form-control" placeholder="Ej: Villarrica, Araucanía">
 
-                <div class="form-group">
-                    <label class="form-label">Imagen 360 (Equirectangular)</label>
-                    <input type="file" id="imagen_360" name="imagen_360" class="form-input" accept="image/jpeg, image/png">
-                    <small style="color: #64748b; margin-top: 5px; display: block;">Recomendado: 4096x2048px (JPG). Para editar, déjalo vacío si no quieres cambiar la imagen.</small>
-                </div>
+                <label class="form-label">Imagen 360 (JPG/PNG)</label>
+                <input type="file" id="imagen_360" name="imagen_360" class="form-control" accept="image/jpeg, image/png">
+                <small style="color: #94a3b8; display: block; margin-top: -10px; margin-bottom: 15px;">Para actualizar, selecciona una nueva. Para conservar la actual, déjalo vacío.</small>
                 
-                <div class="form-group">
-                    <label class="form-label">Descripción Interna</label>
-                    <textarea id="descripcion" name="descripcion" class="form-input" rows="3" placeholder="Notas sobre el proyecto..."></textarea>
-                </div>
+                <label class="form-label">Descripción</label>
+                <textarea id="descripcion" name="descripcion" class="form-control" rows="2" placeholder="Notas internas..."></textarea>
 
-                <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
-                    <button type="button" class="btn-cygnus btn-outline-cygnus" onclick="closeModal('project')">Cancelar</button>
-                    <button type="submit" class="btn-cygnus btn-primary-cygnus" id="btn-save-project">Guardar Proyecto</button>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('project')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-project"><i class="ph-bold ph-check"></i> Guardar</button>
                 </div>
             </form>
         </div>
     </div>
 
     <div class="modal-overlay" id="modal-delete">
-        <div class="modal-card" style="text-align: center; max-width: 400px;">
-            <div style="font-size: 3rem; color: #ef4444; margin-bottom: 15px;"><i class="ph-fill ph-warning-circle"></i></div>
-            <h3 style="margin-bottom: 10px; color: #0f172a;">¿Eliminar Proyecto?</h3>
-            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 25px;">Esta acción borrará todos los lotes, historial financiero y no se puede deshacer.</p>
+        <div class="modal-card" style="text-align: center;">
+            <i class="ph-fill ph-warning-circle" style="font-size: 3.5rem; color: #ef4444;"></i>
+            <h3 style="margin: 15px 0 10px 0; color: #0f172a;">¿Eliminar Proyecto?</h3>
+            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 25px;">Se borrarán todos los lotes y el mapa. Esta acción es irreversible.</p>
             <input type="hidden" id="project-id-to-delete">
             <div style="display: flex; justify-content: center; gap: 10px;">
-                <button class="btn-cygnus btn-outline-cygnus" onclick="closeModal('delete')">Cancelar</button>
-                <button class="btn-cygnus" style="background: #ef4444; color: white;" onclick="deleteProjectHandler()">Sí, Eliminar</button>
+                <button class="btn btn-secondary" onclick="closeModal('delete')">Cancelar</button>
+                <button class="btn btn-danger" id="btn-confirm-delete" onclick="deleteProjectHandler()">Sí, Eliminar</button>
             </div>
         </div>
     </div>
 
     <script>
-        // LÓGICA FRONTEND CONECTADA A LA API DE CYGNUS
-        
+        // --- SISTEMA DE TOASTS (NOTIFICACIONES) ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'error' ? 'error' : ''}`;
+            toast.innerHTML = `<i class="ph-bold ${type === 'error' ? 'ph-x-circle' : 'ph-check-circle'}"></i> ${message}`;
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
         async function loadProjects() {
             const container = document.getElementById('projects-container');
             try {
-                // Al estar en el mismo dominio y usar cookies de sesión, no necesitamos mandar Headers raros
                 const res = await fetch('/api/proyectos');
                 const data = await res.json();
                 
@@ -168,11 +155,11 @@
                 
                 if (data.length === 0) {
                     container.innerHTML = `
-                        <div style="grid-column: 1/-1; text-align: center; padding: 4rem; background: white; border-radius: 20px; border: 1px dashed #cbd5e1;">
+                        <div style="grid-column: 1/-1; text-align: center; padding: 4rem; background: white; border-radius: 20px; border: 2px dashed #e2e8f0;">
                             <i class="ph-duotone ph-map-trifold" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem;"></i>
-                            <h3 style="color: #1e293b;">Sin proyectos aún</h3>
-                            <p style="color: #64748b; margin-bottom: 1.5rem;">Crea tu primer recorrido 360° para comenzar a dibujar parcelas.</p>
-                            <button class="btn-cygnus btn-primary-cygnus" onclick="openModal('project')">Crear Proyecto</button>
+                            <h3 style="color: #0f172a;">No tienes proyectos</h3>
+                            <p style="color: #64748b; margin-bottom: 1.5rem;">Comienza subiendo tu primera imagen 360°.</p>
+                            <button class="btn btn-primary" onclick="openModal('project')"><i class="ph-bold ph-plus"></i> Crear Proyecto</button>
                         </div>
                     `;
                     return;
@@ -180,33 +167,22 @@
                 
                 container.innerHTML = data.map(p => `
                     <div class="project-card">
-                        <div class="project-img-wrapper">
-                            <img src="${p.imagen_360_url}" alt="${p.nombre}" class="project-img">
-                        </div>
-                        <div class="project-content">
+                        <img src="${p.imagen_360_url}" alt="${p.nombre}" class="project-img">
+                        <div class="project-body">
                             <div class="project-title">${p.nombre}</div>
-                            <div class="project-location"><i class="ph-bold ph-map-pin"></i> ${p.localidad || 'Ubicación no especificada'}</div>
+                            <div class="project-meta"><i class="ph-bold ph-map-pin"></i> ${p.localidad || 'Sin ubicación'}</div>
                             
                             <div class="project-actions">
-                                <a href="/admin/lotes?id=${p.id}" class="btn-cygnus btn-primary-cygnus" style="flex: 1; justify-content: center;">
-                                    <i class="ph-bold ph-pencil-line"></i> Editar Mapa
-                                </a>
-                                <button class="btn-cygnus btn-outline-cygnus" onclick='openEditModal(${JSON.stringify(p).replace(/'/g, "&#39;")})' title="Configuración">
-                                    <i class="ph-bold ph-gear"></i>
-                                </button>
-                                <button class="btn-danger-icon" onclick="confirmDeleteProject(${p.id})" title="Eliminar">
-                                    <i class="ph-bold ph-trash"></i>
-                                </button>
+                                <a href="/admin/lotes?id=${p.id}" class="btn btn-primary"><i class="ph-bold ph-pencil-line"></i> Editar Lotes</a>
+                                <button class="btn btn-secondary" onclick='openEditModal(${JSON.stringify(p).replace(/'/g, "&#39;")})' title="Editar Info"><i class="ph-bold ph-gear"></i></button>
+                                <button class="btn btn-danger" onclick="confirmDeleteProject(${p.id})" title="Eliminar"><i class="ph-bold ph-trash"></i></button>
                             </div>
-                            <a href="/proyecto/${p.slug_publico}" target="_blank" style="display: block; text-align: center; margin-top: 10px; font-size: 0.8rem; color: #64748b; text-decoration: none;">
-                                <i class="ph-bold ph-arrow-square-out"></i> Ver Visor Público
-                            </a>
+                            <a href="/proyecto/${p.slug_publico}" target="_blank" style="text-align: center; margin-top: 15px; font-size: 0.8rem; color: #2563eb; text-decoration: none; font-weight: 600;"><i class="ph-bold ph-arrow-square-out"></i> Ver Mapa Público</a>
                         </div>
                     </div>
                 `).join('');
-                
             } catch (error) {
-                container.innerHTML = `<div style="grid-column: 1/-1; color: red;">${error.message}</div>`;
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 2rem;">Error: ${error.message}. Asegúrate de haber ejecutado el script SQL en Supabase.</div>`;
             }
         }
 
@@ -215,12 +191,11 @@
             if(type === 'project') {
                 document.getElementById('form-project').reset();
                 document.getElementById('project-id').value = '';
-                document.getElementById('modal-title').innerText = 'Nuevo Proyecto 360';
+                document.getElementById('modal-title').innerText = 'Nuevo Proyecto';
                 document.getElementById('imagen_360').required = true;
             }
             document.getElementById(`modal-${type}`).classList.add('show'); 
         }
-        
         function closeModal(type) { document.getElementById(`modal-${type}`).classList.remove('show'); }
 
         function openEditModal(project) {
@@ -229,15 +204,16 @@
             document.getElementById('localidad').value = project.localidad || '';
             document.getElementById('descripcion').value = project.descripcion || '';
             document.getElementById('modal-title').innerText = 'Editar Proyecto';
-            document.getElementById('imagen_360').required = false; // Opcional al editar
+            document.getElementById('imagen_360').required = false; 
             document.getElementById('modal-project').classList.add('show');
         }
 
-        // GUARDAR / CREAR
+        // GUARDAR PROYECTO (CON FEEDBACK)
         document.getElementById('form-project').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-save-project');
-            btn.disabled = true; btn.innerHTML = '<div class="spinner-border" style="width:1rem; height:1rem; border-width:2px;"></div>';
+            btn.disabled = true; 
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap ph-spin"></i> Guardando...';
             
             const id = document.getElementById('project-id').value;
             const formData = new FormData(e.target);
@@ -252,37 +228,45 @@
                 
                 if(!res.ok) throw new Error(json.message || json.error || 'Error al guardar');
                 
+                showToast(id ? 'Proyecto actualizado con éxito' : 'Proyecto creado con éxito');
                 closeModal('project');
                 loadProjects();
             } catch (error) {
-                alert('Error: ' + error.message);
+                showToast(error.message, 'error');
             } finally {
-                btn.disabled = false; btn.innerHTML = 'Guardar Proyecto';
+                btn.disabled = false; 
+                btn.innerHTML = '<i class="ph-bold ph-check"></i> Guardar';
             }
         });
 
-        // ELIMINAR
+        // ELIMINAR PROYECTO (CON FEEDBACK)
         function confirmDeleteProject(id) {
             document.getElementById('project-id-to-delete').value = id;
             openModal('delete');
         }
 
         async function deleteProjectHandler() {
+            const btn = document.getElementById('btn-confirm-delete');
             const id = document.getElementById('project-id-to-delete').value;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph-bold ph-spinner-gap ph-spin"></i> Eliminando...';
+
             try {
                 const res = await fetch(`/api/proyectos/${id}`, { method: 'DELETE' });
-                if(!res.ok) {
-                    const json = await res.json();
-                    throw new Error(json.message || 'No se pudo eliminar');
-                }
+                if(!res.ok) throw new Error('No se pudo eliminar el proyecto');
+                
+                showToast('Proyecto eliminado');
                 closeModal('delete');
                 loadProjects();
             } catch (error) {
-                alert('Error: ' + error.message);
+                showToast(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Sí, Eliminar';
             }
         }
 
-        // Cargar al iniciar
         document.addEventListener('DOMContentLoaded', loadProjects);
     </script>
 </body>
