@@ -12,6 +12,11 @@ const inventoryController = require('../controllers/inventoryController');
 const pdfController = require('../controllers/pdfController');
 const supabase = require('../config/supabaseClient');
 
+// --- IMPORTAR CONTROLADORES LOTIFY ---
+const projectController = require('../controllers/projectController');
+const loteController = require('../controllers/loteController');
+const crmController = require('../controllers/crmController');
+
 // --- CONFIGURACIÓN DE UPLOAD ---
 const upload = require('../config/cloudinaryConfig');
 
@@ -69,6 +74,47 @@ router.delete('/admin/propiedades/eliminar/:id', requireAuth, propertiesControll
 router.post('/admin/propiedades/reasignar', requireAuth, inventoryController.reassignAgent);
 
 // ==========================================
+//        MODULO LOTIFY (VISTAS Y API)
+// ==========================================
+
+// --- RENDERIZADO DE VISTAS (EJS) ---
+router.get('/admin/proyectos', requireAuth, (req, res) => {
+    res.render('admin/gestion-lotes', { user: req.session.user, page: 'proyectos' }); 
+});
+router.get('/admin/lotes', requireAuth, (req, res) => {
+    res.render('admin/visor', { user: req.session.user, page: 'lotes' }); 
+});
+router.get('/admin/crm', requireAuth, (req, res) => {
+    res.render('admin/clientes', { user: req.session.user, page: 'crm' }); 
+});
+
+// --- API PROYECTOS ---
+router.post('/api/proyectos', requireAuth, upload.single('imagen_360'), projectController.createProject); 
+router.get('/api/proyectos', requireAuth, projectController.getProjects);
+router.get('/api/proyectos/:id', requireAuth, projectController.getProjectById);
+router.put('/api/proyectos/:id', requireAuth, upload.single('imagen_360'), projectController.updateProject);
+router.delete('/api/proyectos/:id', requireAuth, projectController.deleteProject);
+
+// --- API LOTES Y PUNTOS DE INTERÉS ---
+router.get('/api/lotes/proyecto/:projectId', requireAuth, loteController.getLotesByProject);
+router.post('/api/lotes', requireAuth, loteController.createLote);
+router.put('/api/lotes/:id', requireAuth, loteController.updateLote);
+router.delete('/api/lotes/:id', requireAuth, loteController.deleteLote);
+
+// --- API CRM (CLIENTES, VISITAS, VENTAS) ---
+router.get('/api/clientes', requireAuth, crmController.getClientes);
+router.post('/api/clientes', requireAuth, crmController.createCliente);
+router.put('/api/clientes/:id', requireAuth, crmController.updateCliente);
+router.delete('/api/clientes/:id', requireAuth, crmController.deleteCliente);
+
+router.get('/api/visitas', requireAuth, crmController.getVisitas);
+router.post('/api/visitas', requireAuth, crmController.createVisita);
+
+router.get('/api/ventas', requireAuth, crmController.getVentas);
+router.post('/api/ventas', requireAuth, crmController.createVenta);
+router.get('/api/ventas/reserva/:loteId', requireAuth, crmController.getReservaByLote);
+
+// ==========================================
 //           GESTIÓN DE EQUIPO (AGENTS)
 // ==========================================
 // Panel de equipo
@@ -101,9 +147,11 @@ router.get('/admin/marca', requireAuth, (req, res) => {
         user: req.session.user
     });
 });
+
 router.post('/recover-password', authController.recoverPassword);
 router.get('/update-password', authController.showUpdatePassword);
 router.post('/update-password', authController.updatePassword);
+
 // --- AGREGAR EN routes/webRoutes.js ---
 
 // --- INICIO CÓDIGO SITEMAP (PEGA ESTO AL FINAL DE webRoutes.js, ANTES DEL EXPORT) ---
@@ -170,4 +218,5 @@ router.get('/sitemap.xml', async (req, res) => {
     }
 });
 // --- FIN CÓDIGO SITEMAP ---
+
 module.exports = router;
