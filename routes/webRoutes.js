@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { Pool } = require('pg'); // <-- AGREGADO para consultas nativas directas y seguras
 
 // --- IMPORTAR CONTROLADORES ---
 const mainController = require('../controllers/mainController');
@@ -19,6 +20,12 @@ const crmController = require('../controllers/crmController');
 
 // --- CONFIGURACIÓN DE UPLOAD ---
 const upload = require('../config/cloudinaryConfig');
+
+// --- CONEXIÓN NATIVA BD (LOTIFY) ---
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+});
 
 // --- MIDDLEWARE DE SEGURIDAD ---
 const requireAuth = (req, res, next) => {
@@ -40,9 +47,30 @@ router.post('/contacto', mainController.sendContactEmail);
 // Agentes (Público)
 router.get('/agentes', userController.listAgents);
 
-// Detalle y PDF
+// Detalle y PDF (Inmobiliaria tradicional)
 router.get('/propiedad/:id', mainController.propertyDetail);
 router.get('/propiedad/:id/descargar-pdf', pdfController.generatePropertyPDF);
+
+// --- NUEVA RUTA: VISOR PÚBLICO DE PARCELAS (LOTIFY) ---
+router.get('/proyecto/:slug', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT * FROM proyectos WHERE slug_publico = $1', [req.params.slug]);
+        
+        if (rows.length === 0) {
+            return res.status(404).render('index', { 
+                title: 'Proyecto no encontrado',
+                activePage: 'home',
+                error: 'El proyecto que buscas no existe o fue eliminado.'
+            });
+        }
+        
+        // Renderiza el visor público que creamos
+        res.render('visor-publico', { proyecto: rows[0] });
+    } catch (e) {
+        console.error("Error cargando proyecto público:", e);
+        res.status(500).send('Error interno del servidor');
+    }
+});
 
 // ==========================================
 //              AUTENTICACIÓN
@@ -77,15 +105,15 @@ router.post('/admin/propiedades/reasignar', requireAuth, inventoryController.rea
 //        MODULO LOTIFY (VISTAS Y API)
 // ==========================================
 
-// --- RENDERIZADO DE VISTAS (EJS) ---
+// --- RENDERIZADO DE VISTAS (EJS) CORREGIDO ---
 router.get('/admin/proyectos', requireAuth, (req, res) => {
-    res.render('admin/gestion-lotes', { user: req.session.user, page: 'proyectos' }); 
+    res.render('admin/proyectos', { user: req.session.user, page: 'proyectos' }); 
 });
 router.get('/admin/lotes', requireAuth, (req, res) => {
     res.render('admin/visor', { user: req.session.user, page: 'lotes' }); 
 });
 router.get('/admin/crm', requireAuth, (req, res) => {
-    res.render('admin/clientes', { user: req.session.user, page: 'crm' }); 
+    res.render('admin/crm', { user: req.session.user, page: 'crm' }); 
 });
 
 // --- API PROYECTOS ---
@@ -122,7 +150,6 @@ router.get('/admin/team', requireAuth, userController.manageTeam);
 
 // Crear Agente
 router.get('/admin/add-agent', requireAuth, userController.addAgentForm);
-// RUTA CORREGIDA PARA CREAR AGENTE:
 router.post('/admin/agents/create', requireAuth, userController.addAgent);
 
 // Editar Agente
@@ -131,7 +158,6 @@ router.post('/admin/agents/edit', requireAuth, userController.updateAgent);
 
 // Perfil y Eliminación
 router.get('/admin/agents/profile/:id', requireAuth, userController.agentProfile);
-// Usamos DELETE si es fetch, POST si es form normal, aquí mantengo DELETE para fetch
 router.delete('/admin/agents/delete/:id', requireAuth, userController.deleteAgent);
 
 // ==========================================
@@ -152,30 +178,23 @@ router.post('/recover-password', authController.recoverPassword);
 router.get('/update-password', authController.showUpdatePassword);
 router.post('/update-password', authController.updatePassword);
 
-// --- AGREGAR EN routes/webRoutes.js ---
-
-// --- INICIO CÓDIGO SITEMAP (PEGA ESTO AL FINAL DE webRoutes.js, ANTES DEL EXPORT) ---
-
-// Asegúrate de que 'supabase' esté importado arriba en este archivo. 
-// Si no está, agrega: const supabase = require('../config/supabaseClient');
-
+// --- INICIO CÓDIGO SITEMAP ---
 router.get('/sitemap.xml', async (req, res) => {
     try {
         // 1. Obtener propiedades publicadas
         const { data: properties, error } = await supabase
-            .from('properties') // Asegúrate que tu tabla se llama 'properties'
-            .select('id, created_at') // Usamos created_at o updated_at
-            .eq('status', 'publicado'); // Solo las publicadas
+            .from('properties')
+            .select('id, created_at')
+            .eq('status', 'publicado');
 
         if (error) throw error;
 
-        const baseUrl = 'https://cygnusgroup.cl'; // TU DOMINIO REAL
+        const baseUrl = 'https://cygnusgroup.cl';
         const staticUrls = [
             '',
             '/propiedades',
             '/contacto',
             '/nosotros',
-            // URLs SEO estratégicas
             '/propiedades?operacion=Venta&region=Biobío&comuna=Concepción',
             '/propiedades?operacion=Arriendo&region=Biobío&comuna=Concepción',
             '/propiedades?operacion=Venta&region=Ñuble&comuna=Chillán'
