@@ -52,6 +52,7 @@ router.get('/propiedad/:id', mainController.propertyDetail);
 router.get('/propiedad/:id/descargar-pdf', pdfController.generatePropertyPDF);
 
 // --- NUEVA RUTA: VISOR PÚBLICO DE PARCELAS (LOTIFY) ---
+// --- NUEVA RUTA: VISOR PÚBLICO DE PARCELAS (LOTIFY) ---
 router.get('/proyecto/:slug', async (req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM proyectos WHERE slug_publico = $1', [req.params.slug]);
@@ -64,8 +65,9 @@ router.get('/proyecto/:slug', async (req, res) => {
             });
         }
         
-        // Renderiza el visor público que creamos
-        res.render('visor-publico', { proyecto: rows[0] });
+        // ¡CORRECCIÓN AQUÍ! Le indicamos a Express que el archivo está en la carpeta admin/
+        res.render('admin/visor-publico', { proyecto: rows[0] });
+        
     } catch (e) {
         console.error("Error cargando proyecto público:", e);
         res.status(500).send('Error interno del servidor');
