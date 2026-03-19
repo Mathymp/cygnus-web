@@ -3,7 +3,7 @@
 <head>
     <%- include('../partials/head') %>
     <style>
-        .crm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .crm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
         .crm-tabs { display: flex; gap: 1rem; border-bottom: 2px solid #e2e8f0; margin-bottom: 2rem; }
         .tab-btn { background: none; border: none; padding: 10px 20px; font-weight: 600; color: #64748b; cursor: pointer; position: relative; }
         .tab-btn.active { color: #2563eb; }
@@ -18,6 +18,27 @@
         .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
         .status-venta { background: #dcfce7; color: #166534; }
         .status-reserva { background: #fef08a; color: #854d0e; }
+
+        /* Estilos Modales Cygnus */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; pointer-events: none; transition: 0.2s; overflow-y: auto; padding: 20px; }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal-card { background: white; width: 100%; max-width: 800px; border-radius: 20px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); margin: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; }
+        .modal-title { font-size: 1.25rem; font-weight: 800; color: #0f172a; }
+        .btn-close { background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b; }
+        
+        .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .form-label { font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px; display: block; }
+        .form-control { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: inherit; background: #f8fafc; }
+        .form-control:focus { outline: none; border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .section-title { grid-column: 1 / -1; font-weight: 700; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 5px; margin-top: 10px; }
+
+        .btn { padding: 10px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; font-size: 0.9rem; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-success { background: #10b981; color: white; }
     </style>
 </head>
 <body class="dashboard-body">
@@ -30,7 +51,11 @@
                 <div class="crm-header">
                     <div>
                         <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0; color: #0f172a;">CRM & Finanzas</h1>
-                        <p style="color: #64748b; margin: 5px 0 0 0;">Gestiona tus clientes, reservas y cuotas.</p>
+                        <p style="color: #64748b; margin: 5px 0 0 0;">Gestión de ventas, reservas y cuotas de parcelas.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" onclick="openModal('cliente')"><i class="ph-bold ph-user-plus"></i> Nuevo Cliente</button>
+                        <button class="btn btn-success" onclick="openModalOperacion()"><i class="ph-bold ph-currency-circle-dollar"></i> Nueva Operación</button>
                     </div>
                 </div>
 
@@ -41,19 +66,15 @@
 
                 <div id="ventas" class="tab-content active">
                     <table class="modern-table">
-                        <thead><tr><th>Tipo</th><th>Cliente</th><th>Proyecto / Lote</th><th>Valor Final</th><th>Estado</th></tr></thead>
-                        <tbody id="ventas-tbody">
-                            <tr><td colspan="5" style="text-align: center; padding: 2rem;">Cargando operaciones...</td></tr>
-                        </tbody>
+                        <thead><tr><th>Tipo</th><th>Cliente</th><th>Proyecto / Lote</th><th>Valor Final</th><th>Fecha</th></tr></thead>
+                        <tbody id="ventas-tbody"><tr><td colspan="5" style="text-align: center; padding: 2rem;">Cargando operaciones...</td></tr></tbody>
                     </table>
                 </div>
 
                 <div id="clientes" class="tab-content">
                     <table class="modern-table">
                         <thead><tr><th>Nombre</th><th>RUT</th><th>Contacto</th><th>Registro</th></tr></thead>
-                        <tbody id="clientes-tbody">
-                            <tr><td colspan="4" style="text-align: center; padding: 2rem;">Cargando clientes...</td></tr>
-                        </tbody>
+                        <tbody id="clientes-tbody"><tr><td colspan="4" style="text-align: center; padding: 2rem;">Cargando clientes...</td></tr></tbody>
                     </table>
                 </div>
 
@@ -61,7 +82,139 @@
         </main>
     </div>
 
+    <div class="modal-overlay" id="modal-operacion">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">Registrar Venta / Reserva</div>
+                <button class="btn-close" onclick="closeModal('operacion')"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <form id="form-operacion">
+                <div class="grid-form">
+                    <div class="section-title">1. Selección Inmobiliaria</div>
+                    
+                    <div>
+                        <label class="form-label">Cliente</label>
+                        <select id="op_cliente_id" name="cliente_id" class="form-control" required>
+                            <option value="">Selecciona un cliente...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Tipo de Operación</label>
+                        <select id="op_tipo" name="tipo_operacion" class="form-control" required onchange="toggleCuotas()">
+                            <option value="reserva">Reserva</option>
+                            <option value="venta">Venta Definitiva</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Proyecto 360</label>
+                        <select id="op_proyecto_id" name="proyecto_id" class="form-control" required onchange="loadLotesOptions(this.value)">
+                            <option value="">Selecciona un proyecto...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Parcela / Lote Disponible</label>
+                        <select id="op_lote_id" name="lote_id" class="form-control" required onchange="setPrecioLista(this)">
+                            <option value="">Selecciona un proyecto primero...</option>
+                        </select>
+                    </div>
+
+                    <div class="section-title">2. Estructura Financiera</div>
+                    
+                    <div>
+                        <label class="form-label">Precio de Lista (Referencia)</label>
+                        <input type="number" id="op_precio_lista" name="precio_lista" class="form-control" readonly>
+                    </div>
+                    <div>
+                        <label class="form-label">Precio Acordado (Cierre)</label>
+                        <input type="number" id="op_precio_acordado" name="precio_acordado" class="form-control" required oninput="calcularFinanzas()">
+                    </div>
+                    
+                    <div>
+                        <label class="form-label">Monto Reserva (Abonado)</label>
+                        <input type="number" id="op_monto_reserva" name="monto_reserva" class="form-control" value="0" oninput="calcularFinanzas()">
+                    </div>
+                    <div>
+                        <label class="form-label">Método de Pago</label>
+                        <select id="op_metodo_pago" name="metodo_pago" class="form-control">
+                            <option value="Transferencia">Transferencia Bancaria</option>
+                            <option value="Vale Vista">Vale Vista</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Efectivo">Efectivo</option>
+                        </select>
+                    </div>
+
+                    <div id="bloque-cuotas" style="display: none; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="section-title">3. Crédito y Documentos</div>
+                        <div>
+                            <label class="form-label">Monto Pie (Adicional a Reserva)</label>
+                            <input type="number" id="op_monto_pie" name="monto_pie" class="form-control" value="0" oninput="calcularFinanzas()">
+                        </div>
+                        <div>
+                            <label class="form-label">Cantidad de Cuotas</label>
+                            <input type="number" id="op_cuotas" name="cantidad_cuotas" class="form-control" value="0">
+                        </div>
+                        <div>
+                            <label class="form-label">Banco Emisor</label>
+                            <input type="text" name="banco" class="form-control" placeholder="Ej: Banco Santander">
+                        </div>
+                        <div>
+                            <label class="form-label">N° Documento (Vale Vista / Cheque)</label>
+                            <input type="text" name="numero_documento" class="form-control" placeholder="Ej: 987654321">
+                        </div>
+                        <div>
+                            <label class="form-label">Fecha 1ra Cuota / Fecha Pago</label>
+                            <input type="date" name="fecha_pago_inicial" class="form-control">
+                        </div>
+                        <div>
+                            <label class="form-label">Tasa Interés (%)</label>
+                            <input type="number" step="0.1" name="tasa_interes" class="form-control" value="0">
+                        </div>
+                    </div>
+
+                    <div class="section-title">Resumen Final</div>
+                    <div>
+                        <label class="form-label">Saldo a Financiar / Valor Final Operación</label>
+                        <input type="number" id="op_valor_final" name="valor_final" class="form-control" style="background: #ecfdf5; font-weight: bold; color: #047857;" readonly>
+                    </div>
+                    <div>
+                        <label class="form-label">Notas Bancarias / Comentarios</label>
+                        <input type="text" name="notas_generales" class="form-control" placeholder="Observaciones de la venta...">
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('operacion')">Cancelar</button>
+                    <button type="submit" class="btn btn-success" id="btn-save-op"><i class="ph-bold ph-check"></i> Registrar Operación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-cliente">
+        <div class="modal-card" style="max-width: 500px;">
+            <div class="modal-header">
+                <div class="modal-title">Nuevo Cliente</div>
+                <button class="btn-close" onclick="closeModal('cliente')"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <form id="form-cliente">
+                <label class="form-label">Nombre Completo</label>
+                <input type="text" name="nombre" class="form-control" required>
+                <label class="form-label">RUT</label>
+                <input type="text" name="rut" class="form-control">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control">
+                <label class="form-label">Teléfono</label>
+                <input type="text" name="telefono" class="form-control">
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('cliente')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-cli">Guardar Cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // --- CONTROL DE PESTAÑAS ---
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -69,44 +222,128 @@
             event.currentTarget.classList.add('active');
         }
 
+        // --- CARGA INICIAL DE TABLAS ---
         async function loadData() {
             try {
+                const [resVentas, resClientes, resProyectos] = await Promise.all([
+                    fetch('/api/ventas'), fetch('/api/clientes'), fetch('/api/proyectos')
+                ]);
+                
                 // Cargar Ventas
-                const resVentas = await fetch('/api/ventas');
                 const ventas = await resVentas.json();
                 const vBody = document.getElementById('ventas-tbody');
-                if(ventas.length === 0) {
-                    vBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay operaciones registradas.</td></tr>';
-                } else {
-                    vBody.innerHTML = ventas.map(v => `
-                        <tr>
-                            <td><span class="status-badge ${v.tipo_operacion === 'venta' ? 'status-venta' : 'status-reserva'}">${v.tipo_operacion}</span></td>
-                            <td style="font-weight:600;">${v.cliente_nombre}</td>
-                            <td>${v.proyecto_nombre}<br><small style="color:#64748b;">Lote: ${v.numero_lote}</small></td>
-                            <td style="font-weight:700; color:#0f172a;">$${parseInt(v.valor_final).toLocaleString('es-CL')}</td>
-                            <td>${new Date(v.fecha_venta).toLocaleDateString('es-CL')}</td>
-                        </tr>
-                    `).join('');
-                }
+                if(ventas.length === 0) vBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay operaciones registradas.</td></tr>';
+                else vBody.innerHTML = ventas.map(v => `
+                    <tr>
+                        <td><span class="status-badge ${v.tipo_operacion === 'venta' ? 'status-venta' : 'status-reserva'}">${v.tipo_operacion}</span></td>
+                        <td style="font-weight:600;">${v.cliente_nombre}</td>
+                        <td>${v.proyecto_nombre}<br><small style="color:#64748b;">Lote: ${v.numero_lote}</small></td>
+                        <td style="font-weight:700;">$${parseInt(v.valor_final).toLocaleString('es-CL')}</td>
+                        <td>${new Date(v.fecha_venta).toLocaleDateString('es-CL')}</td>
+                    </tr>
+                `).join('');
 
-                // Cargar Clientes
-                const resClientes = await fetch('/api/clientes');
+                // Cargar Clientes (Tabla y Selectores)
                 const clientes = await resClientes.json();
                 const cBody = document.getElementById('clientes-tbody');
-                if(clientes.length === 0) {
-                    cBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay clientes.</td></tr>';
-                } else {
-                    cBody.innerHTML = clientes.map(c => `
-                        <tr>
-                            <td style="font-weight:600;">${c.nombre}</td>
-                            <td>${c.rut || '-'}</td>
-                            <td>${c.email || '-'}<br><small>${c.telefono || '-'}</small></td>
-                            <td>${new Date(c.creado_en).toLocaleDateString('es-CL')}</td>
-                        </tr>
-                    `).join('');
-                }
+                const cSelect = document.getElementById('op_cliente_id');
+                
+                cSelect.innerHTML = '<option value="">Selecciona un cliente...</option>' + clientes.map(c => `<option value="${c.id}">${c.nombre} (${c.rut || 'Sin RUT'})</option>`).join('');
+                
+                if(clientes.length === 0) cBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay clientes.</td></tr>';
+                else cBody.innerHTML = clientes.map(c => `
+                    <tr>
+                        <td style="font-weight:600;">${c.nombre}</td>
+                        <td>${c.rut || '-'}</td>
+                        <td>${c.email || '-'}<br><small>${c.telefono || '-'}</small></td>
+                        <td>${new Date(c.creado_en).toLocaleDateString('es-CL')}</td>
+                    </tr>
+                `).join('');
+
+                // Llenar selector de Proyectos
+                const proyectos = await resProyectos.json();
+                const pSelect = document.getElementById('op_proyecto_id');
+                pSelect.innerHTML = '<option value="">Selecciona un proyecto...</option>' + proyectos.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+
             } catch (e) { console.error('Error cargando CRM', e); }
         }
+
+        // --- LÓGICA DEL MODAL DE OPERACIONES ---
+        function openModal(type) { document.getElementById(`modal-${type}`).classList.add('show'); }
+        function closeModal(type) { document.getElementById(`modal-${type}`).classList.remove('show'); }
+
+        function openModalOperacion() {
+            document.getElementById('form-operacion').reset();
+            toggleCuotas();
+            openModal('operacion');
+        }
+
+        function toggleCuotas() {
+            const tipo = document.getElementById('op_tipo').value;
+            const bloque = document.getElementById('bloque-cuotas');
+            bloque.style.display = (tipo === 'venta') ? 'grid' : 'none';
+        }
+
+        async function loadLotesOptions(proyectoId) {
+            const lSelect = document.getElementById('op_lote_id');
+            lSelect.innerHTML = '<option value="">Cargando parcelas...</option>';
+            if(!proyectoId) return;
+
+            try {
+                const res = await fetch(`/api/lotes/proyecto/${proyectoId}`);
+                const lotes = await res.json();
+                // Filtramos solo los disponibles (estado_id = 1) y que sean lotes (no POIs)
+                const disponibles = lotes.filter(l => l.estado_id === 1 && l.tipo === 'lote');
+                
+                lSelect.innerHTML = '<option value="">Selecciona una parcela...</option>' + 
+                    disponibles.map(l => `<option value="${l.id}" data-precio="${l.precio}">${l.numero_lote} - $${parseInt(l.precio).toLocaleString('es-CL')}</option>`).join('');
+            } catch(e) { lSelect.innerHTML = '<option value="">Error al cargar</option>'; }
+        }
+
+        function setPrecioLista(selectElem) {
+            const selectedOption = selectElem.options[selectElem.selectedIndex];
+            const precio = selectedOption.getAttribute('data-precio') || 0;
+            document.getElementById('op_precio_lista').value = precio;
+            document.getElementById('op_precio_acordado').value = precio;
+            calcularFinanzas();
+        }
+
+        function calcularFinanzas() {
+            const precioAcordado = parseFloat(document.getElementById('op_precio_acordado').value) || 0;
+            const reserva = parseFloat(document.getElementById('op_monto_reserva').value) || 0;
+            const pie = parseFloat(document.getElementById('op_monto_pie').value) || 0;
+            
+            // El valor final a pagar / financiar es el acordado menos lo que ya pasó por caja
+            const valorFinal = precioAcordado - reserva - pie;
+            document.getElementById('op_valor_final').value = valorFinal > 0 ? valorFinal : 0;
+        }
+
+        // --- SUBMITS ---
+        document.getElementById('form-cliente').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save-cli');
+            btn.disabled = true; btn.innerText = "Guardando...";
+            try {
+                await fetch('/api/clientes', { method: 'POST', body: new FormData(e.target) }); // Tu backend soporta formdata o json dependiendo de tu setup. Como pasamos json antes:
+                const data = Object.fromEntries(new FormData(e.target).entries());
+                await fetch('/api/clientes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+                closeModal('cliente'); loadData();
+            } catch(err) { alert('Error'); } finally { btn.disabled = false; btn.innerText = "Guardar Cliente"; }
+        });
+
+        document.getElementById('form-operacion').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save-op');
+            btn.disabled = true; btn.innerHTML = "Procesando...";
+            try {
+                const data = Object.fromEntries(new FormData(e.target).entries());
+                const res = await fetch('/api/ventas', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+                if(!res.ok) throw new Error('Error al registrar operación');
+                closeModal('operacion'); loadData();
+                alert('¡Operación registrada con éxito! El mapa se ha actualizado automáticamente.');
+            } catch(err) { alert(err.message); } finally { btn.disabled = false; btn.innerHTML = '<i class="ph-bold ph-check"></i> Registrar Operación'; }
+        });
+
         document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
