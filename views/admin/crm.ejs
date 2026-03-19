@@ -5,91 +5,80 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    
     <style>
-        .tabs-header { display: flex; gap: 20px; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; margin-top: 20px;}
+        /* CSS ORIGINAL DE VENTAS.HTML INTACTO */
+        .modal-overlay { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); align-items: flex-start; padding-top: 5vh; display: flex; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s; }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal-card { background: white; width: 100%; max-width: 600px; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-height: 90vh; display: flex; flex-direction: column; transform: translateY(20px); transition: transform 0.3s; }
+        .modal-overlay.show .modal-card { transform: translateY(0); }
+        .modal-header { padding: 20px 25px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .modal-header h3 { margin: 0; font-size: 1.25rem; font-weight: 600; color: #0f172a; }
+        .modal-body { flex-grow: 1; overflow-y: auto; padding: 25px; padding-right: 15px; }
+        .btn-close { background: none; border: none; color: #64748b; cursor: pointer; font-size: 1.25rem; }
+        .btn-icon-info { width: 34px; height: 34px; border-radius: 8px; border: none; cursor: pointer; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .btn-icon-info:hover { background: #0284c7; color: white; transform: scale(1.05); }
+        .tabs-header { display: flex; gap: 20px; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; }
         .tab-btn { background: none; border: none; padding: 10px 0; font-size: 1rem; font-weight: 600; color: #94a3b8; cursor: pointer; position: relative; }
         .tab-btn.active { color: #2563eb; }
         .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: #2563eb; }
-        .tab-content { display: none; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
-        
-        .modal-overlay { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: flex-start; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s; padding-top: 5vh; overflow-y: auto;}
-        .modal-overlay.show { opacity: 1; pointer-events: auto; }
-        .modal-card { background: white; width: 100%; max-width: 600px; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; transform: translateY(20px); transition: transform 0.3s; }
-        .modal-overlay.show .modal-card { transform: translateY(0); }
-        .modal-header { padding: 20px 25px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { padding: 25px; }
-
         .switch-group { background: #f1f5f9; padding: 4px; border-radius: 12px; display: flex; margin-bottom: 20px; gap: 5px; }
         .switch-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; background: transparent; font-weight: 600; color: #64748b; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
         .switch-btn.active { box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: white; }
         #btn-type-visita.active { background: #2563eb; }
         #btn-type-reserva.active { background: #f59e0b; }
         #btn-type-venta.active { background: #10b981; }
-
         .price-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-top: 10px; }
         .price-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.9rem; color: #64748b; }
         .price-row.total { border-top: 1px solid #cbd5e1; padding-top: 10px; margin-top: 10px; color: #0f172a; font-weight: 700; font-size: 1.1rem; }
         .price-val { font-family: monospace; font-size: 1rem; }
-        
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.85rem; color: #334155; }
-        .styled-input { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; }
+        .styled-input { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; font-size: 0.9rem; }
+        .filters-bar { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; }
+        .filter-select { padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem; min-width: 200px; color: #64748b; }
+        .btn-primary-block { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-primary-block:hover { background: #1d4ed8; }
+        .btn-secondary { padding: 10px 20px; background: white; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px; font-weight: 600; cursor: pointer; }
     </style>
 </head>
 <body class="dashboard-body">
-
     <%- include('../partials/alerts') %>
-
     <div class="app-layout">
         <%- include('../partials/sidebar-admin', { page: 'crm' }) %>
 
         <main class="main-content">
             <div class="dashboard-scroll">
-                <div class="dashboard-header" style="margin-top: 20px;">
-                    <div>
-                        <h1 class="page-title">Gestión Comercial y Clientes</h1>
-                        <p style="color:#64748b; margin-top: 5px;">Control total de tu base de clientes y operaciones.</p>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-primary-block" style="width: auto; margin:0; background: #3b82f6;" onclick="openModal('cliente')"><i class="bi bi-person-plus-fill"></i> Nuevo Cliente</button>
-                        <button class="btn-primary-block" style="width: auto; margin:0; background: #10b981;" onclick="openCRMModal()"><i class="bi bi-plus-circle-fill"></i> Nueva Operación</button>
-                    </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                    <div><h1 style="font-size: 1.75rem; font-weight: 700; margin: 0;">Gestión Comercial</h1><p style="color:#64748b;">Control total de visitas, reservas y cierres.</p></div>
+                    <button class="btn-primary-block" style="width: auto; margin:0;" onclick="openCRMModal()"><i class="bi bi-plus-circle-fill"></i> Nueva Acción</button>
+                </div>
+                
+                <div class="filters-bar" style="margin-top: 20px;">
+                    <i class="bi bi-funnel-fill" style="color:#94a3b8;"></i>
+                    <select id="filter-proyecto" class="filter-select" onchange="applyFilters()"><option value="">Todos los Proyectos</option></select>
                 </div>
 
                 <div class="tabs-header">
-                    <button class="tab-btn active" onclick="switchTab('ventas')">💰 Operaciones y Ventas</button>
-                    <button class="tab-btn" onclick="switchTab('clientes')">👥 Directorio de Clientes</button>
+                    <button class="tab-btn active" onclick="switchTab('ventas')">💰 Operaciones Financieras</button>
+                    <button class="tab-btn" onclick="switchTab('visitas')">📅 Visitas</button>
                 </div>
+
+                <div id="tab-visitas" class="tab-content"><div class="projects-grid" id="visitas-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;"></div></div>
 
                 <div id="tab-ventas" class="tab-content active">
                     <div class="table-responsive">
-                        <table class="management-table">
-                            <thead>
+                        <table class="management-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                            <thead style="background: #f8fafc; text-align: left;">
                                 <tr>
-                                    <th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Proyecto / Lote</th>
+                                    <th style="padding: 15px;">Fecha</th><th>Tipo</th><th>Cliente</th><th>Proyecto</th><th>Lote</th>
                                     <th style="text-align: right;">Total Op.</th>
                                     <th style="text-align: right;">Pagado</th>
-                                    <th style="text-align: center;">Info</th>
+                                    <th style="text-align: center; padding: 15px;">Info</th>
                                 </tr>
                             </thead>
-                            <tbody id="ventas-tbody"><tr><td colspan="7" style="text-align:center; padding:30px;">Cargando operaciones...</td></tr></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div id="tab-clientes" class="tab-content">
-                    <div class="table-responsive">
-                        <table class="management-table">
-                            <thead>
-                                <tr>
-                                    <th>Cliente</th><th>RUT</th><th>Contacto</th><th>Notas</th><th>Registro</th>
-                                    <th style="text-align: center;">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="clients-table-body"><tr><td colspan="6" style="text-align:center; padding:30px;">Cargando clientes...</td></tr></tbody>
+                            <tbody id="ventas-tbody"><tr><td colspan="8" style="text-align:center; padding:30px;">Cargando...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -97,28 +86,9 @@
         </main>
     </div>
 
-    <div id="modal-cliente" class="modal-overlay">
-        <div class="modal-card" style="max-width: 500px;">
-            <div class="modal-header"><h3 id="modal-title-cli">Nuevo Cliente</h3><button class="btn-close" onclick="closeModal('cliente')"><i class="bi bi-x-lg"></i></button></div>
-            <form id="form-cliente">
-                <input type="hidden" id="client-id" name="id">
-                <div class="modal-body">
-                    <div class="input-group"><label>Nombre Completo</label><input type="text" class="styled-input" id="input-nombre" name="nombre" required></div>
-                    <div class="input-group"><label>RUT</label><input type="text" class="styled-input" id="input-rut" name="rut" maxlength="12"></div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                        <div class="input-group"><label>Email</label><input type="email" class="styled-input" name="email"></div>
-                        <div class="input-group"><label>Teléfono</label><input type="text" class="styled-input" name="telefono"></div>
-                    </div>
-                    <div class="input-group"><label>Notas</label><textarea class="styled-input" name="notas" rows="2"></textarea></div>
-                    <button type="submit" class="btn-primary-block" id="btn-save-cli">Guardar Cliente</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <div id="modal-crm" class="modal-overlay">
         <div class="modal-card">
-            <div class="modal-header"><h3 style="margin:0;">Registrar Acción</h3><button class="btn-close" onclick="closeModal('crm')" style="background:transparent;border:none;"><i class="bi bi-x-lg"></i></button></div>
+            <div class="modal-header"><h3>Registrar Acción</h3><button class="btn-close" onclick="closeModal('crm')"><i class="bi bi-x-lg"></i></button></div>
             <div class="modal-body">
                 <div class="switch-group">
                     <button class="switch-btn active" onclick="setType('visita')" id="btn-type-visita">Visita</button>
@@ -128,60 +98,69 @@
                 <form id="crm-form">
                     <input type="hidden" id="action-type" value="visita">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div class="input-group"><label>Proyecto</label><select id="select-proyecto" class="styled-input" onchange="loadLotes(this.value)" required></select></div>
-                        <div class="input-group" id="group-lote"><label>Lote</label><select id="select-lote" class="styled-input" onchange="handleLoteChange()" disabled></select></div>
+                        <div class="input-group"><label>Proyecto</label><select id="select-proyecto" class="styled-input" onchange="loadLotes(this.value)" required><option value="">Selecciona...</option></select></div>
+                        <div class="input-group" id="group-lote"><label>Lote</label><select id="select-lote" class="styled-input" onchange="handleLoteChange()" disabled><option value="">Esperando...</option></select></div>
                     </div>
                     
-                    <div class="input-group"><label>Cliente</label><select id="select-cliente" class="styled-input" required></select></div>
+                    <div class="input-group"><label>Cliente</label><select id="select-cliente" class="styled-input" required><option value="">Cargando...</option></select></div>
                     
                     <div id="fields-visita">
-                        <div style="display:flex;gap:10px;"><input type="date" id="fecha-input" class="styled-input"><input type="time" id="hora-input" class="styled-input"></div>
+                        <label style="display:block; margin-bottom:5px; font-weight:600; font-size:0.85rem; color:#334155;">Fecha y Hora</label>
+                        <div style="display:flex;gap:10px;"><input type="date" id="fecha-input" class="styled-input"><input type="time" id="hora-input" class="styled-input" style="max-width:120px;"></div>
                     </div>
 
                     <div id="fields-finance" style="display:none;">
                         <div class="price-box">
-                            <div class="price-row"><span>Precio Lista</span><span class="price-val" id="disp-precio-lista">$0</span></div>
-                            <div class="input-group" id="group-precio-acordado"><label>Precio Acordado</label><input type="text" id="input-precio-acordado" class="styled-input" oninput="formatInput(this); updateCalculations()"></div>
-                            <div class="input-group" id="group-monto-reserva"><label id="label-reserva">Monto Reserva (Pagado)</label><input type="text" id="input-monto-reserva" class="styled-input" oninput="formatInput(this); updateCalculations()"></div>
+                            <div class="price-row"><span>Precio de Lista</span><span class="price-val" id="disp-precio-lista">$0</span></div>
+                            <div class="input-group" id="group-precio-acordado" style="margin-bottom:10px;"><label>Precio Acordado</label><input type="text" id="input-precio-acordado" class="styled-input" placeholder="$0" oninput="formatInput(this); updateCalculations()"></div>
+                            <div class="input-group" id="group-monto-reserva" style="margin-bottom:10px;"><label id="label-reserva">Monto Reserva (Pagado)</label><input type="text" id="input-monto-reserva" class="styled-input" placeholder="$0" oninput="formatInput(this); updateCalculations()"></div>
                             
-                            <div id="extended-finance" style="display:none; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-                                <div class="input-group"><label>Monto Pie</label><input type="text" id="input-monto-pie" class="styled-input" placeholder="$0" oninput="formatInput(this); updateCalculations()"></div>
-                                <div class="input-group"><label>N° Cuotas</label><input type="number" id="input-cuotas" class="styled-input" value="0"></div>
-                                <div class="input-group"><label>Banco / Emisor</label><input type="text" id="input-banco" class="styled-input" placeholder="Ej: Santander"></div>
-                                <div class="input-group"><label>N° Documento</label><input type="text" id="input-documento" class="styled-input" placeholder="Vale Vista/Transferencia"></div>
+                            <div id="campos-credito" style="display:none; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                                <div class="input-group"><label>Monto Pie Extra</label><input type="text" id="input-monto-pie" class="styled-input" placeholder="$0" oninput="formatInput(this); updateCalculations()"></div>
+                                <div class="input-group"><label>Cantidad Cuotas</label><input type="number" id="input-cuotas" class="styled-input" value="0"></div>
+                                <div class="input-group"><label>Banco</label><input type="text" id="input-banco" class="styled-input" placeholder="Ej: Santander"></div>
+                                <div class="input-group"><label>N° Documento</label><input type="text" id="input-documento" class="styled-input" placeholder="Cheque / Vale Vista"></div>
                             </div>
-                            
-                            <div class="price-row total"><span id="label-total">A Pagar Hoy:</span><span class="price-val" id="disp-total-pagar" style="color:#10b981;">$0</span></div>
+
+                            <div class="price-row total"><span id="label-total">Total a Pagar Hoy:</span><span class="price-val" id="disp-total-pagar" style="color:var(--primary);">$0</span></div>
                         </div>
-                        <div class="input-group" style="margin-top:15px;"><label>Método de Pago</label><select id="metodo-pago" class="styled-input"><option value="Transferencia">Transferencia</option><option value="Vale Vista">Vale Vista</option><option value="Credito Directo">Crédito Directo</option></select></div>
+                        <div class="input-group" style="margin-top:15px;"><label>Método de Pago</label><select id="metodo-pago" class="styled-input"><option value="Transferencia">Transferencia</option><option value="Efectivo">Efectivo</option><option value="Vale Vista">Vale Vista</option><option value="Crédito Directo">Crédito Directo</option></select></div>
                     </div>
 
-                    <div class="input-group" style="margin-top:10px;"><label>Notas / Comentarios Bancarios</label><textarea id="notas" class="styled-input" rows="2"></textarea></div>
-                    <button type="submit" class="btn-primary-block" style="margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Guardar Registro</button>
+                    <div class="input-group" style="margin-top:10px;"><label>Notas</label><textarea id="notas" class="styled-input" rows="2" placeholder="Detalles..."></textarea></div>
+                    <button type="submit" class="btn-primary-block" style="margin-top:15px; background: #10b981;">Guardar Registro</button>
                 </form>
             </div>
         </div>
     </div>
 
+    <div id="modal-info" class="modal-overlay">
+        <div class="modal-card" style="max-width:400px;">
+            <div class="modal-header"><h3>Detalle Operación</h3><button class="btn-close" onclick="closeModal('info')"><i class="bi bi-x-lg"></i></button></div>
+            <div class="modal-body" id="info-body"></div>
+            <div class="modal-footer" style="padding: 20px; border-top: 1px solid #e2e8f0; display:flex; justify-content: flex-end;"><button class="btn-secondary" style="width:100%;" onclick="closeModal('info')">Cerrar</button></div>
+        </div>
+    </div>
+
     <script>
         let lotesData = []; 
-        let currentTab = 'ventas';
+        let ventasData = []; 
+        let visitasData = [];
+
+        function parseDB(val) { return Math.floor(parseFloat(val || 0)); }
+        function parseInput(val) { return parseInt((val || '').toString().replace(/[\$\.\s]/g, '')) || 0; }
+        function fmt(val) { return Math.floor(val).toLocaleString('es-CL'); }
+        function formatInput(input) { let val = input.value.replace(/\D/g, ''); input.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
 
         function switchTab(tab) {
-            currentTab = tab;
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(`tab-${tab}`).classList.add('active');
             event.target.classList.add('active');
         }
 
-        function parseInput(val) { return parseInt((val || '').toString().replace(/[\$\.\s]/g, '')) || 0; }
-        function fmt(val) { return Math.floor(val).toLocaleString('es-CL'); }
-        function formatInput(input) { let val = input.value.replace(/\D/g, ''); input.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
-
-        function openModal(id) { document.getElementById(`modal-${id}`).classList.add('show'); }
         function openCRMModal() { document.getElementById('modal-crm').classList.add('show'); setType('venta'); }
-        function closeModal(id) { document.getElementById(`modal-${id}`).classList.remove('show'); }
+        function closeModal(id) { document.getElementById(`modal-${id}`).classList.remove('show'); document.getElementById('crm-form').reset(); }
 
         function setType(type) {
             document.getElementById('action-type').value = type;
@@ -193,45 +172,41 @@
             document.getElementById('fields-finance').style.display = isVisita ? 'none' : 'block';
             document.getElementById('group-lote').style.visibility = isVisita ? 'hidden' : 'visible'; 
             
-            const extFinance = document.getElementById('extended-finance');
             if (type === 'reserva') {
                 document.getElementById('group-precio-acordado').style.display = 'none'; 
-                extFinance.style.display = 'none';
-                document.getElementById('label-reserva').innerText = "Monto Reserva (Pago Actual)";
-                document.getElementById('label-total').innerText = "Total Pagado Hoy:";
+                document.getElementById('campos-credito').style.display = 'none';
+                document.getElementById('label-reserva').innerText = "Monto a Pagar para Reservar";
+                document.getElementById('label-total').innerText = "Total Reserva:";
             } else if (type === 'venta') {
                 document.getElementById('group-precio-acordado').style.display = 'block';
-                extFinance.style.display = 'grid';
+                document.getElementById('campos-credito').style.display = 'grid';
                 document.getElementById('label-reserva').innerText = "Menos Reserva (Ya pagada)";
-                document.getElementById('label-total').innerText = "Saldo a Financiar / Pagar:";
+                document.getElementById('label-total').innerText = "Restante a Financiar / Pagar:";
             }
             updateCalculations();
         }
 
         async function loadInitialData() {
-            const [proyectos, clientes, ventas] = await Promise.all([
+            const [proyectos, clientes, ventas, visitas] = await Promise.all([
                 fetch('/api/proyectos').then(r => r.json()),
                 fetch('/api/clientes').then(r => r.json()),
-                fetch('/api/ventas').then(r => r.json())
+                fetch('/api/ventas').then(r => r.json()),
+                fetch('/api/visitas').then(r => r.json())
             ]);
             
-            // Llenar Selects
             const selP = document.getElementById('select-proyecto'); selP.innerHTML = '<option value="">Selecciona...</option>';
-            proyectos.forEach(p => selP.innerHTML += `<option value="${p.id}">${p.nombre}</option>`);
+            const filterP = document.getElementById('filter-proyecto'); filterP.innerHTML = '<option value="">Todos los Proyectos</option>';
+            proyectos.forEach(p => {
+                selP.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+                filterP.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+            });
             
             const selC = document.getElementById('select-cliente'); selC.innerHTML = '<option value="">Selecciona cliente...</option>';
-            const tbodyC = document.getElementById('clients-table-body'); tbodyC.innerHTML = '';
-            clientes.forEach(c => {
-                selC.innerHTML += `<option value="${c.id}">${c.nombre} (${c.rut || 'S/R'})</option>`;
-                tbodyC.innerHTML += `<tr><td><strong>${c.nombre}</strong></td><td>${c.rut||'-'}</td><td>${c.email||'-'}<br>${c.telefono||'-'}</td><td>${c.notas||'-'}</td><td>${new Date(c.creado_en).toLocaleDateString()}</td><td style="text-align:center;"><button onclick="alert('Funciones de edición disponibles próximamente')" style="background:#eff6ff; border:none; padding:5px 10px; border-radius:5px;"><i class="bi bi-pencil" style="color:#2563eb;"></i></button></td></tr>`;
-            });
-
-            // Llenar Ventas
-            const tbodyV = document.getElementById('ventas-tbody'); tbodyV.innerHTML = '';
-            ventas.forEach(v => {
-                const tipoBadge = v.tipo_operacion === 'reserva' ? '<span style="background:#fef3c7;color:#d97706;padding:4px 8px;border-radius:6px;font-size:0.75rem;font-weight:bold;">RESERVA</span>' : '<span style="background:#dcfce7;color:#166534;padding:4px 8px;border-radius:6px;font-size:0.75rem;font-weight:bold;">VENTA</span>';
-                tbodyV.innerHTML += `<tr><td>${new Date(v.fecha_venta).toLocaleDateString()}</td><td>${tipoBadge}</td><td><strong>${v.cliente_nombre}</strong></td><td>${v.proyecto_nombre} <br><small>Lote: ${v.numero_lote}</small></td><td style="text-align:right;">$${fmt(v.precio_acordado)}</td><td style="text-align:right; font-weight:bold; color:#10b981;">$${fmt(v.valor_final)}</td><td style="text-align:center;"><i class="bi bi-check-circle-fill" style="color:#2563eb;"></i></td></tr>`;
-            });
+            clientes.forEach(c => selC.innerHTML += `<option value="${c.id}">${c.nombre} (${c.rut || 'S/R'})</option>`);
+            
+            ventasData = ventas;
+            visitasData = visitas;
+            applyFilters();
         }
 
         async function loadLotes(projectId) {
@@ -242,45 +217,38 @@
             lotesData = data.filter(l => l.tipo === 'lote');
             sel.innerHTML = '<option value="">Selecciona lote...</option>';
             lotesData.forEach(l => {
-                if (l.estado_id === 3) return; // No mostrar vendidos
+                const type = document.getElementById('action-type').value;
+                if (type === 'venta' && l.estado_id === 3) return; 
                 sel.innerHTML += `<option value="${l.id}">Lote ${l.numero_lote} - $${fmt(l.precio)}</option>`;
             });
             sel.disabled = false;
         }
 
-        function handleLoteChange() {
+        async function handleLoteChange() {
             const loteId = document.getElementById('select-lote').value;
+            if (!loteId) return;
             const lote = lotesData.find(l => l.id == loteId);
             if(lote) {
-                document.getElementById('disp-precio-lista').innerText = `$${fmt(lote.precio)}`;
-                document.getElementById('input-precio-acordado').value = fmt(lote.precio);
+                document.getElementById('disp-precio-lista').innerText = `$${fmt(parseDB(lote.precio))}`;
+                document.getElementById('input-precio-acordado').value = fmt(parseDB(lote.precio));
             }
             updateCalculations();
         }
 
         function updateCalculations() {
             const type = document.getElementById('action-type').value;
-            const precioAcordado = parseInput(document.getElementById('input-precio-acordado').value);
-            const reserva = parseInput(document.getElementById('input-monto-reserva').value);
-            const pie = parseInput(document.getElementById('input-monto-pie').value);
-
+            const precioLista = parseInput(document.getElementById('disp-precio-lista').innerText);
             if (type === 'reserva') {
-                document.getElementById('disp-total-pagar').innerText = `$${fmt(reserva)}`;
+                const monto = parseInput(document.getElementById('input-monto-reserva').value);
+                document.getElementById('disp-total-pagar').innerText = `$${fmt(monto)}`;
             } else if (type === 'venta') {
+                const precioAcordado = parseInput(document.getElementById('input-precio-acordado').value) || precioLista;
+                const reserva = parseInput(document.getElementById('input-monto-reserva').value);
+                const pie = parseInput(document.getElementById('input-monto-pie').value);
                 const restante = Math.max(0, precioAcordado - reserva - pie);
                 document.getElementById('disp-total-pagar').innerText = `$${fmt(restante)}`;
             }
         }
-
-        document.getElementById('form-cliente').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-save-cli'); btn.disabled = true;
-            try {
-                const data = Object.fromEntries(new FormData(e.target).entries());
-                await fetch('/api/clientes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
-                closeModal('cliente'); loadInitialData();
-            } catch(e) {} finally { btn.disabled = false; }
-        });
 
         document.getElementById('crm-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -288,31 +256,62 @@
             const body = {
                 cliente_id: document.getElementById('select-cliente').value,
                 proyecto_id: document.getElementById('select-proyecto').value,
-                lote_id: document.getElementById('select-lote').value,
-                notas_generales: document.getElementById('notas').value
+                lote_id: document.getElementById('select-lote').value || null,
+                notas: document.getElementById('notas').value
             };
             
             if (type === 'visita') {
                 body.fecha_visita = `${document.getElementById('fecha-input').value}T${document.getElementById('hora-input').value}:00`;
-                await fetch('/api/visitas', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+                await fetch('/api/visitas', { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify(body) });
             } else {
                 body.tipo_operacion = type; 
                 body.precio_lista = parseInput(document.getElementById('disp-precio-lista').innerText);
                 body.monto_reserva = parseInput(document.getElementById('input-monto-reserva').value);
-                body.precio_acordado = parseInput(document.getElementById('input-precio-acordado').value);
-                body.valor_final = parseInput(document.getElementById('disp-total-pagar').innerText);
                 body.metodo_pago = document.getElementById('metodo-pago').value;
                 
                 if (type === 'venta') {
+                    body.precio_acordado = parseInput(document.getElementById('input-precio-acordado').value) || body.precio_lista;
+                    body.valor_final = parseInput(document.getElementById('disp-total-pagar').innerText); 
                     body.monto_pie = parseInput(document.getElementById('input-monto-pie').value);
                     body.cantidad_cuotas = document.getElementById('input-cuotas').value;
                     body.banco = document.getElementById('input-banco').value;
                     body.numero_documento = document.getElementById('input-documento').value;
+                } else {
+                    body.precio_acordado = body.precio_lista; 
+                    body.valor_final = body.monto_reserva; 
                 }
-                await fetch('/api/ventas', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+                await fetch('/api/ventas', { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify(body) });
             }
-            closeModal('crm'); loadInitialData(); alert('Acción registrada con éxito. El visor 360 ha sido actualizado.');
+            closeModal('crm');
+            loadInitialData(); 
         });
+
+        function applyFilters() {
+            const filterVal = document.getElementById('filter-proyecto').value;
+            const vFiltered = filterVal ? ventasData.filter(i => i.proyecto_id == filterVal) : ventasData;
+            
+            const tbody = document.getElementById('ventas-tbody'); tbody.innerHTML = '';
+            if(vFiltered.length===0) return tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px;">No hay operaciones.</td></tr>';
+            
+            vFiltered.forEach((v) => {
+                const tipoBadge = v.tipo_operacion === 'reserva' ? '<span style="background:#fef3c7;color:#d97706;padding:4px 8px;border-radius:4px;font-size:0.75rem;font-weight:700;">RESERVA</span>' : '<span style="background:#dcfce7;color:#166534;padding:4px 8px;border-radius:4px;font-size:0.75rem;font-weight:700;">VENTA</span>';
+                const jsonData = JSON.stringify(v).replace(/"/g, '&quot;');
+                tbody.innerHTML += `<tr><td style="padding:15px;">${new Date(v.fecha_venta).toLocaleDateString()}</td><td>${tipoBadge}</td><td><strong>${v.cliente_nombre}</strong></td><td>${v.proyecto_nombre}<br><small>Lote ${v.numero_lote}</small></td><td style="text-align:right;">$${fmt(parseDB(v.precio_acordado) || parseDB(v.precio_lista))}</td><td style="text-align:right; font-weight:700; color:#166534;">$${fmt(parseDB(v.valor_final))}</td><td style="text-align:center; padding:15px;"><button class="btn-icon-info" onclick="viewSaleDetails(${jsonData})"><i class="bi bi-eye-fill"></i></button></td></tr>`;
+            });
+        }
+
+        function viewSaleDetails(v) {
+            const body = document.getElementById('info-body');
+            body.innerHTML = `
+                <div style="margin-bottom: 10px;"><strong>Tipo:</strong> ${v.tipo_operacion.toUpperCase()}</div>
+                <div style="margin-bottom: 10px;"><strong>Cliente:</strong> ${v.cliente_nombre}</div>
+                <div style="margin-bottom: 10px;"><strong>Proyecto/Lote:</strong> ${v.proyecto_nombre} - Lote ${v.numero_lote}</div>
+                <div style="margin-bottom: 10px;"><strong>Precio Lista:</strong> $${fmt(parseDB(v.precio_lista))}</div>
+                <div style="margin-bottom: 10px;"><strong>Precio Acordado:</strong> $${fmt(parseDB(v.precio_acordado))}</div>
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ccc; font-weight: bold; color: #10b981; font-size: 1.1rem;">TOTAL PAGADO: $${fmt(parseDB(v.valor_final))}</div>
+            `;
+            document.getElementById('modal-info').classList.add('show');
+        }
 
         document.addEventListener('DOMContentLoaded', loadInitialData);
     </script>
