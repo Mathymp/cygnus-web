@@ -110,7 +110,12 @@ router.get('/admin/proyectos', requireAuth, (req, res) => {
     res.render('admin/proyectos', { user: req.session.user, page: 'proyectos' }); 
 });
 router.get('/admin/lotes', requireAuth, (req, res) => {
-    res.render('admin/visor', { user: req.session.user, page: 'lotes' }); 
+    // Si el usuario hace clic en el menú sin seleccionar proyecto, lo mandamos a la lista
+    if (!req.query.id) {
+        return res.redirect('/admin/proyectos');
+    }
+    // Si trae ID, le abrimos el mapa
+    res.render('admin/visor', { user: req.session.user, page: 'proyectos' }); 
 });
 router.get('/admin/crm', requireAuth, (req, res) => {
     res.render('admin/crm', { user: req.session.user, page: 'crm' }); 
