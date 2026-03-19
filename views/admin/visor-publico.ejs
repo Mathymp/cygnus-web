@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title><%= proyecto.nombre %> - Visita Virtual 360° | Cygnus Group</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= proyecto.nombre %> - Visita Virtual | Cygnus Group</title>
     <link rel="icon" type="image/png" href="/img/fav.png">
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core@5.7.3/index.min.css">
@@ -14,207 +14,181 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     
     <style>
-        :root { 
-            --cygnus: #2563eb; 
-            --wsp: #22c55e;
-            --wsp-hover: #16a34a;
-            --dark: #0f172a; 
-            --available: #22c55e;
-            --reserved: #eab308;
-            --sold: #ef4444;
-        }
-        body { margin: 0; overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--dark); color: white; -webkit-font-smoothing: antialiased;}
+        :root { --primary: #2563eb; --secondary: #64748b; --dark: #0f172a; --wsp: #22c55e; }
+        body { margin: 0; overflow: hidden; font-family: 'Plus Jakarta Sans', sans-serif; background: var(--dark); }
         #viewer { width: 100vw; height: 100vh; }
 
-        /* --- Branding Superior Izquierdo --- */
-        .company-logo {
-            position: absolute; top: 20px; left: 20px; z-index: 10;
-            background: rgba(255, 255, 255, 0.9); padding: 12px 20px;
-            border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            display: flex; align-items: center; gap: 15px;
-            backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);
-            transition: 0.3s;
+        /* --- Logo Cygnus Superior Derecha --- */
+        .company-logo { 
+            position: fixed; top: 30px; right: 30px; z-index: 100; 
+            height: 70px; width: auto; object-fit: contain; pointer-events: none; 
+            filter: drop-shadow(0 2px 10px rgba(0,0,0,0.3)); 
         }
-        .company-logo img { height: 32px; object-fit: contain; }
-        .project-info { display: flex; flex-direction: column; border-left: 2px solid #e2e8f0; padding-left: 15px; }
-        .project-name { font-weight: 800; color: var(--dark); font-size: 1.05rem; letter-spacing: -0.5px;}
-        .project-loc { font-size: 0.75rem; color: #64748b; font-weight: 600; }
-
-        /* --- Botón WhatsApp Premium --- */
-        .btn-whatsapp {
-            position: absolute; top: 20px; right: 20px; z-index: 10;
-            background: var(--wsp); color: white; padding: 12px 24px;
-            border-radius: 50px; font-weight: 800; font-size: 0.9rem;
-            text-decoration: none; display: flex; align-items: center; gap: 8px; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
-            animation: pulse-wsp 2.5s infinite;
-        }
-        .btn-whatsapp i { font-size: 1.2rem; }
-        .btn-whatsapp:hover { 
-            background: var(--wsp-hover); transform: translateY(-2px); 
-            box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3); animation: none; 
-        }
-
-        @keyframes pulse-wsp {
-            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
-            70% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-        }
-
-        /* --- Leyenda Minimalista (Arriba) --- */
-        .legend-box {
-            position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px);
-            padding: 10px 30px; border-radius: 50px; display: flex; gap: 25px; z-index: 10;
-            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .legend-item { display: flex; align-items: center; gap: 8px; color: white; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.3px;}
-        .dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);}
-
-        /* --- ESTILOS DE LOS MARCADORES (Círculos Limpios) --- */
-        .lote-marker-wrapper { pointer-events: none; }
         
-        /* Círculo base */
-        .lote-circle {
-            width: 30px; height: 30px; border-radius: 50%;
+        /* --- Header del Proyecto Estilo Premium (Izquierda) --- */
+        .project-header { 
+            position: fixed; top: 30px; left: 25px; z-index: 100; 
+            max-width: 380px; display: flex; justify-content: flex-start; 
+            animation: slideInLeft 0.7s cubic-bezier(0.25, 0.8, 0.25, 1); 
+        }
+        
+        .project-card-header { 
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); 
+            padding: 20px 30px; border-radius: 16px 50px 50px 16px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2); text-align: left; 
+            border: 1px solid rgba(255,255,255,0.5); border-left: 5px solid var(--primary); 
+        }
+        
+        .project-card-header h1 { 
+            margin: 0; font-size: 1.5rem; font-weight: 800; color: var(--dark); 
+            line-height: 1.1; letter-spacing: -0.5px;
+        }
+        
+        .project-location { 
+            margin-top: 8px; font-size: 0.85rem; color: var(--secondary); font-weight: 700; 
+            display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .project-location i { color: var(--primary); }
+        
+        .project-desc { 
+            margin-top: 10px; font-size: 0.85rem; color: var(--secondary); 
+            font-weight: 500; line-height: 1.4; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px;
+        }
+
+        /* --- WhatsApp Latente --- */
+        .btn-wsp-float {
+            position: fixed; bottom: 30px; right: 30px; z-index: 110;
+            background: var(--wsp); color: white; padding: 15px 25px;
+            border-radius: 50px; font-weight: 800; text-decoration: none;
+            display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 25px rgba(34, 197, 94, 0.4);
+            transition: 0.3s; animation: pulse-wsp 2.5s infinite;
+        }
+        .btn-wsp-float:hover { background: #16a34a; transform: translateY(-5px); }
+        @keyframes pulse-wsp { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 70% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+
+        /* --- Estilos Marcadores & Tooltips --- */
+        .psv-tooltip { background: transparent !important; box-shadow: none !important; border: none !important; padding: 0 !important; }
+        
+        .lote-card-nano {
+            background: white; border-radius: 12px; padding: 10px 15px;
+            text-align: center; box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            margin-bottom: 15px; position: relative;
+        }
+        .lote-card-nano::after {
+            content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+            border-width: 6px 6px 0; border-style: solid; border-color: white transparent transparent transparent;
+        }
+
+        .nano-status { font-size: 0.7rem; font-weight: 800; color: white !important; padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 5px; }
+        .nano-price { font-size: 1.2rem; font-weight: 800; color: var(--dark); display: block; }
+        .nano-meta { font-size: 0.75rem; color: var(--secondary); font-weight: 600; display: block; }
+
+        .lote-badge-content {
+            position: absolute; transform: translate(-50%, -50%);
+            min-width: 30px; height: 30px; border-radius: 50px; 
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.8rem; font-weight: 800; color: white;
-            border: 2px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-            transition: all 0.2s ease-out; transform-origin: center center;
-            opacity: 0.9; cursor: pointer; pointer-events: auto;
+            font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.4); 
+            cursor: pointer; transition: 0.2s; border: 2px solid white; color: white;
         }
+        .lote-badge-content:hover { transform: translate(-50%, -50%) scale(1.2); z-index: 101; }
 
-        /* Colores por estado */
-        .lote-available { background: var(--available); border-color: #a7f3d0; color: #064e3b; animation: pulse-available 2s infinite; opacity: 1; text-shadow: none;}
-        .lote-reserved { background: var(--reserved); border-color: #fef08a; color: #713f12; text-shadow: none;}
-        .lote-sold { background: var(--sold); border-color: #fecaca; opacity: 0.7; }
+        /* Marcadores POI con Línea */
+        .poi-wrapper { width: 0; height: 0; position: absolute; overflow: visible; pointer-events: none; }
+        .poi-content { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; pointer-events: auto; cursor: pointer; }
+        .poi-pill { min-width: 90px; padding: 8px 15px; border-radius: 10px; text-align: center; color: white; font-weight: 700; font-size: 0.9rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .poi-sub { font-size: 0.75rem; font-weight: 400; opacity: 0.9; margin-top: 2px; display: block; }
+        .poi-line { width: 3px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .poi-anchor { width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; }
 
-        @keyframes pulse-available {
-            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-        }
+        .legal-bar { position: fixed; bottom: 20px; width: 100%; z-index: 80; display: flex; justify-content: center; pointer-events: none; }
+        .legal-pill { background: rgba(0, 0, 0, 0.7); padding: 8px 25px; border-radius: 30px; font-size: 0.75rem; color: white; font-weight: 600; backdrop-filter: blur(5px); }
 
-        /* --- Nano Card Premium (Glassmorphism) --- */
-        .psv-tooltip-content { padding: 0 !important; border-radius: 20px !important; overflow: hidden; background: transparent !important; box-shadow: none !important;}
-        .lote-card-premium {
-            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(15px);
-            border-radius: 20px; padding: 20px 25px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            width: 260px; border: 1px solid rgba(255,255,255,0.4);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            color: var(--dark);
-        }
-        
-        .card-header-op { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .lote-number-card { font-size: 1.4rem; font-weight: 800; color: var(--dark); letter-spacing: -1px; }
-        .status-badge-card {
-            padding: 6px 14px; border-radius: 30px;
-            font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
-            color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
+        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: translateX(0); } }
 
-        .card-body-data { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-        .data-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
-        .data-label { color: #64748b; font-weight: 600; }
-        .data-val { font-weight: 700; color: var(--dark); }
-        .val-main { font-size: 1.5rem; color: var(--cygnus); font-weight: 800; letter-spacing: -1px; }
-
-        .btn-card-cta {
-            width: 100%; padding: 12px; background: var(--dark); color: white;
-            border: none; border-radius: 12px; font-weight: 700; font-size: 0.9rem;
-            cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .btn-card-cta:hover { background: var(--cygnus); }
-
-        /* --- RESPONSIVE PRO --- */
         @media (max-width: 768px) {
-            .company-logo { top: 10px; left: 10px; padding: 8px 12px; border-radius: 12px; gap: 10px;}
-            .company-logo img { height: 24px; }
-            .project-info { padding-left: 10px; }
-            .project-name { font-size: 0.85rem; }
-            .project-loc { font-size: 0.7rem; }
-
-            .legend-box { bottom: 85px; padding: 10px 20px; width: 92%; justify-content: space-between; gap: 5px; }
-            .legend-item { font-size: 0.75rem; gap: 6px;}
-            .dot { width: 10px; height: 10px; }
-
-            /* Botón de WSP Flotante Abajo en Celular */
-            .btn-whatsapp {
-                top: auto; bottom: 150px; left: 50%; transform: translateX(-50%); right: auto; 
-                width: 90%; max-width: 320px; padding: 14px 25px; font-size: 0.95rem; justify-content: center;
-                box-shadow: 0 5px 15px rgba(34, 197, 94, 0.4);
-            }
-            .btn-whatsapp:hover { transform: translateX(-50%) translateY(-2px); }
-
-            /* Lotes más pequeños en móvil */
-            .lote-circle { width: 26px; height: 26px; font-size: 0.75rem; border-width: 1.5px;}
-            
-            /* Card más compacta en móvil */
-            .lote-card-premium { width: 220px; padding: 15px 20px; }
-            .lote-number-card { font-size: 1.2rem; }
-            .val-main { font-size: 1.3rem; }
-            .data-row { font-size: 0.85rem; }
+            .project-header { top: 15px; left: 15px; max-width: 80%; }
+            .project-card-header { padding: 15px 20px; border-radius: 12px 35px 35px 12px; }
+            .project-card-header h1 { font-size: 1.1rem; }
+            .project-desc { display: none; }
+            .company-logo { top: 15px; right: 15px; height: 45px; }
+            .btn-wsp-float { bottom: 80px; left: 50%; transform: translateX(-50%); right: auto; width: 80%; justify-content: center; }
         }
     </style>
 </head>
 <body>
+    <div id="viewer"></div>
 
-    <div class="company-logo">
-        <img src="/img/logo.png" alt="Cygnus Group">
-        <div class="project-info">
-            <span class="project-name"><%= proyecto.nombre %></span>
-            <span class="project-loc"><i class="bi bi-geo-alt-fill"></i> <%= proyecto.localidad || 'Chile' %></span>
+    <div class="project-header" id="header-container">
+        <div class="project-card-header">
+            <h1 id="p-title"><%= proyecto.nombre %></h1>
+            <div class="project-location" id="p-location-container">
+                <i class="bi bi-geo-alt-fill"></i> <span id="p-location"><%= proyecto.localidad || 'Chile' %></span>
+            </div>
+            <% if (proyecto.descripcion) { %>
+                <div class="project-desc"><%= proyecto.descripcion %></div>
+            <% } %>
         </div>
     </div>
 
-    <a href="#" id="wa-link" target="_blank" class="btn-whatsapp">
+    <img src="/img/logo.png" class="company-logo" alt="Cygnus Group Logo">
+
+    <a href="#" id="wa-link" target="_blank" class="btn-wsp-float">
         <i class="bi bi-whatsapp"></i> Me interesa una parcela
     </a>
 
-    <div class="legend-box">
-        <div class="legend-item"><div class="dot" style="background: var(--available);"></div> Disponible</div>
-        <div class="legend-item"><div class="dot" style="background: var(--reserved);"></div> Reservado</div>
-        <div class="legend-item"><div class="dot" style="background: var(--sold);"></div> Vendido</div>
+    <div class="legal-bar">
+        <div class="legal-pill"><i class="bi bi-info-circle-fill"></i> Imágenes y deslindes referenciales sujetos a topografía final.</div>
     </div>
 
-    <div id="viewer"></div>
-
-    <script>
-        // Inyectamos los datos del proyecto
-        const PROJECT_DATA = <%- JSON.stringify(proyecto) %>;
-
-        // Configuración de WhatsApp Premium
-        // ¡OJO AQUÍ! Cambia este número por tu número real de Cygnus (+569...)
-        const WA_PHONE = "569XXXXXXXX"; 
-        
-        const urlActual = window.location.href;
-        const mensajeWsp = `Hola! 👋 Me interesa cotizar una parcela en el proyecto *${PROJECT_DATA.nombre}*.\n\nVi el recorrido 360 aquí: ${urlActual}`;
-        document.getElementById('wa-link').href = `https://wa.me/${WA_PHONE}?text=${encodeURIComponent(mensajeWsp)}`;
-    </script>
-
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js",
-            "@photo-sphere-viewer/core": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core@5.7.3/index.module.js",
-            "@photo-sphere-viewer/markers-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin@5.7.3/index.module.js"
-        }
-    }
-    </script>
+    <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js", "@photo-sphere-viewer/core": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/core@5.7.3/index.module.js", "@photo-sphere-viewer/markers-plugin": "https://cdn.jsdelivr.net/npm/@photo-sphere-viewer/markers-plugin@5.7.3/index.module.js" } }</script>
     
     <script type="module">
         import { Viewer } from '@photo-sphere-viewer/core';
         import { MarkersPlugin } from '@photo-sphere-viewer/markers-plugin';
 
-        // Constantes de diseño
-        const COLORS = { 1: '#22c55e', 2: '#eab308', 3: '#ef4444' }; 
-        const CLASS_ESTADOS = { 1: 'lote-available', 2: 'lote-reserved', 3: 'lote-sold' };
-        const TEXTS = { 1: 'Disponible', 2: 'Reservado', 3: 'Vendido' };
-
+        const PROJECT_DATA = <%- JSON.stringify(proyecto) %>;
+        const WA_PHONE = "569XXXXXXXX"; // <-- CAMBIA TU TELÉFONO AQUÍ
+        const TEXTS = { 1: 'DISPONIBLE', 2: 'RESERVADO', 3: 'VENDIDO' };
+        const COLORS = { 1: '#10b981', 2: '#2563eb', 3: '#ef4444' };
+        
         let viewer, markersPlugin;
+
+        // Configuración de WhatsApp Dinámica
+        const msg = `Hola! Me interesa información del proyecto *${PROJECT_DATA.nombre}*. Vi el recorrido 360 aquí: ${window.location.href}`;
+        document.getElementById('wa-link').href = `https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`;
+
+        // Escalas dinámicas según zoom
+        const getCaminoScale = (zoom) => 0.4 + (0.6 * (zoom / 100)); 
+        const getLoteScale = (zoom) => 0.6 + (0.5 * (zoom / 100));
+
+        function getPolygonCenter(points) {
+            if (!points || points.length === 0) return null;
+            let sumYaw = 0, sumPitch = 0;
+            points.forEach(p => { sumYaw += p[0]; sumPitch += p[1]; });
+            return [sumYaw / points.length, sumPitch / points.length];
+        }
+
+        function updateAllMarkersScale() {
+            if (!viewer || !markersPlugin) return;
+            const currentZoom = viewer.getZoomLevel();
+            const markers = markersPlugin.getMarkers();
+            
+            markers.forEach(m => {
+                if (m.config.data?.tipo === 'camino') {
+                    const baseW = parseInt(m.config.data.width) || 15;
+                    const w = Math.max(4, baseW * getCaminoScale(currentZoom));
+                    markersPlugin.updateMarker({ id: m.id, svgStyle: { strokeWidth: w } });
+                } else if (m.config.data?.tipo === 'lote_poly') {
+                    const baseW = 4;
+                    const scaledW = Math.max(2, baseW * getLoteScale(currentZoom));
+                    markersPlugin.updateMarker({ id: m.id, svgStyle: { strokeWidth: scaledW } });
+                } else if (m.config.data?.tipo === 'badge') {
+                    const textScale = 0.8 + (0.4 * (currentZoom / 100)); 
+                    const el = document.querySelector(`#psv-marker-${m.id} .lote-badge-content`);
+                    if(el) el.style.transform = `translate(-50%, -50%) scale(${textScale})`;
+                }
+            });
+        }
 
         async function init() {
             viewer = new Viewer({
@@ -222,232 +196,85 @@
                 panorama: PROJECT_DATA.imagen_360_url,
                 navbar: ['zoom', 'fullscreen'],
                 defaultZoomLvl: 30,
-                plugins: [[MarkersPlugin, {}]]
+                plugins: [[MarkersPlugin, { markers: [] }]]
             });
 
             markersPlugin = viewer.getPlugin(MarkersPlugin);
-            
-            // Cargar datos cuando el visor esté listo
-            viewer.addEventListener('ready', () => {
-                loadLotes();
-            }, { once: true });
-
-            // Sincronizar escala de los círculos al hacer zoom
-            viewer.addEventListener('position-updated', updateAllMarkersScale);
+            viewer.addEventListener('ready', loadElements, { once: true });
             viewer.addEventListener('zoom-updated', updateAllMarkersScale);
         }
 
-        // --- CÁLCULOS GEOMÉTRICOS (TU CÓDIGO ORIGINAL INTACTO) ---
-        
-        // Obtener centro de un polígono (yaw, pitch)
-        function getPolygonCenter(polygonArray) {
-            let sumYaw = 0, sumPitch = 0;
-            polygonArray.forEach(p => { 
-                sumYaw += p[0]; 
-                sumPitch += p[1]; 
-            });
-            return [sumYaw / polygonArray.length, sumPitch / polygonArray.length];
-        }
-
-        // Obtener factor de escala según el zoom actual (TU CÓDIGO ORIGINAL INTACTO)
-        function getMarkerScale() {
-            if(!viewer) return 1;
-            const zoom = viewer.getZoomLevel();
-            // Retorna escala entre 0.5 y 2.0 basada en el zoom
-            return 0.5 + (zoom / 100) * 1.5;
-        }
-
-        // Actualizar la escala de todos los badges de lote (TU CÓDIGO ORIGINAL INTACTO)
-        function updateAllMarkersScale() {
-            if(!viewer || !markersPlugin) return;
-            const markers = markersPlugin.getMarkers();
-            markers.forEach(m => {
-                if (m.config.data && m.config.data.tipo === 'lote_center') {
-                    applyMarkerScale(m.id);
-                }
-            });
-        }
-
-        // Aplicar escala a un marcador específico (TU CÓDIGO ORIGINAL INTACTO)
-        function applyMarkerScale(markerId) {
-            const el = document.querySelector(`#${markerId} .lote-circle`);
-            if(el) {
-                const scale = getMarkerScale();
-                el.style.transform = `scale(${scale})`;
-            }
-        }
-
-        // --- LÓGICA DE CARGA DE DATOS (REPARADA, DEBUGGEADA Y ESTILIZADA) ---
-        
-        async function loadLotes() {
+        async function loadElements() {
             try {
                 const res = await fetch(`/api/lotes/proyecto/${PROJECT_DATA.id}`);
                 const data = await res.json();
 
                 data.forEach(el => {
-                    // Validamos si poligono_json es string o ya es objeto (Debugg)
-                    const polyData = typeof el.poligono_json === 'string' ? JSON.parse(el.poligono_json) : el.poligono_json;
+                    const puntos = typeof el.poligono_json === 'string' ? JSON.parse(el.poligono_json) : el.poligono_json;
+                    if(!puntos) return;
 
                     if (el.tipo === 'poi') {
-                        // --- PUNTO DE INTERÉS (Debugged V5) ---
-                        markersPlugin.addMarker({
-                            id: `poi_${el.id}`,
-                            position: { yaw: polyData.yaw, pitch: polyData.pitch },
-                            // Icono limpio
-                            html: `<i class="bi bi-geo-alt-fill" style="font-size:36px; color:${polyData.color || '#fff'}; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)); transition: all 0.2s; cursor:pointer;"></i>`,
-                            anchor: 'bottom center',
-                            tooltip: { content: `<div style="padding:10px; color:var(--dark);"><b>${el.titulo}</b><br>${el.descripcion}</div>`, position: 'top center' },
-                            data: { tipo: 'poi' }
-                        });
+                        const h = puntos.height || 80;
+                        const bg = puntos.bg || '#2563eb';
+                        const html = `
+                            <div class="poi-wrapper">
+                                <div class="poi-content">
+                                    <div class="poi-pill" style="background:${bg};">
+                                        ${el.titulo}<br><span class="poi-sub">${el.descripcion || ''}</span>
+                                    </div>
+                                    <div class="poi-line" style="height:${h}px; background:${bg};"></div>
+                                    <div class="poi-anchor" style="background:${bg};"></div>
+                                </div>
+                            </div>`;
+                        markersPlugin.addMarker({ id: `poi_${el.id}`, position: { yaw: puntos.yaw, pitch: puntos.pitch }, html: html, anchor: 'center center', data: { tipo: 'poi' } });
                     } 
                     else if (el.tipo === 'camino') {
-                        // --- CAMINO (Debugged V5) ---
-                        markersPlugin.addMarker({
-                            id: `camino_${el.id}`,
-                            polygon: polyData, // Cambiado polygonRad por polygon para V5
-                            // Estilo limpio, casi transparente
-                            svgStyle: { 
-                                fill: 'rgba(255,255,255,0.1)', 
-                                stroke: el.color_hex || 'rgba(255,255,255,0.4)', 
-                                strokeWidth: '4px'
-                            },
-                            tooltip: { content: el.numero_lote || 'Camino', position: 'center' },
-                            data: { tipo: 'camino' }
+                        markersPlugin.addMarker({ 
+                            id: `camino_${el.id}`, 
+                            polygon: puntos, 
+                            svgStyle: { fill: 'rgba(255,255,255,0.1)', stroke: el.color_hex || '#ffffff', strokeWidth: 10, strokeLinecap: 'round' },
+                            data: { tipo: 'camino', width: 10 } 
                         });
                     }
                     else {
-                        // --- LOTE / PARCELA (Diseño Minimalista) ---
-                        const color = COLORS[el.estado_id] || '#ffffff';
-                        const classEstado = CLASS_ESTADOS[el.estado_id] || 'lote-available';
-                        
-                        // 1. Dibujar el polígono como zona interactiva invisible (fillOpacity: 0)
-                        markersPlugin.addMarker({
-                            id: `poly_${el.id}`,
-                            polygon: polyData, // Cambiado polygonRad por polygon para V5
-                            svgStyle: { 
-                                fill: color, 
-                                fillOpacity: 0, // <-- IMPORTANTE: Invisible por defecto
-                                stroke: '#ffffff', 
-                                strokeWidth: '0px', // <-- IMPORTANTE: Sin borde por defecto
-                                strokeLinejoin: 'round',
-                                transition: 'all 0.3s'
-                            },
-                            data: { tipo: 'poly_area', id_lote: el.id, estado: el.estado_id }
+                        const color = COLORS[el.estado_id] || '#10b981';
+                        // Polígono sutil
+                        markersPlugin.addMarker({ 
+                            id: `poly_${el.id}`, 
+                            polygon: puntos, 
+                            svgStyle: { fill: 'rgba(255,255,255,0.0)', stroke: 'white', strokeWidth: 3 }, 
+                            data: { tipo: 'lote_poly' } 
                         });
 
-                        // 2. Dibujar el CÍRCULO sutil en el centro (Parcelas del Sur style)
-                        if (polyData.length > 2) {
-                            const center = getPolygonCenter(polyData);
-                            // HTML limpio del círculo con el número
-                            const markerHtml = `<div class="lote-marker-wrapper"><div class="lote-circle ${classEstado}" id="circle-content-${el.id}">${el.numero_lote}</div></div>`;
-                            
+                        // Círculo central (Badge)
+                        const center = getPolygonCenter(puntos);
+                        if(center) {
+                            const badgeHtml = `<div class="lote-badge-content" style="background:${color}">${el.numero_lote}</div>`;
                             markersPlugin.addMarker({ 
-                                id: `center_${el.id}`, 
+                                id: `badge_${el.id}`, 
                                 position: { yaw: center[0], pitch: center[1] }, 
-                                html: markerHtml, 
-                                anchor: 'center center', 
-                                tooltip: { 
-                                    content: createPremiumCard(el, color), // Inyectar Nano Card Premium
-                                    position: 'top center' 
-                                }, 
-                                data: { tipo: 'lote_center', id_lote: el.id, estado: el.estado_id } 
+                                html: badgeHtml, anchor: 'center center', 
+                                tooltip: { content: createNanoCard(el, color), position: 'top center' }, 
+                                data: { tipo: 'badge' } 
                             });
                         }
-                    } 
+                    }
                 });
-
-                // Escalar inicialmente
                 updateAllMarkersScale();
-
-                // --- LÓGICA HOVER (Para mostrar polígono sutil al pasar sobre el círculo o el área) ---
-                markersPlugin.addEventListener('over-marker', (e) => {
-                    const marker = e.marker;
-                    let polyId = null;
-
-                    if (marker.config.data.tipo === 'poly_area') polyId = marker.id;
-                    else if (marker.config.data.tipo === 'lote_center') polyId = `poly_${marker.config.data.id_lote}`;
-
-                    if (polyId) {
-                        markersPlugin.updateMarker({
-                            id: polyId,
-                            svgStyle: { fillOpacity: 0.1, strokeWidth: '2px' } // Mostrar sutilmente
-                        });
-                        // Escalar un poquito el círculo también
-                        if(marker.config.data.tipo === 'lote_center') {
-                            const el = document.getElementById(`circle-content-${marker.config.data.id_lote}`);
-                            if(el) el.style.transform = `scale(${getMarkerScale() * 1.1})`;
-                        }
-                    }
-                });
-
-                markersPlugin.addEventListener('leave-marker', (e) => {
-                    const marker = e.marker;
-                    let polyId = null;
-
-                    if (marker.config.data.tipo === 'poly_area') polyId = marker.id;
-                    else if (marker.config.data.tipo === 'lote_center') polyId = `poly_${marker.config.data.id_lote}`;
-
-                    if (polyId) {
-                        markersPlugin.updateMarker({
-                            id: polyId,
-                            svgStyle: { fillOpacity: 0, strokeWidth: '0px' } // Ocultar
-                        });
-                        // Volver escala círculo
-                        if(marker.config.data.tipo === 'lote_center') {
-                            const el = document.getElementById(`circle-content-${marker.config.data.id_lote}`);
-                            if(el) el.style.transform = `scale(${getMarkerScale()})`;
-                        }
-                    }
-                });
-
-            } catch (error) { 
-                console.error("❌ Error debuggeando y cargando lotes:", error); 
-            }
+            } catch (e) { console.error("Error cargando elementos:", e); }
         }
 
-        // --- CREADOR DE NANO CARD PREMIUM (GLASSMORPHISM) ---
-        function createPremiumCard(el, color) {
-            // Formatear precios y superficies
-            const precioLista = parseInt(el.precio || 0).toLocaleString('es-CL');
+        function createNanoCard(el, color) {
+            const precio = parseInt(el.precio || 0).toLocaleString('es-CL');
             const sup = parseInt(el.superficie || 0).toLocaleString('es-CL');
-            
-            // Link dinámico de wsp para esta parcela específica
-            const urlActual = window.location.href;
-            const msgParcela = `Hola! Me interesa la Parcela ${el.numero_lote} del proyecto *${PROJECT_DATA.nombre}*.\n\nPrecio: $${precioLista}\nSuperficie: ${sup} m2.\nLink recorrido: ${urlActual}`;
-            const waLinkParcela = `https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msgParcela)}`;
-
             return `
-                <div class="lote-card-premium">
-                    <div class="card-header-op">
-                        <span class="lote-number-card">Parc. ${el.numero_lote}</span>
-                        <span class="status-badge-card" style="background:${color};">${TEXTS[el.estado_id]}</span>
-                    </div>
-                    
-                    <div class="card-body-data">
-                        <div class="data-row">
-                            <span class="data-label">Precio</span>
-                            <span class="data-val val-main">$${precioLista}</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">Superficie</span>
-                            <span class="data-val">${sup} m²</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-label">ID interno</span>
-                            <span class="data-val">#${String(el.id).padStart(4, '0')}</span>
-                        </div>
-                    </div>
-
-                    ${el.estado_id === 1 ? `
-                        <button class="btn-card-cta" onclick="window.open('${waLinkParcela}', '_blank')">
-                            <i class="bi bi-whatsapp"></i> Solicitar Información
-                        </button>
-                    ` : ''}
-                </div>
-            `;
+                <div class="lote-card-nano">
+                    <span class="nano-status" style="background:${color};">${TEXTS[el.estado_id]}</span>
+                    <span class="nano-price">$${precio}</span>
+                    <span class="nano-meta">${sup} m² superficie</span>
+                </div>`;
         }
-        
-        // Iniciar todo
+
         init();
     </script>
 </body>
