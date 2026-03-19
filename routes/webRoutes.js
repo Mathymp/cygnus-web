@@ -52,7 +52,6 @@ router.get('/propiedad/:id', mainController.propertyDetail);
 router.get('/propiedad/:id/descargar-pdf', pdfController.generatePropertyPDF);
 
 // --- NUEVA RUTA: VISOR PÚBLICO DE PARCELAS (LOTIFY) ---
-// --- NUEVA RUTA: VISOR PÚBLICO DE PARCELAS (LOTIFY) ---
 router.get('/proyecto/:slug', async (req, res) => {
     try {
         const { rows } = await pool.query('SELECT * FROM proyectos WHERE slug_publico = $1', [req.params.slug]);
@@ -65,9 +64,8 @@ router.get('/proyecto/:slug', async (req, res) => {
             });
         }
         
-        // ¡CORRECCIÓN AQUÍ! Le indicamos a Express que el archivo está en la carpeta admin/
+        // Renderiza el visor público que creamos
         res.render('admin/visor-publico', { proyecto: rows[0] });
-        
     } catch (e) {
         console.error("Error cargando proyecto público:", e);
         res.status(500).send('Error interno del servidor');
@@ -112,10 +110,6 @@ router.get('/admin/proyectos', requireAuth, (req, res) => {
     res.render('admin/proyectos', { user: req.session.user, page: 'proyectos' }); 
 });
 router.get('/admin/lotes', requireAuth, (req, res) => {
-    // Si no trae el projectId exacto que necesita tu JS, lo devolvemos
-    if (!req.query.projectId) {
-        return res.redirect('/admin/proyectos');
-    }
     res.render('admin/visor', { user: req.session.user, page: 'lotes' }); 
 });
 router.get('/admin/crm', requireAuth, (req, res) => {
@@ -130,7 +124,8 @@ router.put('/api/proyectos/:id', requireAuth, upload.single('imagen_360'), proje
 router.delete('/api/proyectos/:id', requireAuth, projectController.deleteProject);
 
 // --- API LOTES Y PUNTOS DE INTERÉS ---
-router.get('/api/lotes/proyecto/:projectId', requireAuth, loteController.getLotesByProject);
+// ¡AQUÍ ESTÁ LA ÚNICA CORRECCIÓN! Le quitamos el "requireAuth" a la línea de abajo
+router.get('/api/lotes/proyecto/:projectId', loteController.getLotesByProject);
 router.post('/api/lotes', requireAuth, loteController.createLote);
 router.put('/api/lotes/:id', requireAuth, loteController.updateLote);
 router.delete('/api/lotes/:id', requireAuth, loteController.deleteLote);
