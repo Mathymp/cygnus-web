@@ -1,10 +1,12 @@
-const API_URL = 'http://localhost:3000/api';
-const getToken = () => localStorage.getItem('userToken');
+// =========================================================
+// API.JS - CORREGIDO PARA CYGNUS GROUP (SIN LOCALHOST)
+// =========================================================
 
+// Cambiamos localhost por ruta relativa. Así funciona en tu PC y en Render automáticamente.
+const API_URL = '/api'; 
 
 async function handleResponse(res) {
   let data = {};
-  
   
   try {
       const resClone = res.clone(); 
@@ -13,32 +15,24 @@ async function handleResponse(res) {
           data = JSON.parse(text);
       }
   } catch (e) {
-     
+     // No es JSON, continuamos
   }
 
-
   if (!res.ok) {
-
-      if (res.status === 401) {
-          if (data.message) {
-              throw new Error(data.message);
+      // Manejo de sesión expirada integrado con Cygnus
+      if (res.status === 401 || res.status === 403) {
+          if (window.location.pathname.indexOf('login') === -1) {
+              window.location.href = '/login';
           }
-          localStorage.removeItem('userToken');
-          
-          if (window.location.pathname.indexOf('index.html') === -1) {
-              alert("⚠️ Sesión expirada. Por favor ingresa nuevamente.");
-              window.location.href = 'index.html';
-          }
-          throw new Error('Sesión requerida');
+          throw new Error('Sesión requerida o sin permisos');
       }
 
-      const errorMessage = data.message || `Error del sistema: ${res.status}`;
+      const errorMessage = data.message || data.error || `Error del sistema: ${res.status}`;
       throw new Error(errorMessage);
   }
 
   return data;
 }
-
 
 const safeFetch = async (url, options = {}) => {
     try {
@@ -46,96 +40,70 @@ const safeFetch = async (url, options = {}) => {
         return await handleResponse(res);
     } catch (e) {
         if (e.message.includes('Failed to fetch')) {
-            throw new Error("❌ Error de conexión: El servidor no responde. Revisa si el backend está encendido.");
+            throw new Error("❌ Error de conexión: El servidor no responde. Revisa tu conexión.");
         }
         throw e;
     }
 }
 
-
-
-async function registerUser(nombre_usuario, email, password) {
-  const data = await safeFetch(`${API_URL}/auth/register`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre_usuario, email, password })
-  });
-  
-  if (!data.token) throw new Error('Error: El servidor no devolvió un token válido.');
-  return data;
-}
-
-async function loginUser(email, password) {
-  const data = await safeFetch(`${API_URL}/auth/login`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-  
-  if (!data.token) throw new Error('Error: El servidor no devolvió un token válido.');
-  return data;
-}
-
+// ==========================================
+// PROYECTOS 360 (Conectado a /api/proyectos)
+// ==========================================
 
 async function getProjects() {
-  return await safeFetch(`${API_URL}/projects`, {
-    headers: { 'Authorization': `Bearer ${getToken()}` }
-  });
+  return await safeFetch(`${API_URL}/proyectos`);
 }
 
 async function createProject(formData) {
-  
-  const res = await fetch(`${API_URL}/projects`, {
-    method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` },
+  const res = await fetch(`${API_URL}/proyectos`, {
+    method: 'POST',
     body: formData
   });
   return await handleResponse(res);
 }
 
-
 async function updateProject(id, formData) {
-    const res = await fetch(`${API_URL}/projects/${id}`, {
+    const res = await fetch(`${API_URL}/proyectos/${id}`, {
         method: 'PUT', 
-        headers: { 'Authorization': `Bearer ${getToken()}` },
         body: formData
     });
     return await handleResponse(res);
 }
 
 async function getProjectById(id) {
-  return await safeFetch(`${API_URL}/projects/${id}`, {
-    headers: { 'Authorization': `Bearer ${getToken()}` }
-  });
+  return await safeFetch(`${API_URL}/proyectos/${id}`);
 }
 
 async function deleteProject(id) {
-  const res = await fetch(`${API_URL}/projects/${id}`, {
-    method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${getToken()}` }
+  const res = await fetch(`${API_URL}/proyectos/${id}`, {
+    method: 'DELETE'
   });
   
-  if (!res.ok) await handleResponse(res);
+  if (!res.ok && res.status !== 204) await handleResponse(res);
 }
 
-
+// ==========================================
+// LOTES Y POIs (Conectado a /api/lotes)
+// ==========================================
 
 async function saveLote(loteData) {
     const res = await fetch(`${API_URL}/lotes`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(loteData)
     });
     return await handleResponse(res);
 }
 
 async function getLotes(projectId) {
-    return await safeFetch(`${API_URL}/lotes/${projectId}`, {
-      headers: { 'Authorization': `Bearer ${getToken()}` }
-    });
+    // La ruta en webRoutes.js era /api/lotes/proyecto/:projectId
+    return await safeFetch(`${API_URL}/lotes/proyecto/${projectId}`);
 }
 
 async function updateLote(id, loteData) {
     const res = await fetch(`${API_URL}/lotes/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(loteData)
     });
     return await handleResponse(res);
@@ -143,8 +111,11 @@ async function updateLote(id, loteData) {
 
 async function deleteLote(id) {
     const res = await fetch(`${API_URL}/lotes/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${getToken()}` }
+      method: 'DELETE'
     });
-    if (!res.ok) await handleResponse(res);
+    if (!res.ok && res.status !== 204) await handleResponse(res);
 }
+
+// (Opcional) Funciones de auth antiguas por si algún script viejo las llama
+async function registerUser() { throw new Error("Usar panel de admin de Cygnus"); }
+async function loginUser() { throw new Error("Usar panel de admin de Cygnus"); }
