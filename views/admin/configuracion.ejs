@@ -7,11 +7,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/config-dashboard.css">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 </head>
 <body>
     
@@ -34,7 +29,7 @@
                     </div>
                     
                     <div class="config-editor-content">
-                        <form id="configForm" enctype="multipart/form-data">
+                        <form id="configForm" method="POST" action="/admin/configuracion/update" enctype="multipart/form-data">
                             
                             <!-- MODO MANTENIMIENTO -->
                             <section class="config-section">
@@ -51,15 +46,12 @@
                                 
                                 <div class="form-group">
                                     <label class="form-label">Mensaje para los visitantes</label>
-                                    <div id="maintQuill" class="quill-editor">
-                                        <%- config.maintenance_message || '<h2>Sitio en Mantenimiento</h2><p>Volvemos pronto con mejoras.</p>' %>
-                                    </div>
+                                    <textarea name="maintenance_message" id="maintenanceMessage" class="form-textarea" rows="4"><%= config.maintenance_message || 'Sitio en Mantenimiento. Volvemos pronto con mejoras.' %></textarea>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label class="form-label">Tiempo estimado de regreso</label>
-                                    <input type="text" class="form-input" name="maintenance_eta" id="maintenanceEta" value="<%= config.maintenance_eta || '2 horas' %>" placeholder="Ej: 2 horas, mañana">
-                                    <p class="form-hint">Este texto se mostrará en la página de mantenimiento</p>
+                                    <input type="text" class="form-input" name="maintenance_eta" value="<%= config.maintenance_eta || '2 horas' %>" placeholder="Ej: 2 horas, mañana">
                                 </div>
                             </section>
                             
@@ -78,7 +70,7 @@
                                 
                                 <div class="color-picker-group mb-3">
                                     <div class="color-picker-box">
-                                        <div class="color-preview" id="previewAnnBg" style="background-color: <%= config.announcement_bg || '#1e293b' %>;"></div>
+                                        <div class="color-preview" style="background-color: <%= config.announcement_bg || '#1e293b' %>;"></div>
                                         <div class="color-input-wrapper">
                                             <label class="form-label mb-2">Fondo</label>
                                             <input type="color" name="announcement_bg" id="annBg" value="<%= config.announcement_bg || '#1e293b' %>">
@@ -87,7 +79,7 @@
                                     </div>
                                     
                                     <div class="color-picker-box">
-                                        <div class="color-preview" id="previewAnnColor" style="background-color: <%= config.announcement_color || '#ffffff' %>;"></div>
+                                        <div class="color-preview" style="background-color: <%= config.announcement_color || '#ffffff' %>;"></div>
                                         <div class="color-input-wrapper">
                                             <label class="form-label mb-2">Texto</label>
                                             <input type="color" name="announcement_color" id="annColor" value="<%= config.announcement_color || '#ffffff' %>">
@@ -98,9 +90,7 @@
                                 
                                 <div class="form-group">
                                     <label class="form-label">Contenido del anuncio</label>
-                                    <div id="annQuill" class="quill-editor">
-                                        <%- config.announcement_text || '¡Contáctanos hoy mismo!' %>
-                                    </div>
+                                    <textarea name="announcement_text" id="announcementText" class="form-textarea" rows="3"><%= config.announcement_text || '¡Contáctanos hoy mismo!' %></textarea>
                                 </div>
                             </section>
                             
@@ -119,9 +109,11 @@
                                 
                                 <div class="form-group">
                                     <label class="form-label">Velocidad de desplazamiento</label>
-                                    <input type="range" min="20" max="60" value="<%= config.ticker_speed || 35 %>" id="tickerSpeedRange" class="range-slider">
+                                    <input type="range" name="ticker_speed" min="20" max="60" value="<%= config.ticker_speed || 35 %>" id="tickerSpeedRange" class="range-slider">
                                     <p class="form-hint mt-2">Velocidad: <strong id="speedDisplay"><%= config.ticker_speed || 35 %>s</strong></p>
                                 </div>
+                                
+                                <input type="hidden" name="promo_strips_json" id="promoStripsJson">
                                 
                                 <div id="huinchasContainer"></div>
                                 
@@ -149,19 +141,15 @@
                                     <i class="fas fa-cloud-upload-alt upload-icon"></i>
                                     <p class="upload-text">Arrastra imágenes o haz click</p>
                                     <p class="upload-hint">JPG, PNG, WebP (Máx 10MB)</p>
-                                    <input type="file" id="fileInput" multiple accept="image/*" style="display:none;">
+                                    <input type="file" name="new_banners" id="fileInput" multiple accept="image/*" style="display:none;">
                                 </div>
+                                
+                                <div id="existingBannersContainer"></div>
                                 
                                 <div class="banners-grid" id="bannersContainer">
                                     <% if(config.banners && config.banners.length > 0) { %>
                                         <% config.banners.forEach((b, idx) => { %>
-                                            <div class="banner-item <%= idx === 0 ? 'first-banner' : '' %>" 
-                                                 data-type="existing"
-                                                 data-url="<%= b.url %>" 
-                                                 data-align="<%= b.align || '50% 50%' %>"
-                                                 data-duration="<%= b.duration || 5 %>"
-                                                 data-animation="<%= b.animation || 'fade' %>">
-                                                
+                                            <div class="banner-item <%= idx === 0 ? 'first-banner' : '' %>" data-index="<%= idx %>">
                                                 <img src="<%= b.url %>" style="object-position: <%= b.align || '50% 50%' %>;" alt="Banner">
                                                 
                                                 <% if(idx === 0) { %>
@@ -172,16 +160,16 @@
                                                 
                                                 <div class="banner-overlay">
                                                     <div class="banner-actions">
-                                                        <button type="button" class="btn btn-primary btn-sm" onclick="editBanner(this)">
-                                                            <i class="fas fa-edit"></i> Editar
-                                                        </button>
                                                         <% if(idx !== 0) { %>
-                                                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteBanner(this)">
+                                                            <button type="button" class="btn btn-danger btn-sm" onclick="removeBanner(<%= idx %>)">
                                                                 <i class="fas fa-trash"></i>
                                                             </button>
                                                         <% } %>
                                                     </div>
                                                 </div>
+                                                
+                                                <input type="hidden" name="existing_banners_urls" value="<%= b.url %>">
+                                                <input type="hidden" name="existing_banners_align" value="<%= b.align || '50% 50%' %>">
                                             </div>
                                         <% }) %>
                                     <% } %>
@@ -209,10 +197,10 @@
                             Vista Previa en Vivo
                         </h3>
                         <div class="device-selector">
-                            <button type="button" class="device-btn active" data-device="desktop">
+                            <button type="button" class="device-btn active" data-device="desktop" onclick="switchDevice('desktop')">
                                 <i class="fas fa-desktop"></i> Escritorio
                             </button>
-                            <button type="button" class="device-btn" data-device="mobile">
+                            <button type="button" class="device-btn" data-device="mobile" onclick="switchDevice('mobile')">
                                 <i class="fas fa-mobile-alt"></i> Móvil
                             </button>
                         </div>
@@ -220,7 +208,7 @@
                     
                     <div class="preview-viewport">
                         <div class="preview-frame desktop" id="previewFrame">
-                            <iframe id="liveIframe" src="/"></iframe>
+                            <iframe id="liveIframe" src="/" style="width:100%; height:100%; border:none;"></iframe>
                         </div>
                     </div>
                     
@@ -231,132 +219,70 @@
         </main>
     </div>
     
-    <!-- MODAL: EDITAR BANNER -->
-    <div class="modal-backdrop" id="modalEditBanner">
-        <div class="modal-container">
-            <div class="modal-header">
-                <h3 class="modal-title">
-                    <i class="fas fa-crop"></i>
-                    Editar Banner
-                </h3>
-                <button type="button" class="btn-close-modal" onclick="closeModal('modalEditBanner')">&times;</button>
-            </div>
-            
-            <div class="modal-body">
-                <div class="cropper-container" id="cropperContainer">
-                    <img id="cropperImage" src="" style="max-width: 100%;" alt="Crop">
-                </div>
-                
-                <div class="grid-2 mt-4">
-                    <div class="form-group">
-                        <label class="form-label">Duración (segundos)</label>
-                        <input type="number" id="bannerDuration" class="form-input" min="2" max="15" value="5">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Animación</label>
-                        <select id="bannerAnimation" class="form-select">
-                            <option value="fade">Fade</option>
-                            <option value="slide">Slide</option>
-                            <option value="zoom">Zoom</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditBanner')">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="applyBannerEdit()">
-                    <i class="fas fa-check"></i>
-                    Aplicar Cambios
-                </button>
-            </div>
-        </div>
-    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
     <script>
         // ========== ESTADO GLOBAL ==========
-        let qMaint, qAnn;
-        let currentCropper = null;
-        let currentEditingBanner = null;
-        let bannerUploads = [];
         let huinchasData = [];
         let debounceTimer = null;
         
         // ========== INICIALIZACIÓN ==========
         document.addEventListener('DOMContentLoaded', () => {
-            initEditors();
             initListeners();
             loadHuinchas();
             initBannersSortable();
             
-            // Mostrar mensaje de éxito/error si viene de redirect
+            // Mostrar mensaje de éxito/error
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('success')) {
-                Swal.fire('¡Guardado!', 'Configuración actualizada correctamente', 'success');
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Guardado!',
+                    text: 'Configuración actualizada correctamente',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
                 window.history.replaceState({}, '', '/admin/configuracion');
             }
             if (urlParams.get('error')) {
-                Swal.fire('Error', 'No se pudo guardar la configuración', 'error');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo guardar la configuración'
+                });
                 window.history.replaceState({}, '', '/admin/configuracion');
             }
         });
         
-        // ========== EDITORES QUILL ==========
-        function initEditors() {
-            qMaint = new Quill('#maintQuill', {
-                theme: 'snow',
-                modules: {
-                    toolbar: [
-                        ['bold', 'italic'],
-                        [{ 'header': [1, 2, 3, false] }],
-                        [{ 'color': [] }, { 'align': [] }]
-                    ]
-                }
-            });
-            
-            qAnn = new Quill('#annQuill', {
-                theme: 'snow',
-                modules: {
-                    toolbar: [['bold', 'italic'], [{ 'color': [] }]]
-                }
-            });
-            
-            // Debounce en cambios de texto
-            qMaint.on('text-change', () => debouncePreviewUpdate());
-            qAnn.on('text-change', () => debouncePreviewUpdate());
-        }
-        
-        // ========== LISTENERS CON DEBOUNCE ==========
+        // ========== LISTENERS ==========
         function initListeners() {
-            // Color pickers con preview y debounce
+            // Color pickers
             document.getElementById('annBg').addEventListener('input', (e) => {
-                document.getElementById('previewAnnBg').style.backgroundColor = e.target.value;
-                document.getElementById('hexAnnBg').textContent = e.target.value;
-                debouncePreviewUpdate();
+                document.getElementById('hexAnnBg').textContent = e.target.value.toUpperCase();
+                updatePreview();
             });
             
             document.getElementById('annColor').addEventListener('input', (e) => {
-                document.getElementById('previewAnnColor').style.backgroundColor = e.target.value;
-                document.getElementById('hexAnnColor').textContent = e.target.value;
-                debouncePreviewUpdate();
+                document.getElementById('hexAnnColor').textContent = e.target.value.toUpperCase();
+                updatePreview();
             });
-            
-            // Switches con debounce
-            document.getElementById('maintSwitch').addEventListener('change', debouncePreviewUpdate);
-            document.getElementById('annSwitch').addEventListener('change', debouncePreviewUpdate);
-            document.getElementById('tickerSwitch').addEventListener('change', debouncePreviewUpdate);
             
             // Sliders
             document.getElementById('sliderSpeed').addEventListener('input', (e) => {
                 document.getElementById('sliderSpeedText').textContent = e.target.value + 's';
-                debouncePreviewUpdate();
             });
             
             document.getElementById('tickerSpeedRange').addEventListener('input', (e) => {
                 document.getElementById('speedDisplay').textContent = e.target.value + 's';
-                debouncePreviewUpdate();
             });
+            
+            // Switches
+            document.getElementById('maintSwitch').addEventListener('change', updatePreview);
+            document.getElementById('annSwitch').addEventListener('change', updatePreview);
+            document.getElementById('tickerSwitch').addEventListener('change', updatePreview);
             
             // Upload zone
             const uploadZone = document.getElementById('uploadZone');
@@ -376,47 +302,41 @@
             uploadZone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 uploadZone.style.borderColor = 'var(--config-gray-300)';
-                handleFiles(e.dataTransfer.files);
+                const files = e.dataTransfer.files;
+                fileInput.files = files;
+                showUploadedFiles(files);
             });
             
             fileInput.addEventListener('change', (e) => {
-                handleFiles(e.target.files);
-                fileInput.value = '';
-            });
-            
-            // Device selector
-            document.querySelectorAll('.device-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    
-                    const device = btn.dataset.device;
-                    const frame = document.getElementById('previewFrame');
-                    frame.className = `preview-frame ${device}`;
-                });
+                showUploadedFiles(e.target.files);
             });
         }
         
-        // ========== DEBOUNCE PARA PREVIEW ==========
-        function debouncePreviewUpdate() {
+        // ========== PREVIEW ==========
+        function updatePreview() {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-                updatePreview();
-            }, 800);
+                const iframe = document.getElementById('liveIframe');
+                if (iframe) {
+                    iframe.src = iframe.src;
+                }
+            }, 1000);
         }
         
-        function updatePreview() {
-            const iframe = document.getElementById('liveIframe');
-            if (iframe && iframe.contentWindow) {
-                // Recargar iframe para ver cambios
-                iframe.src = iframe.src;
-            }
+        function switchDevice(device) {
+            document.querySelectorAll('.device-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.device-btn').classList.add('active');
+            
+            const frame = document.getElementById('previewFrame');
+            frame.className = `preview-frame ${device}`;
         }
         
         // ========== HUINCHAS ==========
         function loadHuinchas() {
             try {
-                const stored = <%= JSON.stringify(config.promo_strips || []) %>;
+                const stored = <%- JSON.stringify(config.promo_strips || []) %>;
                 huinchasData = Array.isArray(stored) ? stored : [];
             } catch(e) {
                 console.error('Error cargando huinchas:', e);
@@ -435,11 +355,11 @@
                 active: true
             });
             renderHuinchas();
-            debouncePreviewUpdate();
         }
         
         function renderHuinchas() {
             const container = document.getElementById('huinchasContainer');
+            
             if (huinchasData.length === 0) {
                 container.innerHTML = '<p class="text-muted text-sm">No hay huinchas configuradas. Agrega una para comenzar.</p>';
                 return;
@@ -462,33 +382,36 @@
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Texto</label>
-                            <input type="text" class="form-input" value="${h.text}" onchange="updateHuincha(${idx}, 'text', this.value)">
+                            <input type="text" class="form-input" value="${h.text || ''}" onchange="updateHuincha(${idx}, 'text', this.value)">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Icono (Font Awesome)</label>
-                            <input type="text" class="form-input" value="${h.icon}" onchange="updateHuincha(${idx}, 'icon', this.value)" placeholder="fa-star">
+                            <input type="text" class="form-input" value="${h.icon || 'fa-star'}" onchange="updateHuincha(${idx}, 'icon', this.value)" placeholder="fa-star">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Color Fondo</label>
-                            <input type="color" class="form-input" value="${h.bgColor}" onchange="updateHuincha(${idx}, 'bgColor', this.value)">
+                            <input type="color" class="form-input" value="${h.bgColor || '#2563eb'}" onchange="updateHuincha(${idx}, 'bgColor', this.value)">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Color Texto</label>
-                            <input type="color" class="form-input" value="${h.textColor}" onchange="updateHuincha(${idx}, 'textColor', this.value)">
+                            <input type="color" class="form-input" value="${h.textColor || '#ffffff'}" onchange="updateHuincha(${idx}, 'textColor', this.value)">
                         </div>
                     </div>
                 </div>
             `).join('');
+            
+            // Actualizar hidden input
+            document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
         }
         
         function toggleHuincha(idx, active) {
             huinchasData[idx].active = active;
-            debouncePreviewUpdate();
+            document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
         }
         
         function updateHuincha(idx, field, value) {
             huinchasData[idx][field] = value;
-            debouncePreviewUpdate();
+            document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
         }
         
         function deleteHuincha(idx) {
@@ -504,14 +427,18 @@
                 if (result.isConfirmed) {
                     huinchasData.splice(idx, 1);
                     renderHuinchas();
-                    debouncePreviewUpdate();
                 }
             });
         }
         
         // ========== BANNERS ==========
-        function handleFiles(files) {
-            Array.from(files).forEach(file => {
+        function showUploadedFiles(files) {
+            if (files.length === 0) return;
+            
+            const container = document.getElementById('bannersContainer');
+            const uploadZone = document.getElementById('uploadZone');
+            
+            Array.from(files).forEach((file, idx) => {
                 if (!file.type.startsWith('image/')) {
                     Swal.fire('Error', 'Solo se permiten archivos de imagen', 'error');
                     return;
@@ -524,112 +451,33 @@
                 
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const uid = Date.now() + Math.random();
-                    bannerUploads.push({
-                        id: uid,
-                        file: file,
-                        url: e.target.result,
-                        align: '50% 50%',
-                        duration: 5,
-                        animation: 'fade'
-                    });
-                    createBannerCard(uid, e.target.result, '50% 50%', 5, 'fade', true);
-                    debouncePreviewUpdate();
+                    const div = document.createElement('div');
+                    div.className = 'banner-item';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="Nuevo Banner">
+                        <div class="banner-badge" style="background: var(--config-primary);">Nuevo</div>
+                        <div class="banner-timing">5s</div>
+                        <div class="banner-overlay">
+                            <div class="banner-actions">
+                                <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.banner-item').remove()">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(div);
                 };
                 reader.readAsDataURL(file);
             });
-        }
-        
-        function createBannerCard(id, url, align, duration, animation, isNew) {
-            const container = document.getElementById('bannersContainer');
-            const div = document.createElement('div');
-            div.className = 'banner-item';
-            div.dataset.type = isNew ? 'new' : 'existing';
-            div.dataset.id = id;
-            div.dataset.url = url;
-            div.dataset.align = align;
-            div.dataset.duration = duration;
-            div.dataset.animation = animation;
             
-            div.innerHTML = `
-                <img src="${url}" style="object-position: ${align};" alt="Banner">
-                <div class="banner-timing">${duration}s</div>
-                <div class="banner-overlay">
-                    <div class="banner-actions">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="editBanner(this)">
-                            <i class="fas fa-edit"></i> Editar
-                        </button>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteBanner(this)">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
+            uploadZone.innerHTML = `
+                <i class="fas fa-check-circle upload-icon" style="color: var(--config-success);"></i>
+                <p class="upload-text">${files.length} archivo(s) seleccionado(s)</p>
+                <p class="upload-hint">Click para agregar más</p>
             `;
-            
-            container.appendChild(div);
         }
         
-        function initBannersSortable() {
-            new Sortable(document.getElementById('bannersContainer'), {
-                animation: 200,
-                ghostClass: 'sortable-ghost',
-                onEnd: debouncePreviewUpdate
-            });
-        }
-        
-        function editBanner(btn) {
-            const card = btn.closest('.banner-item');
-            currentEditingBanner = card;
-            
-            const img = card.querySelector('img');
-            document.getElementById('cropperImage').src = img.src;
-            document.getElementById('bannerDuration').value = card.dataset.duration || 5;
-            document.getElementById('bannerAnimation').value = card.dataset.animation || 'fade';
-            
-            openModal('modalEditBanner');
-            
-            setTimeout(() => {
-                if (currentCropper) currentCropper.destroy();
-                currentCropper = new Cropper(document.getElementById('cropperImage'), {
-                    aspectRatio: 16 / 9,
-                    viewMode: 1,
-                    autoCropArea: 1
-                });
-            }, 300);
-        }
-        
-        function applyBannerEdit() {
-            if (!currentEditingBanner || !currentCropper) return;
-            
-            const canvas = currentCropper.getCroppedCanvas();
-            const newUrl = canvas.toDataURL('image/jpeg', 0.9);
-            
-            currentEditingBanner.querySelector('img').src = newUrl;
-            currentEditingBanner.dataset.url = newUrl;
-            currentEditingBanner.dataset.duration = document.getElementById('bannerDuration').value;
-            currentEditingBanner.dataset.animation = document.getElementById('bannerAnimation').value;
-            currentEditingBanner.querySelector('.banner-timing').textContent = document.getElementById('bannerDuration').value + 's';
-            
-            // Si es un banner nuevo, actualizar en el array
-            const bannerId = currentEditingBanner.dataset.id;
-            const uploadIndex = bannerUploads.findIndex(b => b.id == bannerId);
-            if (uploadIndex !== -1) {
-                bannerUploads[uploadIndex].url = newUrl;
-                bannerUploads[uploadIndex].duration = document.getElementById('bannerDuration').value;
-                bannerUploads[uploadIndex].animation = document.getElementById('bannerAnimation').value;
-            }
-            
-            closeModal('modalEditBanner');
-            debouncePreviewUpdate();
-        }
-        
-        function deleteBanner(btn) {
-            const card = btn.closest('.banner-item');
-            if (card.classList.contains('first-banner')) {
-                Swal.fire('No permitido', 'No puedes eliminar el banner original', 'error');
-                return;
-            }
-            
+        function removeBanner(index) {
             Swal.fire({
                 title: '¿Eliminar banner?',
                 icon: 'warning',
@@ -639,110 +487,48 @@
                 confirmButtonColor: '#ef4444'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    card.remove();
-                    debouncePreviewUpdate();
+                    const banner = document.querySelector(`.banner-item[data-index="${index}"]`);
+                    if (banner) banner.remove();
                 }
             });
         }
         
-        // ========== MODALES ==========
-        function openModal(id) {
-            document.getElementById(id).classList.add('active');
+        function initBannersSortable() {
+            new Sortable(document.getElementById('bannersContainer'), {
+                animation: 200,
+                ghostClass: 'sortable-ghost',
+                handle: '.banner-item'
+            });
         }
         
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-            if (currentCropper) {
-                currentCropper.destroy();
-                currentCropper = null;
-            }
-        }
-        
-        // ========== GUARDAR CONFIGURACIÓN (LÓGICA ROBUSTA) ==========
-        async function saveConfiguration() {
+        // ========== GUARDAR ==========
+        function saveConfiguration() {
             const btnSave = document.getElementById('btnSave');
             const originalText = btnSave.innerHTML;
+            
+            // Validar que hay al menos un banner
+            const existingBanners = document.querySelectorAll('input[name="existing_banners_urls"]').length;
+            const newBanners = document.getElementById('fileInput').files.length;
+            
+            if (existingBanners === 0 && newBanners === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Atención',
+                    text: 'Debes tener al menos un banner en el slider'
+                });
+                return;
+            }
+            
+            // Actualizar JSON de huinchas antes de enviar
+            document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
             
             // Loader
             btnSave.disabled = true;
             btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
             
-            try {
-                const formData = new FormData();
-                
-                // Mantenimiento
-                formData.append('maintenance_active', document.getElementById('maintSwitch').checked ? 'on' : 'off');
-                formData.append('maintenance_message', qMaint.root.innerHTML);
-                formData.append('maintenance_eta', document.getElementById('maintenanceEta').value);
-                
-                // Announcement
-                formData.append('announcement_active', document.getElementById('annSwitch').checked ? 'on' : 'off');
-                formData.append('announcement_bg', document.getElementById('annBg').value);
-                formData.append('announcement_color', document.getElementById('annColor').value);
-                formData.append('announcement_text', qAnn.root.innerHTML);
-                
-                // Huinchas
-                formData.append('ticker_active', document.getElementById('tickerSwitch').checked ? 'on' : 'off');
-                formData.append('ticker_speed', document.getElementById('tickerSpeedRange').value);
-                formData.append('promo_strips_json', JSON.stringify(huinchasData));
-                
-                // Slider
-                formData.append('slider_speed', document.getElementById('sliderSpeed').value);
-                
-                // Banners existentes
-                const existingBanners = [];
-                const existingAligns = [];
-                document.querySelectorAll('.banner-item[data-type="existing"]').forEach((card) => {
-                    existingBanners.push(card.dataset.url);
-                    existingAligns.push(card.dataset.align || '50% 50%');
-                });
-                
-                existingBanners.forEach(url => formData.append('existing_banners_urls', url));
-                existingAligns.forEach(align => formData.append('existing_banners_align', align));
-                
-                // Nuevos banners (archivos)
-                const newAligns = [];
-                for (let upload of bannerUploads) {
-                    // Convertir dataURL a Blob
-                    const blob = await fetch(upload.url).then(r => r.blob());
-                    formData.append('new_banners', blob, `banner_${upload.id}.jpg`);
-                    newAligns.push(upload.align || '50% 50%');
-                }
-                newAligns.forEach(align => formData.append('new_banners_align', align));
-                
-                // Enviar al backend
-                const response = await fetch('/admin/configuracion/update', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Guardado!',
-                        text: 'Configuración actualizada correctamente',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                    
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                } else {
-                    throw new Error('Error en la respuesta del servidor');
-                }
-                
-            } catch (error) {
-                console.error('Error guardando configuración:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo guardar la configuración. Intenta nuevamente.'
-                });
-                
-                btnSave.disabled = false;
-                btnSave.innerHTML = originalText;
-            }
+            // Enviar formulario
+            const form = document.getElementById('configForm');
+            form.submit();
         }
     </script>
     
