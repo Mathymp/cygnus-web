@@ -196,6 +196,10 @@ app.use((req, res, next) => {
     next();
 });
 
+// --- Middleware de Modo Mantenimiento ---
+const maintenanceMode = require('./middleware/maintenanceMode');
+app.use(maintenanceMode);
+
 // --- Rutas ---
 const webRoutes = require('./routes/webRoutes');
 app.use('/', webRoutes);
