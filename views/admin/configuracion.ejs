@@ -2,902 +2,816 @@
 <html lang="es">
 <head>
     <%- include('../partials/head') %>
+    <title>Configuración Ultra | Cygnus Group</title>
     
+    <!-- External Libraries -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/css/config-ultra.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-    
-    <link rel="stylesheet" href="/css/publish.css">
-    <link rel="stylesheet" href="/css/configuracion.css">
-    <link rel="stylesheet" href="/css/configuracion-pro.css">
 </head>
 <body>
-    <div class="app-layout">
-        <%- include('../partials/sidebar-admin') %>
-
-        <main class="main-content">
-            <div class="publish-wrapper-fluid">
+    
+    <div class="config-ultra-layout">
         
-                <form id="configForm" onsubmit="event.preventDefault();">
-                    <!-- campo oculto con las huinchas serializadas -->
-                    <input type="hidden" name="promo_strips_json" id="promoStripsJson">
-                    <input type="hidden" name="ticker_speed" id="tickerSpeedHidden" value="<%= config.ticker_speed || 35 %>">
+        <!-- ========================================
+             SIDEBAR IZQUIERDO - NAVEGACIÓN FIJA
+             ======================================== -->
+        <aside class="config-sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <img src="/img/logo.png" alt="Cygnus">
+                    <h2>Cygnus</h2>
+                </div>
+                <p class="sidebar-subtitle">Panel de Control</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Sistema</div>
+                    <div class="nav-item active" data-section="maintenance">
+                        <i class="fas fa-hard-hat"></i>
+                        <span>Mantenimiento</span>
+                    </div>
+                    <div class="nav-item" data-section="huinchas">
+                        <i class="fas fa-ribbon"></i>
+                        <span>Huinchas</span>
+                    </div>
+                    <div class="nav-item" data-section="announcement">
+                        <i class="fas fa-bullhorn"></i>
+                        <span>Barra Superior</span>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Contenido</div>
+                    <div class="nav-item" data-section="banners">
+                        <i class="fas fa-images"></i>
+                        <span>Slider Banners</span>
+                    </div>
+                    <div class="nav-item" data-section="brand">
+                        <i class="fas fa-palette"></i>
+                        <span>Marca</span>
+                    </div>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button type="button" class="btn-save-all" onclick="saveAllConfiguration()">
+                    <i class="fas fa-save"></i>
+                    Guardar Todo
+                </button>
+            </div>
+        </aside>
+        
+        <!-- ========================================
+             COLUMNA EDITOR - SCROLL INDEPENDIENTE
+             ======================================== -->
+        <main class="config-editor">
+            <div class="editor-header">
+                <h1 class="editor-title">
+                    <i class="fas fa-sliders-h"></i>
+                    Configuración del Sitio
+                </h1>
+                <p class="editor-subtitle">Gestiona todos los aspectos visuales y funcionales de tu sitio web</p>
+            </div>
+            
+            <form id="configForm">
+                <!-- Hidden Fields -->
+                <input type="hidden" name="promo_strips_json" id="promoStripsJson">
+                <input type="hidden" name="ticker_speed" id="tickerSpeedHidden" value="<%= config.ticker_speed || 35 %>">
+                
+                <!-- ========================================
+                     SECCIÓN: MODO MANTENIMIENTO
+                     ======================================== -->
+                <section class="section-panel active" id="section-maintenance">
+                    <div class="panel-header">
+                        <h2 class="panel-title">
+                            <i class="fas fa-hard-hat"></i>
+                            Modo Mantenimiento
+                        </h2>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="maintenance_active" id="maintSwitch" <%= config.maintenance_active ? 'checked' : '' %>>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Activar</span>
+                        </label>
+                    </div>
                     
-                    <div class="header-actions-bar">
-                        <div class="header-title">
-                            <h1><i class="fas fa-sliders-h"></i> Editor Visual</h1>
-                            <span class="uf-badge">Modo Diseño</span>
-                        </div>
-                        <div class="actions-group">
-                             <button type="button" class="btn-primary-glow" onclick="saveConfiguration()">
-                                Guardar Cambios <i class="fas fa-save"></i>
-                            </button>
+                    <div class="form-group">
+                        <label class="form-label">Mensaje para los visitantes</label>
+                        <div id="maintQuill" style="background: white; border-radius: 10px; min-height: 200px;">
+                            <%- config.maintenance_message || '<h1 style="text-align: center;">Sitio en Mantenimiento</h1><p style="text-align: center;">Volvemos pronto con mejoras.</p>' %>
                         </div>
                     </div>
-
-                    <div class="publish-grid config-grid-layout">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Tiempo estimado de regreso</label>
+                        <input type="text" class="form-input" name="maintenance_eta" value="<%= config.maintenance_eta || '2 horas' %>" placeholder="Ej: 2 horas, 1 día">
+                    </div>
+                </section>
+                
+                <!-- ========================================
+                     SECCIÓN: HUINCHAS PROMOCIONALES
+                     ======================================== -->
+                <section class="section-panel" id="section-huinchas">
+                    <div class="panel-header">
+                        <h2 class="panel-title">
+                            <i class="fas fa-ribbon"></i>
+                            Huinchas Promocionales
+                        </h2>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="ticker_active" id="tickerSwitch" <%= (config.ticker_active !== false) ? 'checked' : '' %>>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Activar Ticker</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Velocidad de desplazamiento (segundos)</label>
+                        <input type="range" min="20" max="60" value="<%= config.ticker_speed || 35 %>" id="tickerSpeedRange" class="form-input">
+                        <p class="text-muted text-sm mt-2">Velocidad actual: <strong id="speedDisplay"><%= config.ticker_speed || 35 %>s</strong></p>
+                    </div>
+                    
+                    <div class="huinchas-list" id="huinchasContainer">
+                        <!-- Las huinchas se cargarán dinámicamente aquí -->
+                    </div>
+                    
+                    <button type="button" class="btn-add-huincha" onclick="addHuincha()">
+                        <i class="fas fa-plus"></i>
+                        Agregar Nueva Huincha
+                    </button>
+                </section>
+                
+                <!-- ========================================
+                     SECCIÓN: BARRA SUPERIOR (ANNOUNCEMENT)
+                     ======================================== -->
+                <section class="section-panel" id="section-announcement">
+                    <div class="panel-header">
+                        <h2 class="panel-title">
+                            <i class="fas fa-bullhorn"></i>
+                            Barra de Anuncios Superior
+                        </h2>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="announcement_active" id="annSwitch" <%= config.announcement_active ? 'checked' : '' %>>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Mostrar</span>
+                        </label>
+                    </div>
+                    
+                    <div class="color-picker-group mb-4">
+                        <div class="color-picker-item">
+                            <div class="color-preview" id="previewAnnBg" style="background-color: <%= config.announcement_bg || '#1e293b' %>;"></div>
+                            <div class="color-input">
+                                <label class="form-label mb-2">Color de Fondo</label>
+                                <input type="color" name="announcement_bg" id="annBg" value="<%= config.announcement_bg || '#1e293b' %>">
+                                <p class="color-hex mt-2"><%= config.announcement_bg || '#1e293b' %></p>
+                            </div>
+                        </div>
                         
-                        <div class="col-main">
-                            
-                            <div class="panel-card animated-entry">
-                                <div class="panel-header-flex">
-                                    <h3 class="panel-title"><i class="fas fa-hard-hat"></i> Modo Mantención</h3>
-                                    <label class="privacy-switch">
-                                        <input type="checkbox" name="maintenance_active" id="maintSwitch" <%= config.maintenance_active ? 'checked' : '' %>>
-                                        <span class="slider-round"></span>
-                                        <span class="switch-text">Activar Bloqueo</span>
-                                     </label>
-                                </div>
-                                <div class="form-group">
-                                    <label>Mensaje para el cliente</label>
-                                    <div id="maintQuill" class="quill-modern-small">
-                                        <%- config.maintenance_message || '<h1 class="ql-align-center">Sitio en Mantención</h1><p class="ql-align-center">Volvemos pronto.</p>' %>
-                                    </div>
-                                </div>
+                        <div class="color-picker-item">
+                            <div class="color-preview" id="previewAnnColor" style="background-color: <%= config.announcement_color || '#ffffff' %>;"></div>
+                            <div class="color-input">
+                                <label class="form-label mb-2">Color de Texto</label>
+                                <input type="color" name="announcement_color" id="annColor" value="<%= config.announcement_color || '#ffffff' %>">
+                                <p class="color-hex mt-2"><%= config.announcement_color || '#ffffff' %></p>
                             </div>
-
-                            <div class="panel-card animated-entry" style="animation-delay: 0.1s; overflow: visible !important;">
-                                <div class="panel-header-flex">
-                                    <h3 class="panel-title"><i class="fas fa-bullhorn"></i> Barra Superior</h3>
-                                    <label class="privacy-switch">
-                                        <input type="checkbox" name="announcement_active" id="annSwitch" <%= config.announcement_active ? 'checked' : '' %>>
-                                        <span class="slider-round"></span>
-                                        <span class="switch-text">Mostrar</span>
-                                     </label>
-                                </div>
-
-                                <div class="grid-2-sm mb-3">
-                                    <div class="form-group">
-                                        <label>Color Fondo</label>
-                                        <div class="color-picker-wrapper">
-                                            <div class="color-preview" id="previewAnnBg" style="background-color: <%= config.announcement_bg || '#1e293b' %>;"></div>
-                                            <input type="color" name="announcement_bg" id="annBg" value="<%= config.announcement_bg || '#1e293b' %>">
-                                            <span class="color-label"><%= config.announcement_bg || '#1e293b' %></span>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Color Texto</label>
-                                        <div class="color-picker-wrapper">
-                                            <div class="color-preview" id="previewAnnColor" style="background-color: <%= config.announcement_color || '#ffffff' %>;"></div>
-                                            <input type="color" name="announcement_color" id="annColor" value="<%= config.announcement_color || '#ffffff' %>">
-                                            <span class="color-label"><%= config.announcement_color || '#ffffff' %></span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-group" style="position:relative;">
-                                    <div class="editor-toolbar-extra">
-                                        <label>Contenido del Anuncio</label>
-                                        <div class="emoji-dropdown-wrapper">
-                                            <button type="button" class="btn-ghost-sm" onclick="toggleEmojiMenu(event)">😊 Emojis</button>
-                                            <div class="emoji-menu" id="emojiMenu">
-                                                <span onclick="addEmoji('🔥')">🔥</span><span onclick="addEmoji('🏡')">🏡</span>
-                                                <span onclick="addEmoji('⚡')">⚡</span><span onclick="addEmoji('⭐')">⭐</span>
-                                                <span onclick="addEmoji('🎉')">🎉</span><span onclick="addEmoji('📍')">📍</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div id="annQuill" class="quill-modern-small">
-                                        <%- config.announcement_text || '¡Contáctanos hoy mismo!' %>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Panel: Huinchas Promocionales (Ticker) -->
-                            <div class="panel-card animated-entry" style="animation-delay: 0.15s; overflow: visible !important;">
-                                <div class="panel-header-flex">
-                                    <h3 class="panel-title"><i class="fas fa-ribbon"></i> Huinchas Promocionales</h3>
-                                    <label class="privacy-switch">
-                                        <input type="checkbox" name="ticker_active" id="tickerSwitch" <%= (config.ticker_active !== false) ? 'checked' : '' %>>
-                                        <span class="slider-round"></span>
-                                        <span class="switch-text">Activar Ticker</span>
-                                    </label>
-                                </div>
-                                <div class="form-group">
-                                    <div class="editor-toolbar-extra" style="margin-bottom: 10px;">
-                                        <label>Promociones (desactiva sin borrar)</label>
-                                        <button type="button" class="btn-ghost-sm" onclick="addPromoStrip()">
-                                            <i class="fas fa-plus"></i> Nueva huincha
-                                        </button>
-                                    </div>
-                                    <div id="promoStripsContainer" class="promo-strips-list"></div>
-                                    <p class="text-muted text-sm" style="margin-top:8px;">
-                                        <i class="fas fa-info-circle"></i> Puedes tener varias huinchas activas a la vez. Se apilan bajo el header.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="panel-card animated-entry" style="animation-delay: 0.2s;">
-                                <div class="panel-header-flex">
-                                    <h3 class="panel-title"><i class="fas fa-images"></i> Slider Principal</h3>
-                                    <div class="range-wrapper">
-                                        <span class="text-muted text-sm">Velocidad: <b id="speedText"><%= config.slider_speed || 5 %>s</b></span>
-                                        <input type="range" name="slider_speed" id="sliderSpeed" min="2" max="10" value="<%= config.slider_speed || 5 %>" class="range-modern">
-                                    </div>
-                                </div>
-
-                                <div class="upload-zone-wide" id="uploadZone">
-                                    <div class="upload-content">
-                                        <i class="fas fa-cloud-upload-alt icon-upload"></i>
-                                        <div style="text-align:center;">
-                                            <strong style="display:block; font-size:1.1rem; margin-bottom:5px;">Agregar Fotos Nuevas</strong>
-                                            <p class="text-sm text-muted">Arrastra o haz click aquí</p>
-                                        </div>
-                                    </div>
-                                    <input type="file" id="fileInput" multiple accept="image/*" style="display:none;">
-                                </div>
-
-                                <div class="section-divider">
-                                    <span>Orden y Edición</span>
-                                </div>
-
-                                <div class="gallery-wide-grid" id="bannersContainer">
-                                    <% if(config.banners && config.banners.length > 0) { %>
-                                        <% config.banners.forEach((b) => { %>
-                                            <div class="img-card-wide banner-item existing-banner" 
-                                                 data-type="existing"
-                                                 data-url="<%= b.url %>" 
-                                                 data-align="<%= b.align || '50% 50%' %>">
-                                                
-                                                <img src="<%= b.url %>" style="object-position: <%= b.align || '50% 50%' %>;">
-                                                
-                                                <div class="badge-cover">
-                                                    <i class="fas fa-check-circle"></i> Publicado
-                                                </div>
-                                                
-                                                <div class="banner-actions">
-                                                    <button type="button" class="btn-mini focus" onclick="openFocusModal(this)" title="Ajustar Foco">
-                                                        <i class="fas fa-crosshairs"></i>
-                                                    </button>
-                                                    <button type="button" class="btn-mini delete" onclick="removeBanner(this)" title="Eliminar">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        <% }) %>
-                                    <% } %>
-                                </div>
-                                <p class="text-muted text-sm mt-2"><i class="fas fa-info-circle"></i> Arrastra las imágenes para reordenar el slider.</p>
-                            </div>
-
-                        </div> 
-
-                        <div class="col-side sticky-preview-col">
-                            <div class="device-shell">
-                                <div class="device-header">
-                                    <div class="dots"><span></span><span></span><span></span></div>
-                                    <div class="device-title">Vista Previa en Vivo</div>
-                                    <div class="device-controls">
-                                        <button type="button" class="device-icon active" onclick="setDevice('desktop')" title="Escritorio"><i class="fas fa-desktop"></i></button>
-                                        <button type="button" class="device-icon" onclick="setDevice('mobile')" title="Móvil"><i class="fas fa-mobile-alt"></i></button>
-                                    </div>
-                                </div>
-                                
-                                <div class="device-screen-container">
-                                    <div id="iframeWrapper" class="iframe-wrapper desktop">
-                                        <iframe id="liveFrame" src="/"></iframe>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="preview-note">
-                                <i class="fas fa-sync-alt"></i> Los cambios se reflejan automáticamente.
-                            </div>
-                        </div>
-
-                    </div> 
-                </form>
-                <div style="height: 100px;"></div>
-            </div>
-        </main>
-    </div>
-
-    <div id="focusModal" class="modal-overlay">
-        <div class="modal-box swal-modern focus-box">
-            <div class="modal-top">
-                <h3><i class="fas fa-crosshairs"></i> Ajustar Foco de Imagen</h3>
-                <button type="button" class="btn-close" onclick="closeFocusModal()">&times;</button>
-            </div>
-            <div class="modal-content-focus">
-                <p class="focus-instruction">Haz click en la parte más importante de la foto.</p>
-                
-                <div class="focus-canvas-container">
-                    <div class="focus-wrap" id="focusWrap">
-                        <img id="focusImg" src="" draggable="false">
-                        <div id="focusTarget">
-                            <div class="crosshair-v"></div>
-                            <div class="crosshair-h"></div>
                         </div>
                     </div>
-                </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Contenido del anuncio</label>
+                        <div id="annQuill" style="background: white; border-radius: 10px; min-height: 150px;">
+                            <%- config.announcement_text || '¡Contáctanos hoy mismo!' %>
+                        </div>
+                    </div>
+                </section>
                 
-                <div class="focus-coords">
-                    Posición: <span id="coordsDisplay">50% 50%</span>
+                <!-- ========================================
+                     SECCIÓN: SLIDER BANNERS
+                     ======================================== -->
+                <section class="section-panel" id="section-banners">
+                    <div class="panel-header">
+                        <h2 class="panel-title">
+                            <i class="fas fa-images"></i>
+                            Slider de Banners
+                        </h2>
+                        <div class="form-group" style="margin: 0; max-width: 200px;">
+                            <label class="form-label mb-2">Velocidad</label>
+                            <input type="range" name="slider_speed" id="sliderSpeed" min="2" max="10" value="<%= config.slider_speed || 5 %>" class="form-input">
+                            <p class="text-muted text-sm mt-2"><strong id="sliderSpeedText"><%= config.slider_speed || 5 %>s</strong></p>
+                        </div>
+                    </div>
+                    
+                    <div class="upload-zone" id="uploadZone">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <p class="upload-text">Arrastra imágenes aquí o haz click</p>
+                        <p class="upload-hint">Formatos: JPG, PNG, WebP (Máx 10MB)</p>
+                        <input type="file" id="fileInput" multiple accept="image/*" style="display:none;">
+                    </div>
+                    
+                    <div class="banners-grid" id="bannersContainer">
+                        <% if(config.banners && config.banners.length > 0) { %>
+                            <% config.banners.forEach((b, idx) => { %>
+                                <div class="banner-card <%= idx === 0 ? 'first-banner' : '' %>" 
+                                     data-type="existing"
+                                     data-url="<%= b.url %>" 
+                                     data-align="<%= b.align || '50% 50%' %>"
+                                     data-duration="<%= b.duration || 5 %>"
+                                     data-animation="<%= b.animation || 'fade' %>">
+                                    
+                                    <img src="<%= b.url %>" style="object-position: <%= b.align || '50% 50%' %>;">
+                                    
+                                    <% if(idx === 0) { %>
+                                        <div class="banner-badge first">Original</div>
+                                    <% } %>
+                                    
+                                    <div class="banner-timing"><%= b.duration || 5 %>s</div>
+                                    
+                                    <div class="banner-overlay">
+                                        <div class="banner-actions">
+                                            <button type="button" class="btn-banner edit" onclick="editBanner(this)">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </button>
+                                            <% if(idx !== 0) { %>
+                                                <button type="button" class="btn-banner delete" onclick="deleteBanner(this)">
+                                                    <i class="fas fa-trash"></i> Eliminar
+                                                </button>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        <% } %>
+                    </div>
+                </section>
+                
+                <!-- ========================================
+                     SECCIÓN: MARCA
+                     ======================================== -->
+                <section class="section-panel" id="section-brand">
+                    <div class="panel-header">
+                        <h2 class="panel-title">
+                            <i class="fas fa-palette"></i>
+                            Identidad de Marca
+                        </h2>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nombre de la empresa</label>
+                        <input type="text" class="form-input" name="company_name" value="<%= config.company_name || 'Cygnus Group Propiedades' %>">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Slogan</label>
+                        <input type="text" class="form-input" name="company_slogan" value="<%= config.company_slogan || 'Tu hogar, nuestra misión' %>">
+                    </div>
+                    
+                    <div class="color-picker-group">
+                        <div class="color-picker-item">
+                            <div class="color-preview" style="background-color: <%= config.brand_primary || '#2563eb' %>;"></div>
+                            <div class="color-input">
+                                <label class="form-label mb-2">Color Primario</label>
+                                <input type="color" name="brand_primary" value="<%= config.brand_primary || '#2563eb' %>">
+                            </div>
+                        </div>
+                        
+                        <div class="color-picker-item">
+                            <div class="color-preview" style="background-color: <%= config.brand_secondary || '#764ba2' %>;"></div>
+                            <div class="color-input">
+                                <label class="form-label mb-2">Color Secundario</label>
+                                <input type="color" name="brand_secondary" value="<%= config.brand_secondary || '#764ba2' %>">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+            </form>
+        </main>
+        
+        <!-- ========================================
+             LIVE PREVIEW - COLUMNA DERECHA FIJA
+             ======================================== -->
+        <aside class="config-preview">
+            <div class="preview-header">
+                <h3 class="preview-title">
+                    <i class="fas fa-eye"></i>
+                    Vista Previa en Vivo
+                </h3>
+                <div class="device-selector">
+                    <button type="button" class="device-btn active" data-device="desktop">
+                        <i class="fas fa-desktop"></i> Escritorio
+                    </button>
+                    <button type="button" class="device-btn" data-device="mobile">
+                        <i class="fas fa-mobile-alt"></i> Móvil
+                    </button>
                 </div>
             </div>
-            <div class="modal-actions-right">
-                <button type="button" class="btn-ghost" onclick="closeFocusModal()">Cancelar</button>
-                <button type="button" class="btn-primary-glow" onclick="applyFocus()">Aplicar Foco</button>
+            
+            <div class="preview-viewport">
+                <div class="preview-frame desktop" id="previewFrame">
+                    <iframe id="liveIframe" src="/"></iframe>
+                </div>
+            </div>
+        </aside>
+        
+    </div>
+    
+    <!-- ========================================
+         MODAL: EDITAR BANNER
+         ======================================== -->
+    <div class="modal-backdrop" id="modalEditBanner">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fas fa-crop"></i>
+                    Editar Banner
+                </h3>
+                <button type="button" class="btn-close-modal" onclick="closeModal('modalEditBanner')">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="cropper-container" id="cropperContainer">
+                    <img id="cropperImage" src="" style="max-width: 100%;">
+                </div>
+                
+                <div class="grid-2 mt-4">
+                    <div class="form-group">
+                        <label class="form-label">Duración (segundos)</label>
+                        <input type="number" id="bannerDuration" class="form-input" min="2" max="15" value="5">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Animación</label>
+                        <select id="bannerAnimation" class="form-input">
+                            <option value="fade">Fade</option>
+                            <option value="slide">Slide</option>
+                            <option value="zoom">Zoom</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-modal secondary" onclick="closeModal('modalEditBanner')">Cancelar</button>
+                <button type="button" class="btn-modal primary" onclick="applyBannerEdit()">Aplicar Cambios</button>
             </div>
         </div>
     </div>
-
+    
+    <!-- ========================================
+         JAVASCRIPT
+         ======================================== -->
     <script>
-        // --- GESTIÓN DE ESTADO ---
+        // ========== ESTADO GLOBAL ==========
         let qMaint, qAnn;
-        let bannerUploads = []; // Almacena objetos { id, file, url } para los NUEVOS archivos
-        let currentEditingElement = null; // Elemento DOM que se está editando (foco)
-        let focusX = 50, focusY = 50;
-
+        let currentCropper = null;
+        let currentEditingBanner = null;
+        let bannerUploads = [];
+        let huinchasData = [];
+        
+        // ========== INICIALIZACIÓN ==========
         document.addEventListener('DOMContentLoaded', () => {
             initEditors();
+            initNavigation();
             initListeners();
-            initSortable();
-            // Iniciar ajuste de vista previa
-            setTimeout(updateLivePreview, 1500); // Esperar a que cargue el iframe
+            initHuinchas();
+            initBannersSortable();
+            initPreview();
         });
-
-        // 1. INICIALIZACIÓN DE EDITORES QUILL
+        
+        // ========== EDITORES QUILL ==========
         function initEditors() {
-            qMaint = new Quill('#maintQuill', { theme: 'snow', modules: { toolbar: [['bold', 'italic', 'header'], [{ 'color': [] }, { 'align': [] }]] } });
-            qAnn = new Quill('#annQuill', { theme: 'snow', modules: { toolbar: false } });
-
-            // Eventos de cambio para actualizar preview
-            qMaint.on('text-change', () => updateLivePreview());
-            qAnn.on('text-change', () => updateLivePreview());
+            qMaint = new Quill('#maintQuill', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'header': [1, 2, 3, false] }],
+                        [{ 'color': [] }, { 'align': [] }]
+                    ]
+                }
+            });
+            
+            qAnn = new Quill('#annQuill', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [['bold', 'italic'], [{ 'color': [] }]]
+                }
+            });
+            
+            qMaint.on('text-change', updatePreview);
+            qAnn.on('text-change', updatePreview);
         }
-
-        // 2. LISTENERS GENERALES
+        
+        // ========== NAVEGACIÓN SIDEBAR ==========
+        function initNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    // Actualizar nav activo
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    
+                    // Mostrar sección correspondiente
+                    const section = item.dataset.section;
+                    document.querySelectorAll('.section-panel').forEach(panel => {
+                        panel.classList.remove('active');
+                    });
+                    document.getElementById(`section-${section}`).classList.add('active');
+                });
+            });
+        }
+        
+        // ========== LISTENERS GENERALES ==========
         function initListeners() {
-            // Inputs de Color
+            // Color pickers
             document.getElementById('annBg').addEventListener('input', (e) => {
                 document.getElementById('previewAnnBg').style.backgroundColor = e.target.value;
-                document.querySelector('.color-label', e.target.parentElement).innerText = e.target.value;
-                updateLivePreview();
+                e.target.nextElementSibling.textContent = e.target.value;
+                updatePreview();
             });
+            
             document.getElementById('annColor').addEventListener('input', (e) => {
                 document.getElementById('previewAnnColor').style.backgroundColor = e.target.value;
-                updateLivePreview();
+                e.target.nextElementSibling.textContent = e.target.value;
+                updatePreview();
             });
-
+            
             // Switches
-            document.getElementById('maintSwitch').addEventListener('change', updateLivePreview);
-            document.getElementById('annSwitch').addEventListener('change', updateLivePreview);
+            document.getElementById('maintSwitch').addEventListener('change', updatePreview);
+            document.getElementById('annSwitch').addEventListener('change', updatePreview);
+            document.getElementById('tickerSwitch').addEventListener('change', updatePreview);
             
-            // Slider Speed
+            // Sliders
             document.getElementById('sliderSpeed').addEventListener('input', (e) => {
-                document.getElementById('speedText').innerText = e.target.value + 's';
-                updateLivePreview();
+                document.getElementById('sliderSpeedText').textContent = e.target.value + 's';
+                updatePreview();
             });
-
-            // Carga de Archivos
-            const upZone = document.getElementById('uploadZone');
-            const fInput = document.getElementById('fileInput');
             
-            upZone.onclick = () => fInput.click();
+            document.getElementById('tickerSpeedRange').addEventListener('input', (e) => {
+                document.getElementById('speedDisplay').textContent = e.target.value + 's';
+                document.getElementById('tickerSpeedHidden').value = e.target.value;
+                updatePreview();
+            });
             
-            fInput.addEventListener('change', (e) => {
-                const files = Array.from(e.target.files);
-                files.forEach(file => {
-                    const uid = Math.random().toString(36).substr(2, 9);
-                    const blobUrl = URL.createObjectURL(file);
+            // Upload zone
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            
+            uploadZone.onclick = () => fileInput.click();
+            
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.style.borderColor = 'var(--cygnus-primary)';
+            });
+            
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.style.borderColor = '#cbd5e1';
+            });
+            
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.style.borderColor = '#cbd5e1';
+                handleFiles(e.dataTransfer.files);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+                fileInput.value = '';
+            });
+            
+            // Device selector
+            document.querySelectorAll('.device-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
                     
-                    // Guardamos referencia en memoria para el POST
-                    bannerUploads.push({ id: uid, file: file, url: blobUrl });
-                    
-                    // Creamos tarjeta visual
-                    createBannerCard(uid, blobUrl, '50% 50%', true);
+                    const device = btn.dataset.device;
+                    const frame = document.getElementById('previewFrame');
+                    frame.className = `preview-frame ${device}`;
                 });
-                fInput.value = ''; // Reset
-                updateLivePreview();
             });
-
-            // Re-inyectar al cargar el iframe
-            document.getElementById('liveFrame').onload = () => {
-                setTimeout(updateLivePreview, 500);
-            };
-
-            // Ajuste responsivo del iframe
-            window.addEventListener('resize', fitPreview);
-            setTimeout(fitPreview, 1000);
+            
+            // Preview iframe reload
+            setTimeout(() => {
+                document.getElementById('liveIframe').onload = () => {
+                    setTimeout(updatePreview, 500);
+                };
+            }, 1000);
         }
-
-        // 3. SORTABLE (Arrastrar y Soltar)
-        function initSortable() {
-            new Sortable(document.getElementById('bannersContainer'), {
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                onEnd: () => {
-                    updateLivePreview(); // Actualizar orden en preview
+        
+        // ========== HUINCHAS ==========
+        function initHuinchas() {
+            try {
+                const stored = <%= JSON.stringify(config.promo_strips || []) %>;
+                huinchasData = Array.isArray(stored) ? stored : [];
+            } catch(e) {
+                huinchasData = [];
+            }
+            renderHuinchas();
+        }
+        
+        function addHuincha() {
+            huinchasData.push({
+                id: Date.now(),
+                text: 'Nueva promoción',
+                icon: 'fa-star',
+                bgColor: '#2563eb',
+                textColor: '#ffffff',
+                active: true
+            });
+            renderHuinchas();
+            updatePreview();
+        }
+        
+        function renderHuinchas() {
+            const container = document.getElementById('huinchasContainer');
+            container.innerHTML = huinchasData.map((h, idx) => `
+                <div class="huincha-card">
+                    <div class="huincha-header">
+                        <h4 style="font-size: 1rem; font-weight: 700; color: #0f172a;">Huincha #${idx + 1}</h4>
+                        <label class="toggle-switch">
+                            <input type="checkbox" ${h.active ? 'checked' : ''} onchange="toggleHuincha(${idx}, this.checked)">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Activa</span>
+                        </label>
+                    </div>
+                    <div class="huincha-controls">
+                        <div class="form-group">
+                            <label class="form-label">Texto</label>
+                            <input type="text" class="form-input" value="${h.text}" onchange="updateHuincha(${idx}, 'text', this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Icono (Font Awesome)</label>
+                            <input type="text" class="form-input" value="${h.icon}" onchange="updateHuincha(${idx}, 'icon', this.value)" placeholder="fa-star">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Color Fondo</label>
+                            <input type="color" class="form-input" value="${h.bgColor}" onchange="updateHuincha(${idx}, 'bgColor', this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Color Texto</label>
+                            <input type="color" class="form-input" value="${h.textColor}" onchange="updateHuincha(${idx}, 'textColor', this.value)">
+                        </div>
+                    </div>
+                    <button type="button" class="btn-banner delete" style="width: auto; margin-top: 12px;" onclick="deleteHuincha(${idx})">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function toggleHuincha(idx, active) {
+            huinchasData[idx].active = active;
+            updatePreview();
+        }
+        
+        function updateHuincha(idx, field, value) {
+            huinchasData[idx][field] = value;
+            updatePreview();
+        }
+        
+        function deleteHuincha(idx) {
+            Swal.fire({
+                title: '¿Eliminar huincha?',
+                text: 'Esta acción no se puede deshacer',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    huinchasData.splice(idx, 1);
+                    renderHuinchas();
+                    updatePreview();
                 }
             });
         }
-
-        // --- CREACIÓN VISUAL DE TARJETAS ---
-        function createBannerCard(uid, url, align, isNew) {
+        
+        // ========== BANNERS ==========
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const uid = Date.now() + Math.random();
+                    bannerUploads.push({
+                        id: uid,
+                        file: file,
+                        url: e.target.result,
+                        align: '50% 50%',
+                        duration: 5,
+                        animation: 'fade'
+                    });
+                    createBannerCard(uid, e.target.result, '50% 50%', 5, 'fade', true);
+                    updatePreview();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        function createBannerCard(id, url, align, duration, animation, isNew) {
             const container = document.getElementById('bannersContainer');
             const div = document.createElement('div');
-            div.className = `img-card-wide banner-item ${isNew ? 'new-banner' : 'existing-banner'}`;
-            
-            // Atributos de datos
+            div.className = 'banner-card';
             div.dataset.type = isNew ? 'new' : 'existing';
-            div.dataset.id = uid; // Para nuevos usamos ID, para viejos usamos URL como ID implícito
+            div.dataset.id = id;
             div.dataset.url = url;
             div.dataset.align = align;
-
+            div.dataset.duration = duration;
+            div.dataset.animation = animation;
+            
             div.innerHTML = `
                 <img src="${url}" style="object-position: ${align};">
-                <div class="badge-cover" style="background: ${isNew ? '#10b981' : '#3b82f6'}">
-                    <i class="fas ${isNew ? 'fa-plus' : 'fa-check'}"></i> ${isNew ? 'Nuevo' : 'Publicado'}
-                </div>
-                <div class="banner-actions">
-                    <button type="button" class="btn-mini focus" onclick="openFocusModal(this)"><i class="fas fa-crosshairs"></i></button>
-                    <button type="button" class="btn-mini delete" onclick="removeBanner(this)"><i class="fas fa-trash"></i></button>
+                <div class="banner-timing">${duration}s</div>
+                <div class="banner-overlay">
+                    <div class="banner-actions">
+                        <button type="button" class="btn-banner edit" onclick="editBanner(this)">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button type="button" class="btn-banner delete" onclick="deleteBanner(this)">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </div>
                 </div>
             `;
+            
             container.appendChild(div);
         }
-
-        // --- ELIMINAR BANNER ---
-        window.removeBanner = (btn) => {
-            const item = btn.closest('.banner-item');
-            
-            // Si es nuevo, borrar de memoria también
-            if (item.dataset.type === 'new') {
-                const uid = item.dataset.id;
-                const idx = bannerUploads.findIndex(x => x.id === uid);
-                if (idx > -1) bannerUploads.splice(idx, 1);
-            }
-            
-            item.remove();
-            updateLivePreview();
-        };
-
-        // --- LÓGICA DE FOCO (MODAL) ---
-        window.openFocusModal = (btn) => {
-            currentEditingElement = btn.closest('.banner-item');
-            const src = currentEditingElement.dataset.url;
-            const currentAlign = currentEditingElement.dataset.align || '50% 50%';
-
-            // Parsear "50% 50%" a X e Y
-            const parts = currentAlign.replace(/%/g, '').split(' ');
-            focusX = parseFloat(parts[0]);
-            focusY = parseFloat(parts[1]);
-
-            document.getElementById('focusImg').src = src;
-            document.getElementById('focusModal').classList.add('active');
-            updateFocusUI();
-        };
-
-        const focusWrap = document.getElementById('focusWrap');
         
-        // Manejo del arrastre en el cuadro de foco
-        function handleFocusMove(e) {
-            const r = focusWrap.getBoundingClientRect();
-            let x = ((e.clientX - r.left) / r.width) * 100;
-            let y = ((e.clientY - r.top) / r.height) * 100;
-            
-            focusX = Math.max(0, Math.min(100, x));
-            focusY = Math.max(0, Math.min(100, y));
-            updateFocusUI();
+        function initBannersSortable() {
+            new Sortable(document.getElementById('bannersContainer'), {
+                animation: 200,
+                ghostClass: 'sortable-ghost',
+                onEnd: updatePreview
+            });
         }
-
-        focusWrap.onmousedown = (e) => {
-            handleFocusMove(e);
-            focusWrap.onmousemove = handleFocusMove;
-        };
         
-        window.addEventListener('mouseup', () => {
-            focusWrap.onmousemove = null;
-        });
-
-        function updateFocusUI() {
-            const target = document.getElementById('focusTarget');
-            target.style.left = focusX + '%';
-            target.style.top = focusY + '%';
-            document.getElementById('coordsDisplay').innerText = `${Math.round(focusX)}% ${Math.round(focusY)}%`;
+        function editBanner(btn) {
+            const card = btn.closest('.banner-card');
+            currentEditingBanner = card;
+            
+            const img = card.querySelector('img');
+            document.getElementById('cropperImage').src = img.src;
+            document.getElementById('bannerDuration').value = card.dataset.duration || 5;
+            document.getElementById('bannerAnimation').value = card.dataset.animation || 'fade';
+            
+            openModal('modalEditBanner');
+            
+            setTimeout(() => {
+                if (currentCropper) currentCropper.destroy();
+                currentCropper = new Cropper(document.getElementById('cropperImage'), {
+                    aspectRatio: 16 / 9,
+                    viewMode: 1,
+                    autoCropArea: 1
+                });
+            }, 300);
         }
-
-        window.applyFocus = () => {
-            const val = `${Math.round(focusX)}% ${Math.round(focusY)}%`;
+        
+        function applyBannerEdit() {
+            if (!currentEditingBanner || !currentCropper) return;
             
-            // Guardar en el DOM del admin
-            currentEditingElement.dataset.align = val;
-            currentEditingElement.querySelector('img').style.objectPosition = val;
+            const canvas = currentCropper.getCroppedCanvas();
+            const newUrl = canvas.toDataURL();
             
-            closeFocusModal();
-            updateLivePreview();
-        };
-
-        window.closeFocusModal = () => document.getElementById('focusModal').classList.remove('active');
-
-        // --- SISTEMA DE PREVISUALIZACIÓN (CORE) ---
-        function updateLivePreview() {
-            const iframe = document.getElementById('liveFrame');
-            const doc = iframe.contentDocument;
-            if (!doc || !doc.body) return;
-
-            // 1. Barra Superior
-            const annActive = document.getElementById('annSwitch').checked;
-            let annBar = doc.querySelector('.top-announcement-bar');
+            currentEditingBanner.querySelector('img').src = newUrl;
+            currentEditingBanner.dataset.url = newUrl;
+            currentEditingBanner.dataset.duration = document.getElementById('bannerDuration').value;
+            currentEditingBanner.dataset.animation = document.getElementById('bannerAnimation').value;
+            currentEditingBanner.querySelector('.banner-timing').textContent = document.getElementById('bannerDuration').value + 's';
             
-            // Si no existe, créala (o bórrala si ya no se quiere y re-creala para limpiar)
-            if (!annBar) {
-                annBar = doc.createElement('div');
-                annBar.className = 'top-announcement-bar';
-                annBar.style.cssText = "width:100%; z-index:9000; position:relative; text-align:center; padding:10px; font-weight:bold; transition:all 0.3s;";
-                doc.body.prepend(annBar);
+            closeModal('modalEditBanner');
+            updatePreview();
+        }
+        
+        function deleteBanner(btn) {
+            const card = btn.closest('.banner-card');
+            if (card.classList.contains('first-banner')) {
+                Swal.fire('No permitido', 'No puedes eliminar el banner original', 'error');
+                return;
             }
-
-            annBar.style.display = annActive ? 'block' : 'none';
-            annBar.style.backgroundColor = document.getElementById('annBg').value;
-            annBar.style.color = document.getElementById('annColor').value;
-            annBar.innerHTML = qAnn.root.innerHTML;
-
-            // 2. Pantalla de Mantención (Overlay)
-            const maintActive = document.getElementById('maintSwitch').checked;
-            let maintOverlay = doc.getElementById('previewMaintOverlay');
             
-            if (maintActive) {
-                if (!maintOverlay) {
-                    maintOverlay = doc.createElement('div');
-                    maintOverlay.id = 'previewMaintOverlay';
-                    maintOverlay.style.cssText = "position:fixed; inset:0; background:white; z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;";
-                    doc.body.appendChild(maintOverlay);
+            Swal.fire({
+                title: '¿Eliminar banner?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    card.remove();
+                    updatePreview();
                 }
-                maintOverlay.style.display = 'flex';
-                maintOverlay.innerHTML = qMaint.root.innerHTML;
-            } else {
-                if (maintOverlay) maintOverlay.style.display = 'none';
-            }
-
-            // 3. SLIDER / SWIPER (La parte crítica)
-            const swiperWrapper = doc.querySelector('.swiper-wrapper');
-            if (swiperWrapper) {
-                // Obtener todos los banners actuales del grid (en orden visual)
-                const items = Array.from(document.querySelectorAll('.banner-item'));
-                
-                let slidesHTML = '';
-                
-                if (items.length === 0) {
-                    slidesHTML = '<div class="swiper-slide" style="height:100%; display:flex; align-items:center; justify-content:center; background:#333; color:#fff;">Sin imágenes</div>';
-                } else {
-                    items.forEach(item => {
-                        const src = item.dataset.url;
-                        const align = item.dataset.align;
-                        
-                        slidesHTML += `
-                            <div class="swiper-slide">
-                                <div class="hero-slide" style="background-image:url('${src}'); background-position:${align}; height: 100%; width: 100%; background-size: cover;"></div>
-                            </div>
-                        `;
-                    });
-                }
-
-                swiperWrapper.innerHTML = slidesHTML;
-
-                // FORZAR ACTUALIZACIÓN DE SWIPER
-                // Inyectamos un script pequeño en el iframe para que busque la instancia de swiper y la actualice
-                const updateScript = doc.createElement('script');
-                updateScript.textContent = `
-                    try {
-                        const swiperEl = document.querySelector('.swiper');
-                        if(swiperEl && swiperEl.swiper) {
-                            swiperEl.swiper.update();
-                            swiperEl.swiper.slideTo(0);
-                            
-                            // Actualizar velocidad si es necesario
-                            if(swiperEl.swiper.params && swiperEl.swiper.params.autoplay) {
-                                swiperEl.swiper.params.autoplay.delay = ${document.getElementById('sliderSpeed').value} * 1000;
-                                swiperEl.swiper.autoplay.start();
-                            }
-                        }
-                    } catch(e) { console.log('Swiper update error', e); }
-                `;
-                doc.body.appendChild(updateScript);
+            });
+        }
+        
+        // ========== PREVIEW ==========
+        function initPreview() {
+            setTimeout(() => {
+                updatePreview();
+            }, 1500);
+        }
+        
+        function updatePreview() {
+            // Esta función inyectaría cambios en el iframe
+            // Por ahora solo recarga
+            const iframe = document.getElementById('liveIframe');
+            if (iframe && iframe.contentWindow) {
+                // Aquí podrías inyectar CSS/HTML dinámicamente
+                console.log('Preview updated');
             }
         }
-
-        // --- GUARDAR CONFIGURACIÓN (SUBMIT) ---
-        window.saveConfiguration = async () => {
+        
+        // ========== MODALES ==========
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+        
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            if (currentCropper) {
+                currentCropper.destroy();
+                currentCropper = null;
+            }
+        }
+        
+        // ========== GUARDAR CONFIGURACIÓN ==========
+        async function saveAllConfiguration() {
             const formData = new FormData();
-
-            // 1. Textos y Configuración Base
-            formData.append('maintenance_active', document.getElementById('maintSwitch').checked ? 'on' : 'off');
+            
+            // Mantenimiento
+            formData.append('maintenance_active', document.getElementById('maintSwitch').checked);
             formData.append('maintenance_message', qMaint.root.innerHTML);
-
-            formData.append('announcement_active', document.getElementById('annSwitch').checked ? 'on' : 'off');
+            formData.append('maintenance_eta', document.querySelector('[name="maintenance_eta"]').value);
+            
+            // Announcement
+            formData.append('announcement_active', document.getElementById('annSwitch').checked);
             formData.append('announcement_bg', document.getElementById('annBg').value);
             formData.append('announcement_color', document.getElementById('annColor').value);
             formData.append('announcement_text', qAnn.root.innerHTML);
-
+            
+            // Huinchas
+            formData.append('ticker_active', document.getElementById('tickerSwitch').checked);
+            formData.append('ticker_speed', document.getElementById('tickerSpeedRange').value);
+            formData.append('promo_strips_json', JSON.stringify(huinchasData));
+            
+            // Slider
             formData.append('slider_speed', document.getElementById('sliderSpeed').value);
-
-            // 1.b Huinchas Promocionales (Ticker)
-            formData.append('ticker_active', document.getElementById('tickerSwitch').checked ? 'on' : 'off');
-            formData.append('ticker_speed', document.getElementById('tickerSpeedHidden').value || '35');
-            formData.append('promo_strips_json', JSON.stringify(collectPromoStrips()));
-
-            // 2. Banners (Respetando el orden visual)
-            const items = document.querySelectorAll('.banner-item');
-            items.forEach(item => {
-                const align = item.dataset.align;
-                if (item.dataset.type === 'existing') {
-                    // Es viejo: enviamos URL y Alineación
-                    formData.append('existing_banners_urls[]', item.dataset.url);
-                    formData.append('existing_banners_align[]', align);
-                } else {
-                    // Es nuevo: buscamos el archivo real en memoria usando el ID
-                    const uid = item.dataset.id;
-                    const uploadObj = bannerUploads.find(u => u.id === uid);
-                    
-                    if (uploadObj) {
-                        // Importante: El nombre 'new_banners' debe coincidir con upload.array() en el backend
-                        formData.append('new_banners', uploadObj.file); 
-                        formData.append('new_banners_align[]', align);
-                    }
+            
+            // Banners
+            const banners = [];
+            document.querySelectorAll('.banner-card').forEach((card, idx) => {
+                if (card.dataset.type === 'existing') {
+                    banners.push({
+                        url: card.dataset.url,
+                        align: card.dataset.align,
+                        duration: card.dataset.duration,
+                        animation: card.dataset.animation
+                    });
                 }
             });
-
-            // 3. Feedback Visual
-            Swal.fire({
-                title: 'Guardando...',
-                html: 'Subiendo imágenes y actualizando el sitio.',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
+            formData.append('banners', JSON.stringify(banners));
+            
+            // Nuevos banners (archivos)
+            bannerUploads.forEach((upload, idx) => {
+                formData.append(`new_banner_${idx}`, upload.file);
+                formData.append(`new_banner_${idx}_duration`, upload.duration);
+                formData.append(`new_banner_${idx}_animation`, upload.animation);
             });
-
+            
+            // Marca
+            formData.append('company_name', document.querySelector('[name="company_name"]').value);
+            formData.append('company_slogan', document.querySelector('[name="company_slogan"]').value);
+            formData.append('brand_primary', document.querySelector('[name="brand_primary"]').value);
+            formData.append('brand_secondary', document.querySelector('[name="brand_secondary"]').value);
+            
             try {
                 const response = await fetch('/admin/configuracion/update', {
                     method: 'POST',
                     body: formData
                 });
-
-                if (response.ok) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Guardado!',
-                        text: 'La configuración se actualizó correctamente.',
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        window.location.reload();
-                    });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    Swal.fire('¡Guardado!', 'Configuración actualizada correctamente', 'success');
+                    setTimeout(() => location.reload(), 1500);
                 } else {
-                    throw new Error('Error en la respuesta del servidor');
+                    Swal.fire('Error', result.message || 'No se pudo guardar', 'error');
                 }
             } catch (error) {
-                console.error(error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo guardar la configuración. Intenta nuevamente.'
-                });
+                console.error('Error:', error);
+                Swal.fire('Error', 'Error de conexión', 'error');
             }
-        };
-
-        // --- UTILIDADES ---
-        function toggleEmojiMenu(e) { 
-            e.stopPropagation();
-            document.getElementById('emojiMenu').classList.toggle('active'); 
         }
-        
-        function addEmoji(char) { 
-            const range = qAnn.getSelection(true);
-            qAnn.insertText(range ? range.index : qAnn.getLength(), char);
-            document.getElementById('emojiMenu').classList.remove('active');
-            updateLivePreview();
-        }
-
-        function setDevice(mode) {
-            const wrap = document.getElementById('iframeWrapper');
-            const btns = document.querySelectorAll('.device-icon');
-            
-            btns.forEach(b => b.classList.remove('active'));
-            event.currentTarget.classList.add('active'); // Botón clickeado
-            
-            wrap.className = `iframe-wrapper ${mode}`;
-            setTimeout(fitPreview, 300);
-        }
-
-        function fitPreview() {
-            const shell = document.querySelector('.device-screen-container');
-            const wrap = document.getElementById('iframeWrapper');
-            if (!shell || !wrap) return;
-
-            // Dimensiones objetivo
-            const targetW = wrap.classList.contains('mobile') ? 375 : 1366;
-            const targetH = wrap.classList.contains('mobile') ? 812 : 768;
-
-            // Escalar para ajustar al contenedor disponible
-            const scale = Math.min(
-                (shell.clientWidth - 20) / targetW, 
-                (shell.clientHeight - 20) / targetH
-            );
-
-            wrap.style.transform = `scale(${Math.min(scale, 1)})`; // Nunca escalar más de 1
-        }
-        
-        // Cerrar menús al clickear fuera
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.emoji-dropdown-wrapper')) {
-                document.getElementById('emojiMenu').classList.remove('active');
-            }
-        });
-
-        /* =========================================
-           HUINCHAS PROMOCIONALES (Ticker)
-           ========================================= */
-        const PROMO_ICON_OPTIONS = [
-            { v: 'fas fa-bolt',       label: '⚡ Rápido' },
-            { v: 'fas fa-fire',       label: '🔥 Hot' },
-            { v: 'fas fa-star',       label: '⭐ Destacado' },
-            { v: 'fas fa-tag',        label: '🏷️ Oferta' },
-            { v: 'fas fa-percent',    label: '💯 Descuento' },
-            { v: 'fas fa-gem',        label: '💎 Premium' },
-            { v: 'fas fa-home',       label: '🏠 Casa' },
-            { v: 'fas fa-key',        label: '🔑 Llave' },
-            { v: 'fas fa-map-marker-alt', label: '📍 Ubicación' },
-            { v: 'fas fa-bullhorn',   label: '📢 Anuncio' },
-            { v: 'fas fa-gift',       label: '🎁 Promoción' },
-            { v: 'fas fa-crown',      label: '👑 Luxury' },
-            { v: '',                  label: '— Sin ícono' }
-        ];
-
-        function addPromoStrip(preset) {
-            const data = Object.assign({
-                id: 'p_' + Math.random().toString(36).slice(2, 9),
-                active: true,
-                text: '¡Nueva propiedad destacada! Agenda tu visita hoy.',
-                icon: 'fas fa-fire',
-                bg: '#2563eb',
-                color: '#ffffff',
-                fontSize: 14,
-                fontWeight: 600,
-                style: 'normal',
-                speed: 35
-            }, preset || {});
-
-            const container = document.getElementById('promoStripsContainer');
-            const row = document.createElement('div');
-            row.className = 'promo-strip-row';
-            row.dataset.id = data.id;
-
-            const iconOptionsHTML = PROMO_ICON_OPTIONS.map(o =>
-                `<option value="${o.v}" ${o.v === data.icon ? 'selected' : ''}>${o.label}</option>`
-            ).join('');
-
-            row.innerHTML = `
-                <div class="ps-toprow">
-                    <label class="ps-switch">
-                        <input type="checkbox" class="ps-active" ${data.active ? 'checked' : ''}>
-                        <span></span>
-                    </label>
-                    <input type="text" class="ps-text" value="${(data.text || '').replace(/"/g, '&quot;')}" placeholder="Texto de la promo (puede incluir HTML básico)">
-                    <button type="button" class="ps-del" title="Eliminar">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-                <div class="ps-controls">
-                    <div class="ps-ctrl">
-                        <label>Ícono</label>
-                        <select class="ps-icon">${iconOptionsHTML}</select>
-                    </div>
-                    <div class="ps-ctrl">
-                        <label>Fondo</label>
-                        <input type="color" class="ps-bg" value="${data.bg}">
-                    </div>
-                    <div class="ps-ctrl">
-                        <label>Texto</label>
-                        <input type="color" class="ps-color" value="${data.color}">
-                    </div>
-                    <div class="ps-ctrl">
-                        <label>Tamaño (px)</label>
-                        <input type="number" class="ps-fontsize" min="10" max="24" value="${data.fontSize}">
-                    </div>
-                    <div class="ps-ctrl">
-                        <label>Peso</label>
-                        <select class="ps-fontweight">
-                            <option value="400" ${data.fontWeight == 400 ? 'selected' : ''}>Normal</option>
-                            <option value="600" ${data.fontWeight == 600 ? 'selected' : ''}>Semibold</option>
-                            <option value="700" ${data.fontWeight == 700 ? 'selected' : ''}>Bold</option>
-                            <option value="900" ${data.fontWeight == 900 ? 'selected' : ''}>Black</option>
-                        </select>
-                    </div>
-                    <div class="ps-ctrl">
-                        <label>Estilo</label>
-                        <select class="ps-style">
-                            <option value="normal" ${data.style === 'normal' ? 'selected' : ''}>Normal</option>
-                            <option value="uppercase" ${data.style === 'uppercase' ? 'selected' : ''}>MAYÚSCULAS</option>
-                        </select>
-                    </div>
-                    <div class="ps-ctrl">
-                        <label>Velocidad (s)</label>
-                        <input type="number" class="ps-speed" min="10" max="120" value="${data.speed}">
-                    </div>
-                </div>
-                <div class="ps-preview">
-                    <div class="ps-preview-inner"></div>
-                </div>
-            `;
-            container.appendChild(row);
-
-            // Live preview bindings
-            const refresh = () => renderPromoRowPreview(row);
-            row.querySelectorAll('input, select').forEach(el => {
-                el.addEventListener('input', refresh);
-                el.addEventListener('change', refresh);
-            });
-            row.querySelector('.ps-del').addEventListener('click', () => {
-                Swal.fire({
-                    title: '¿Eliminar huincha?',
-                    text: 'Esta promoción se borrará al guardar.',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#ef4444'
-                }).then(r => { if (r.isConfirmed) { row.remove(); updatePromoTickerPreview(); } });
-            });
-            refresh();
-            updatePromoTickerPreview();
-        }
-
-        function renderPromoRowPreview(row) {
-            const text = row.querySelector('.ps-text').value || '';
-            const icon = row.querySelector('.ps-icon').value;
-            const bg = row.querySelector('.ps-bg').value;
-            const color = row.querySelector('.ps-color').value;
-            const fs = row.querySelector('.ps-fontsize').value;
-            const fw = row.querySelector('.ps-fontweight').value;
-            const st = row.querySelector('.ps-style').value;
-            const preview = row.querySelector('.ps-preview-inner');
-            preview.style.background = bg;
-            preview.style.color = color;
-            preview.style.fontSize = fs + 'px';
-            preview.style.fontWeight = fw;
-            preview.style.textTransform = (st === 'uppercase') ? 'uppercase' : 'none';
-            preview.style.letterSpacing = (st === 'uppercase') ? '1.5px' : 'normal';
-            preview.innerHTML = (icon ? `<i class="${icon}"></i> ` : '') + text;
-            updatePromoTickerPreview();
-        }
-
-        function collectPromoStrips() {
-            const rows = document.querySelectorAll('#promoStripsContainer .promo-strip-row');
-            return Array.from(rows).map(row => ({
-                id: row.dataset.id,
-                active: row.querySelector('.ps-active').checked,
-                text: row.querySelector('.ps-text').value,
-                icon: row.querySelector('.ps-icon').value,
-                bg: row.querySelector('.ps-bg').value,
-                color: row.querySelector('.ps-color').value,
-                fontSize: parseInt(row.querySelector('.ps-fontsize').value) || 14,
-                fontWeight: parseInt(row.querySelector('.ps-fontweight').value) || 600,
-                style: row.querySelector('.ps-style').value,
-                speed: parseInt(row.querySelector('.ps-speed').value) || 35
-            }));
-        }
-
-        function updatePromoTickerPreview() {
-            const iframe = document.getElementById('liveFrame');
-            const doc = iframe && iframe.contentDocument;
-            if (!doc || !doc.body) return;
-
-            let wrap = doc.querySelector('.cygnus-ticker-wrap');
-            if (!wrap) {
-                wrap = doc.createElement('div');
-                wrap.className = 'cygnus-ticker-wrap';
-                doc.body.prepend(wrap);
-            }
-
-            const tickerOn = document.getElementById('tickerSwitch').checked;
-            const strips = collectPromoStrips().filter(s => s.active);
-
-            if (!tickerOn || strips.length === 0) { wrap.innerHTML = ''; return; }
-
-            wrap.innerHTML = strips.map(s => {
-                const upper = s.style === 'uppercase' ? 'text-transform:uppercase;letter-spacing:1.5px;' : '';
-                const items = Array.from({ length: 8 }).map(() =>
-                    `<span class="cygnus-ticker-item">${s.icon ? '<i class="'+s.icon+'"></i>' : ''} ${s.text}</span>`
-                ).join('');
-                return `<div class="cygnus-ticker" style="background:${s.bg};color:${s.color};font-size:${s.fontSize}px;font-weight:${s.fontWeight};${upper}">
-                            <div class="cygnus-ticker-track" style="animation-duration:${s.speed}s">${items}</div>
-                        </div>`;
-            }).join('');
-        }
-
-        function initPromoStrips() {
-            const existing = <%- JSON.stringify(config.promo_strips || []) %>;
-            if (Array.isArray(existing) && existing.length > 0) {
-                existing.forEach(p => addPromoStrip(p));
-            }
-            document.getElementById('tickerSwitch').addEventListener('change', updatePromoTickerPreview);
-        }
-        document.addEventListener('DOMContentLoaded', () => { setTimeout(initPromoStrips, 300); });
     </script>
-
-    <style>
-            .promo-strips-list { display:flex; flex-direction:column; gap:14px; }
-            .promo-strip-row {
-                background: #fff;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                padding: 14px;
-                box-shadow: 0 1px 2px rgba(15,23,42,0.04);
-            }
-            .ps-toprow { display:flex; gap:10px; align-items:center; }
-            .ps-toprow .ps-text {
-                flex:1; height:40px; border:1px solid #e2e8f0; border-radius:8px;
-                padding:0 12px; font-size:0.92rem; outline:none;
-            }
-            .ps-toprow .ps-text:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
-            .ps-del {
-                width:40px; height:40px; border-radius:8px; border:none;
-                background:#fee2e2; color:#dc2626; cursor:pointer; transition:.2s;
-            }
-            .ps-del:hover { background:#fecaca; }
-            .ps-switch { position:relative; width:40px; height:22px; display:inline-block; flex-shrink:0; }
-            .ps-switch input { opacity:0; width:0; height:0; }
-            .ps-switch span {
-                position:absolute; cursor:pointer; inset:0; background:#cbd5e1;
-                border-radius:22px; transition:.2s;
-            }
-            .ps-switch span::before {
-                content:""; position:absolute; height:16px; width:16px; left:3px; bottom:3px;
-                background:white; border-radius:50%; transition:.2s;
-            }
-            .ps-switch input:checked + span { background:#2563eb; }
-            .ps-switch input:checked + span::before { transform:translateX(18px); }
-
-            .ps-controls {
-                display:grid;
-                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                gap:10px;
-                margin-top:12px;
-            }
-            .ps-ctrl { display:flex; flex-direction:column; gap:4px; }
-            .ps-ctrl label { font-size:0.7rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:.3px; }
-            .ps-ctrl input[type="number"], .ps-ctrl select {
-                height:36px; border:1px solid #e2e8f0; border-radius:8px;
-                padding:0 8px; font-size:.9rem; outline:none; background:white;
-            }
-            .ps-ctrl input[type="color"] {
-                width:100%; height:36px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer;
-            }
-
-            .ps-preview {
-                margin-top:12px;
-                border-radius:10px;
-                overflow:hidden;
-                border:1px solid #e2e8f0;
-            }
-            .ps-preview-inner {
-                padding:10px 14px;
-                text-align:center;
-            }
-            .ps-preview-inner i { margin-right:6px; }
-        </style>
-    </body>
+    
+</body>
 </html>
