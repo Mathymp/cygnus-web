@@ -840,10 +840,11 @@ body {
    ========================================= */
 @media (max-width: 900px) {
 
-    /* Contenedor principal con más aire */
+    /* Contenedor principal: padding mínimo para fluidez total */
     .main-container {
-        padding: 24px 20px 50px 20px;
+        padding: 16px 16px 50px 16px;
         max-width: 100%;
+        width: 100%;
     }
 
     /* Flujo vertical */
@@ -879,31 +880,37 @@ body {
     }
     .block-header { margin-bottom: 20px; }
 
-    /* Título y dirección con más espacio */
+    /* Título: imponente, sin restricciones de ancho */
     .prop-header { 
         margin-bottom: 0;
-        padding: 0 4px;
+        padding: 0;
+        width: 100%;
+        max-width: none !important;
     }
     .prop-title {
-        font-size: 1.95rem;
+        font-size: 1.8rem;
         font-weight: 900;
         letter-spacing: -0.8px;
-        line-height: 1.2;
-        margin-bottom: 10px;
+        line-height: 1.25;
+        margin-bottom: 12px;
+        width: 100%;
+        max-width: none !important;
+        word-wrap: break-word;
     }
     .address-inline {
         font-size: 1rem;
         gap: 10px;
         margin-top: 8px;
+        width: 100%;
     }
     .addr-text { font-size: 0.95rem; }
 
-    /* ---------- GALERÍA FULL-BLEED SIN RECORTE ---------- */
+    /* ---------- GALERÍA FULL-BLEED: de borde a borde ---------- */
     .gallery-container {
         /* rompe el padding del contenedor para usar 100% del ancho */
-        width: calc(100% + 28px);
-        margin-left: -14px;
-        margin-right: -14px;
+        width: calc(100% + 32px);
+        margin-left: -16px;
+        margin-right: -16px;
     }
 
     /* Escenario principal: altura natural según foto, fondo blur que rellena bordes */
@@ -1004,17 +1011,19 @@ body {
     .thumb.active { box-shadow: 0 0 0 2px rgba(37,99,235,.25); }
     .thumb-nav { display: none; } /* el scroll táctil basta */
 
-    /* ---------- TARJETA DE PRECIO – LUXURY ---------- */
+    /* ---------- TARJETA DE PRECIO: bloque sólido, casi borde a borde ---------- */
     .sticky-widget {
         position: static !important;
         top: auto;
         width: 100%;
-        padding: 28px 22px 24px 22px !important;
+        max-width: none !important;
+        padding: 28px 20px 24px 20px !important;
+        margin: 0 !important;
         border-radius: 20px;
         box-shadow:
-            0 1px 2px rgba(15,23,42,0.04),
-            0 12px 32px -12px rgba(37,99,235,0.18),
-            0 24px 48px -24px rgba(15,23,42,0.12);
+            0 2px 4px rgba(15,23,42,0.06),
+            0 12px 32px -8px rgba(37,99,235,0.2),
+            0 24px 48px -20px rgba(15,23,42,0.15);
         border: 1px solid rgba(226,232,240,0.9);
         background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
     }
@@ -1048,82 +1057,101 @@ body {
         border-radius: 11px;
     }
 
-    /* ---------- MAPA (inmediatamente tras el precio) ---------- */
+    /* ---------- MAPA: ancho completo ---------- */
     .info-section.block-map { 
         padding: 0;
+        width: 100%;
+        max-width: none !important;
     }
     .block-map .section-title {
-        font-size: 1.35rem;
+        font-size: 1.4rem;
         margin-bottom: 16px;
         font-weight: 800;
     }
     .map-frame {
-        height: 300px;
+        height: 320px;
+        width: 100%;
         border-radius: 18px;
         border: 1px solid var(--c-border);
         box-shadow: 0 8px 24px -8px rgba(15,23,42,0.15);
     }
 
-    /* ---------- SUPERFICIE ---------- */
+    /* ---------- SUPERFICIE: usa todo el ancho ---------- */
     .surface-mini-card {
         margin: 0;
-        padding: 20px 18px;
-        gap: 18px;
-        justify-content: space-around;
+        padding: 22px 18px;
+        gap: 20px;
+        justify-content: space-between;
         border-radius: 16px;
         background: #f8fafc;
         border: 1px solid var(--c-border);
+        width: 100%;
+        max-width: none !important;
     }
     .surface-mini-item { 
         align-items: center; 
         text-align: center;
         flex: 1;
+        min-width: 0;
     }
     .surface-mini-label { 
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: 700;
         color: #64748b;
     }
     .surface-mini-value { 
-        font-size: 1.4rem;
+        font-size: 1.5rem;
         font-weight: 800;
         color: var(--c-dark);
-        margin-top: 6px;
+        margin-top: 8px;
     }
 
-    /* ---------- SPECS ---------- */
+    /* ---------- SPECS: iconos y textos más grandes, grid fluido ---------- */
     .specs-section {
-        padding: 24px 20px;
+        padding: 24px 18px;
         border-radius: 18px;
         margin-bottom: 0;
+        width: 100%;
+        max-width: none !important;
     }
     .specs-grid {
+        display: grid;
         grid-template-columns: 1fr;
-        gap: 14px;
+        gap: 16px;
+        width: 100%;
     }
     .spec-card { 
-        padding: 16px 14px;
+        padding: 18px 16px;
         min-height: auto;
         text-align: center;
+        width: 100%;
     }
     .spec-card.wide { grid-column: span 1; }
+    .spec-card i {
+        font-size: 1.4rem;
+        margin-bottom: 8px;
+    }
     .specs-title { 
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: 700;
     }
     .specs-value {
-        font-size: 1.1rem;
-        font-weight: 700;
-        margin-top: 6px;
+        font-size: 1.2rem;
+        font-weight: 800;
+        margin-top: 8px;
     }
 
-    /* ---------- DESCRIPCIÓN ---------- */
+    /* ---------- DESCRIPCIÓN: ancho completo ---------- */
+    .block-description {
+        width: 100%;
+        max-width: none !important;
+    }
     .block-description .section-title {
-        font-size: 1.35rem;
+        font-size: 1.4rem;
         margin-bottom: 16px;
         font-weight: 800;
     }
@@ -1133,9 +1161,13 @@ body {
         color: #475569;
     }
 
-    /* ---------- FEATURES ---------- */
+    /* ---------- FEATURES: ancho completo ---------- */
+    .block-features {
+        width: 100%;
+        max-width: none !important;
+    }
     .block-features .section-title {
-        font-size: 1.35rem;
+        font-size: 1.4rem;
         margin-bottom: 16px;
         font-weight: 800;
     }
@@ -1143,22 +1175,27 @@ body {
         padding: 20px 18px;
         border-radius: 18px;
         margin: 0;
+        width: 100%;
+        max-width: none !important;
     }
     .fw-list { 
+        display: grid;
         grid-template-columns: 1fr;
-        gap: 10px;
+        gap: 12px;
+        width: 100%;
     }
     .fw-item { 
-        padding: 12px 14px;
-        font-size: 0.95rem;
+        padding: 14px 16px;
+        font-size: 1rem;
         text-align: left;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+        width: 100%;
     }
     .fw-item i {
-        font-size: 1.1rem;
-        min-width: 20px;
+        font-size: 1.2rem;
+        min-width: 24px;
     }
 
     /* No zoom en móvil (evita gestos raros) */
