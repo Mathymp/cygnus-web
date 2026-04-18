@@ -830,7 +830,7 @@ body {
     background-color: #94a3b8;
 }
 ::-webkit-scrollbar-thumb:active {
-    background-color: #64748b;
+background-color: #64748b;
 }
 
 /* =========================================
@@ -839,10 +839,9 @@ body {
    precio y mapa inmediatos, UI luxury-startup.
    ========================================= */
 @media (max-width: 900px) {
-
-    /* Contenedor principal ajustado a pantalla */
+    /* Contenedor principal con más aire */
     .main-container {
-        padding: 18px 14px 40px 14px;
+        padding: 24px 20px 50px 20px;
         max-width: 100%;
     }
 
@@ -851,7 +850,7 @@ body {
         display: flex;
         flex-direction: column;
         gap: 0;
-        margin-top: 8px;
+        margin-top: 12px;
     }
     .col-left,
     .col-right { display: contents; }
@@ -866,7 +865,7 @@ body {
     .block-description { order: 7; }
     .block-features    { order: 8; }
 
-    /* Espaciado vertical uniforme entre bloques */
+    /* Espaciado vertical generoso entre bloques */
     .block-header,
     .block-gallery,
     .block-price,
@@ -875,24 +874,28 @@ body {
     .block-specs,
     .block-description,
     .block-features {
-        margin-bottom: 18px;
+        margin-bottom: 28px;
     }
-    .block-header { margin-bottom: 14px; }
+    .block-header { margin-bottom: 20px; }
 
-    /* Título y dirección */
-    .prop-header { margin-bottom: 0; }
+    /* Título y dirección con más espacio */
+    .prop-header { 
+        margin-bottom: 0;
+        padding: 0 4px;
+    }
     .prop-title {
-        font-size: 1.7rem;
+        font-size: 1.95rem;
         font-weight: 900;
-        letter-spacing: -0.6px;
-        line-height: 1.15;
+        letter-spacing: -0.8px;
+        line-height: 1.2;
+        margin-bottom: 10px;
     }
     .address-inline {
-        font-size: 0.95rem;
-        gap: 8px;
-        margin-top: 4px;
+        font-size: 1rem;
+        gap: 10px;
+        margin-top: 8px;
     }
-    .addr-text { font-size: 0.9rem; }
+    .addr-text { font-size: 0.95rem; }
 
     /* ---------- GALERÍA FULL-BLEED SIN RECORTE ---------- */
     .gallery-container {
@@ -1045,78 +1048,218 @@ body {
     }
 
     /* ---------- MAPA (inmediatamente tras el precio) ---------- */
-    .info-section.block-map { padding: 0; }
+    .info-section.block-map { 
+        padding: 0;
+    }
     .block-map .section-title {
-        font-size: 1.15rem;
-        margin-bottom: 12px;
+        font-size: 1.35rem;
+        margin-bottom: 16px;
+        font-weight: 800;
     }
     .map-frame {
-        height: 260px;
-        border-radius: 16px;
+        height: 300px;
+        border-radius: 18px;
         border: 1px solid var(--c-border);
-        box-shadow: 0 8px 22px -10px rgba(15,23,42,0.12);
+        box-shadow: 0 8px 24px -8px rgba(15,23,42,0.15);
     }
 
     /* ---------- SUPERFICIE ---------- */
     .surface-mini-card {
         margin: 0;
-        padding: 14px 16px;
-        gap: 14px;
+        padding: 20px 18px;
+        gap: 18px;
         justify-content: space-around;
-        border-radius: 14px;
+        border-radius: 16px;
+        background: #f8fafc;
+        border: 1px solid var(--c-border);
     }
-    .surface-mini-item { align-items: center; text-align: center; }
-    .surface-mini-label { font-size: 0.62rem; }
-    .surface-mini-value { font-size: 1.15rem; }
+    .surface-mini-item { 
+        align-items: center; 
+        text-align: center;
+        flex: 1;
+    }
+    .surface-mini-label { 
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+        color: #64748b;
+    }
+    .surface-mini-value { 
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: var(--c-dark);
+        margin-top: 6px;
+    }
 
     /* ---------- SPECS ---------- */
     .specs-section {
-        padding: 18px 16px;
-        border-radius: 16px;
+        padding: 24px 20px;
+        border-radius: 18px;
         margin-bottom: 0;
     }
     .specs-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        grid-template-columns: 1fr;
+        gap: 14px;
     }
-    .spec-card { padding: 12px 8px; min-height: 80px; }
-    .spec-card.wide { grid-column: span 2; }
-    .specs-title { font-size: 0.78rem; }
-    .block-description .desc-text { font-size: 0.98rem; line-height: 1.7; }
+    .spec-card { 
+        padding: 16px 14px;
+        min-height: auto;
+        text-align: center;
+    }
+    .spec-card.wide { grid-column: span 1; }
+    .specs-title { 
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 700;
+    }
+    .specs-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-top: 6px;
+    }
+
+    /* ---------- DESCRIPCIÓN ---------- */
+    .block-description .section-title {
+        font-size: 1.35rem;
+        margin-bottom: 16px;
+        font-weight: 800;
+    }
+    .block-description .desc-text { 
+        font-size: 1.05rem;
+        line-height: 1.75;
+        color: #475569;
+    }
 
     /* ---------- FEATURES ---------- */
+    .block-features .section-title {
+        font-size: 1.35rem;
+        margin-bottom: 16px;
+        font-weight: 800;
+    }
     .features-widget {
-        padding: 16px;
-        border-radius: 16px;
+        padding: 20px 18px;
+        border-radius: 18px;
         margin: 0;
-    }
-    .fw-list { grid-template-columns: 1fr 1fr; gap: 6px; }
-    .fw-item { padding: 7px 10px; font-size: 0.8rem; }
+        .surface-mini-card {
+            margin: 0;
+            padding: 20px 18px;
+            gap: 18px;
+            justify-content: space-around;
+            border-radius: 16px;
+            background: #f8fafc;
+            border: 1px solid var(--c-border);
+        }
+        .surface-mini-item { 
+            align-items: center; 
+            text-align: center;
+            flex: 1;
+        }
+        .surface-mini-label { 
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            color: #64748b;
+        }
+        .surface-mini-value { 
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--c-dark);
+            margin-top: 6px;
+        }
 
-    /* No zoom en móvil (evita gestos raros) */
-    .main-stage.zoomed img { transform: none; }
-}
+        /* ---------- SPECS ---------- */
+        .specs-section {
+            padding: 24px 20px;
+            border-radius: 18px;
+            margin-bottom: 0;
+        }
+        .specs-grid {
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+        .spec-card { 
+            padding: 16px 14px;
+            min-height: auto;
+            text-align: center;
+        }
+        .spec-card.wide { grid-column: span 1; }
+        .specs-title { 
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+        .specs-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-top: 6px;
+        }
 
-/* ---------- MÓVIL PEQUEÑO ≤480 ---------- */
-@media (max-width: 480px) {
-    .prop-title { font-size: 1.45rem; }
-    .main-stage { aspect-ratio: 4 / 3; }
-    .nav-btn { width: 36px; height: 36px; font-size: 0.85rem; }
-    .price-main { font-size: 1.85rem; }
-    .surface-mini-card { gap: 10px; padding: 12px 10px; }
-    .surface-mini-value { font-size: 1.05rem; }
-    .fw-list { grid-template-columns: 1fr; }
-    .map-frame { height: 230px; }
-    .thumb { flex: 0 0 64px; height: 48px; }
-}
+        /* ---------- DESCRIPCIÓN ---------- */
+        .block-description .section-title {
+            font-size: 1.35rem;
+            margin-bottom: 16px;
+            font-weight: 800;
+        }
+        .block-description .desc-text { 
+            font-size: 1.05rem;
+            line-height: 1.75;
+            color: #475569;
+        }
 
-/* ---------- MÓVIL ULTRA PEQUEÑO ≤360 ---------- */
-@media (max-width: 360px) {
-    .surface-mini-card {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    .sticky-widget { padding: 22px 16px 20px 16px !important; }
-    .price-main { font-size: 1.65rem; }
-}
+        /* ---------- FEATURES ---------- */
+        .block-features .section-title {
+            font-size: 1.35rem;
+            margin-bottom: 16px;
+            font-weight: 800;
+        }
+        .features-widget {
+            padding: 20px 18px;
+            border-radius: 18px;
+            margin: 0;
+        }
+        .fw-list { 
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .fw-item { 
+            padding: 12px 14px;
+            font-size: 0.95rem;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .fw-item i {
+            font-size: 1.1rem;
+            min-width: 20px;
+        }
+
+        /* No zoom en móvil (evita gestos raros) */
+        .main-stage.zoomed img { transform: none; }
+
+        /* ---------- MÓVIL PEQUEÑO ≤480 ---------- */
+        @media (max-width: 480px) {
+            .prop-title { font-size: 1.65rem; }
+            .main-stage { aspect-ratio: 4 / 3; }
+            .nav-btn { width: 36px; height: 36px; font-size: 0.85rem; }
+            .price-main { font-size: 1.85rem; }
+            .surface-mini-card { gap: 14px; padding: 16px 14px; }
+            .surface-mini-value { font-size: 1.2rem; }
+            .map-frame { height: 260px; }
+            .thumb { flex: 0 0 64px; height: 48px; }
+        }
+
+        /* ---------- MÓVIL ULTRA PEQUEÑO ≤360 ---------- */
+        @media (max-width: 360px) {
+            .surface-mini-card {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .sticky-widget { padding: 22px 16px 20px 16px !important; }
+            .price-main { font-size: 1.65rem; }
+        }
