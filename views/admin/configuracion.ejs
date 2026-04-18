@@ -1,12 +1,98 @@
+<%
+// Helper para limpiar HTML de textos guardados previamente
+function stripHtml(html) {
+    if (!html) return '';
+    return String(html).replace(/<[^>]*>/g, '').trim();
+}
+const maintMsg = stripHtml(config.maintenance_message) || 'Estamos mejorando el sitio. Volvemos pronto. 🛠️';
+const annText = stripHtml(config.announcement_text) || '¡Contáctanos hoy mismo! 📞';
+%>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <%- include('../partials/head') %>
     <title>Configuración | Cygnus Group</title>
-    
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/config-dashboard.css">
+    <style>
+        /* Mejoras visuales sobre el CSS base */
+        .emoji-btn {
+            padding: 6px 10px;
+            border: 1px solid var(--config-gray-300);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.15s;
+        }
+        .emoji-btn:hover { background: var(--config-gray-100); border-color: var(--config-primary); }
+        .emoji-bar { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+        
+        /* Preview visual de colores */
+        .color-swatch {
+            display: inline-block;
+            width: 100%;
+            height: 36px;
+            border-radius: 6px;
+            border: 2px solid var(--config-gray-200);
+            cursor: pointer;
+            position: relative;
+        }
+        .color-swatch input[type="color"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Preview del anuncio en vivo */
+        .live-preview-box {
+            margin-top: 10px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            border: 1px dashed var(--config-gray-300);
+            transition: all 0.2s;
+        }
+        
+        /* Card huincha con preview visual */
+        .huincha-preview {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        
+        /* Fix toggle para que sea visible */
+        .toggle-track { cursor: pointer; }
+        
+        /* Banner item mejorado */
+        .banner-item { aspect-ratio: 16/9; }
+        
+        /* Botón guardar destacado */
+        .btn-save-hero {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            padding: 14px 24px;
+            font-weight: 700;
+            font-size: 1rem;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+        }
+        .btn-save-hero:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); }
+        
+        .no-banners-msg {
+            text-align: center;
+            padding: 20px;
+            color: var(--config-gray-500);
+            font-size: 0.875rem;
+        }
+    </style>
 </head>
 <body>
     
@@ -17,21 +103,21 @@
             
             <div class="config-dashboard-wrapper">
                 
-                <!-- PANEL IZQUIERDO - EDITOR -->
+                <!-- PANEL EDITOR -->
                 <div class="config-editor-panel">
                     
                     <div class="config-editor-header">
                         <h1 class="config-title">
                             <i class="fas fa-cog"></i>
-                            Configuración del Sitio
+                            Configuración
                         </h1>
-                        <p class="config-subtitle">Gestiona el contenido y apariencia de tu sitio web</p>
+                        <p class="config-subtitle">Personaliza tu sitio en tiempo real</p>
                     </div>
                     
                     <div class="config-editor-content">
                         <form id="configForm" method="POST" action="/admin/configuracion/update" enctype="multipart/form-data">
                             
-                            <!-- MODO MANTENIMIENTO -->
+                            <!-- ========== MODO MANTENIMIENTO ========== -->
                             <section class="config-section">
                                 <div class="section-header">
                                     <h2 class="section-title">
@@ -45,17 +131,24 @@
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label class="form-label">Mensaje para los visitantes</label>
-                                    <textarea name="maintenance_message" id="maintenanceMessage" class="form-textarea" rows="4"><%= config.maintenance_message || 'Sitio en Mantenimiento. Volvemos pronto con mejoras.' %></textarea>
+                                    <label class="form-label">Mensaje para visitantes</label>
+                                    <textarea name="maintenance_message" id="maintMsg" class="form-textarea" rows="3" placeholder="Escribe el mensaje (puedes usar emojis 🛠️ ⚙️ 🚧)"><%= maintMsg %></textarea>
+                                    <div class="emoji-bar">
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('maintMsg', '🛠️')">🛠️</button>
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('maintMsg', '⚙️')">⚙️</button>
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('maintMsg', '🚧')">🚧</button>
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('maintMsg', '✨')">✨</button>
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('maintMsg', '🔧')">🔧</button>
+                                    </div>
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label class="form-label">Tiempo estimado de regreso</label>
+                                    <label class="form-label">Tiempo estimado</label>
                                     <input type="text" class="form-input" name="maintenance_eta" value="<%= config.maintenance_eta || '2 horas' %>" placeholder="Ej: 2 horas, mañana">
                                 </div>
                             </section>
                             
-                            <!-- BARRA DE ANUNCIOS -->
+                            <!-- ========== BARRA DE ANUNCIOS ========== -->
                             <section class="config-section">
                                 <div class="section-header">
                                     <h2 class="section-title">
@@ -68,38 +161,49 @@
                                     </label>
                                 </div>
                                 
-                                <div class="color-picker-group mb-3">
-                                    <div class="color-picker-box">
-                                        <div class="color-preview" style="background-color: <%= config.announcement_bg || '#1e293b' %>;"></div>
-                                        <div class="color-input-wrapper">
-                                            <label class="form-label mb-2">Fondo</label>
+                                <div class="grid-2 mb-3">
+                                    <div>
+                                        <label class="form-label">Color de Fondo</label>
+                                        <label class="color-swatch" id="swatchBg" style="background-color: <%= config.announcement_bg || '#1e293b' %>;">
                                             <input type="color" name="announcement_bg" id="annBg" value="<%= config.announcement_bg || '#1e293b' %>">
-                                            <p class="color-hex" id="hexAnnBg"><%= config.announcement_bg || '#1e293b' %></p>
-                                        </div>
+                                        </label>
+                                        <p class="color-hex mt-2" id="hexBg"><%= (config.announcement_bg || '#1e293b').toUpperCase() %></p>
                                     </div>
-                                    
-                                    <div class="color-picker-box">
-                                        <div class="color-preview" style="background-color: <%= config.announcement_color || '#ffffff' %>;"></div>
-                                        <div class="color-input-wrapper">
-                                            <label class="form-label mb-2">Texto</label>
+                                    <div>
+                                        <label class="form-label">Color de Texto</label>
+                                        <label class="color-swatch" id="swatchColor" style="background-color: <%= config.announcement_color || '#ffffff' %>;">
                                             <input type="color" name="announcement_color" id="annColor" value="<%= config.announcement_color || '#ffffff' %>">
-                                            <p class="color-hex" id="hexAnnColor"><%= config.announcement_color || '#ffffff' %></p>
-                                        </div>
+                                        </label>
+                                        <p class="color-hex mt-2" id="hexColor"><%= (config.announcement_color || '#ffffff').toUpperCase() %></p>
                                     </div>
                                 </div>
                                 
                                 <div class="form-group">
                                     <label class="form-label">Contenido del anuncio</label>
-                                    <textarea name="announcement_text" id="announcementText" class="form-textarea" rows="3"><%= config.announcement_text || '¡Contáctanos hoy mismo!' %></textarea>
+                                    <textarea name="announcement_text" id="annText" class="form-textarea" rows="2" placeholder="Escribe el anuncio (emojis permitidos 📞 ✨)"><%= annText %></textarea>
+                                    <div class="emoji-bar">
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('annText', '📞')">📞</button>
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('annText', '✨')">✨</button>
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('annText', '🏠')">🏠</button>
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('annText', '🔥')">🔥</button>
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('annText', '🎉')">🎉</button>
+                                        <button type="button" class="emoji-btn" onclick="insertEmoji('annText', '💰')">💰</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Preview en vivo del anuncio -->
+                                <label class="form-label">Vista Previa</label>
+                                <div class="live-preview-box" id="annPreview" style="background: <%= config.announcement_bg || '#1e293b' %>; color: <%= config.announcement_color || '#ffffff' %>;">
+                                    <%= annText %>
                                 </div>
                             </section>
                             
-                            <!-- HUINCHAS PROMOCIONALES -->
+                            <!-- ========== HUINCHAS ========== -->
                             <section class="config-section">
                                 <div class="section-header">
                                     <h2 class="section-title">
                                         <i class="fas fa-ribbon"></i>
-                                        Huinchas Promocionales
+                                        Huinchas
                                     </h2>
                                     <label class="toggle-switch">
                                         <input type="checkbox" name="ticker_active" id="tickerSwitch" <%= (config.ticker_active !== false) ? 'checked' : '' %>>
@@ -108,9 +212,8 @@
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label class="form-label">Velocidad de desplazamiento</label>
-                                    <input type="range" name="ticker_speed" min="20" max="60" value="<%= config.ticker_speed || 35 %>" id="tickerSpeedRange" class="range-slider">
-                                    <p class="form-hint mt-2">Velocidad: <strong id="speedDisplay"><%= config.ticker_speed || 35 %>s</strong></p>
+                                    <label class="form-label">Velocidad: <strong id="speedDisplay"><%= config.ticker_speed || 35 %>s</strong></label>
+                                    <input type="range" name="ticker_speed" min="20" max="60" value="<%= config.ticker_speed || 35 %>" id="tickerSpeed" class="range-slider">
                                 </div>
                                 
                                 <input type="hidden" name="promo_strips_json" id="promoStripsJson">
@@ -118,89 +221,80 @@
                                 <div id="huinchasContainer"></div>
                                 
                                 <button type="button" class="btn btn-secondary btn-block mt-3" onclick="addHuincha()">
-                                    <i class="fas fa-plus"></i>
-                                    Agregar Huincha
+                                    <i class="fas fa-plus"></i> Agregar Huincha
                                 </button>
                             </section>
                             
-                            <!-- SLIDER DE BANNERS -->
+                            <!-- ========== BANNERS ========== -->
                             <section class="config-section">
                                 <div class="section-header">
                                     <h2 class="section-title">
                                         <i class="fas fa-images"></i>
-                                        Slider de Banners
+                                        Banners
                                     </h2>
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <label class="form-label" style="margin: 0;">Velocidad</label>
-                                        <input type="range" name="slider_speed" id="sliderSpeed" min="2" max="10" value="<%= config.slider_speed || 5 %>" class="range-slider" style="width: 100px;">
-                                        <span class="text-sm text-muted"><strong id="sliderSpeedText"><%= config.slider_speed || 5 %>s</strong></span>
-                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Velocidad del slider: <strong id="sliderSpeedText"><%= config.slider_speed || 5 %>s</strong></label>
+                                    <input type="range" name="slider_speed" id="sliderSpeed" min="2" max="10" value="<%= config.slider_speed || 5 %>" class="range-slider">
                                 </div>
                                 
                                 <div class="upload-zone" id="uploadZone">
                                     <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                                    <p class="upload-text">Arrastra imágenes o haz click</p>
-                                    <p class="upload-hint">JPG, PNG, WebP (Máx 10MB)</p>
+                                    <p class="upload-text">Subir nuevas imágenes</p>
+                                    <p class="upload-hint">Opcional · JPG, PNG, WebP · Click o arrastra</p>
                                     <input type="file" name="new_banners" id="fileInput" multiple accept="image/*" style="display:none;">
                                 </div>
                                 
-                                <div id="existingBannersContainer"></div>
-                                
-                                <div class="banners-grid" id="bannersContainer">
+                                <div class="banners-grid mt-3" id="bannersContainer">
                                     <% if(config.banners && config.banners.length > 0) { %>
                                         <% config.banners.forEach((b, idx) => { %>
                                             <div class="banner-item <%= idx === 0 ? 'first-banner' : '' %>" data-index="<%= idx %>">
                                                 <img src="<%= b.url %>" style="object-position: <%= b.align || '50% 50%' %>;" alt="Banner">
-                                                
                                                 <% if(idx === 0) { %>
                                                     <div class="banner-badge first">Original</div>
                                                 <% } %>
-                                                
-                                                <div class="banner-timing"><%= b.duration || 5 %>s</div>
-                                                
                                                 <div class="banner-overlay">
                                                     <div class="banner-actions">
                                                         <% if(idx !== 0) { %>
-                                                            <button type="button" class="btn btn-danger btn-sm" onclick="removeBanner(<%= idx %>)">
-                                                                <i class="fas fa-trash"></i>
+                                                            <button type="button" class="btn btn-danger btn-sm" onclick="removeBanner(this, <%= idx %>)">
+                                                                <i class="fas fa-trash"></i> Eliminar
                                                             </button>
                                                         <% } %>
                                                     </div>
                                                 </div>
-                                                
                                                 <input type="hidden" name="existing_banners_urls" value="<%= b.url %>">
                                                 <input type="hidden" name="existing_banners_align" value="<%= b.align || '50% 50%' %>">
                                             </div>
                                         <% }) %>
+                                    <% } else { %>
+                                        <p class="no-banners-msg">No hay banners. Sube imágenes arriba.</p>
                                     <% } %>
                                 </div>
                             </section>
                             
+                            <div style="padding: 20px 24px;">
+                                <button type="submit" class="btn btn-save-hero btn-block" id="btnSave">
+                                    <i class="fas fa-save"></i> Guardar Configuración
+                                </button>
+                            </div>
+                            
                         </form>
-                    </div>
-                    
-                    <div class="config-editor-footer">
-                        <button type="button" class="btn btn-primary btn-block" onclick="saveConfiguration()" id="btnSave">
-                            <i class="fas fa-save"></i>
-                            Guardar Todos los Cambios
-                        </button>
                     </div>
                     
                 </div>
                 
-                <!-- PANEL DERECHO - PREVIEW -->
+                <!-- PANEL PREVIEW -->
                 <div class="config-preview-panel">
-                    
                     <div class="preview-header">
                         <h3 class="preview-title">
-                            <i class="fas fa-eye"></i>
-                            Vista Previa en Vivo
+                            <i class="fas fa-eye"></i> Vista Previa
                         </h3>
                         <div class="device-selector">
-                            <button type="button" class="device-btn active" data-device="desktop" onclick="switchDevice('desktop')">
+                            <button type="button" class="device-btn active" onclick="switchDevice('desktop', this)">
                                 <i class="fas fa-desktop"></i> Escritorio
                             </button>
-                            <button type="button" class="device-btn" data-device="mobile" onclick="switchDevice('mobile')">
+                            <button type="button" class="device-btn" onclick="switchDevice('mobile', this)">
                                 <i class="fas fa-mobile-alt"></i> Móvil
                             </button>
                         </div>
@@ -211,80 +305,79 @@
                             <iframe id="liveIframe" src="/" style="width:100%; height:100%; border:none;"></iframe>
                         </div>
                     </div>
-                    
                 </div>
                 
             </div>
-            
         </main>
     </div>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
     <script>
-        // ========== ESTADO GLOBAL ==========
         let huinchasData = [];
-        let debounceTimer = null;
+        let previewTimer = null;
         
-        // ========== INICIALIZACIÓN ==========
+        // ========== INIT ==========
         document.addEventListener('DOMContentLoaded', () => {
-            initListeners();
             loadHuinchas();
-            initBannersSortable();
+            initListeners();
             
-            // Mostrar mensaje de éxito/error
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('success')) {
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Guardado!',
-                    text: 'Configuración actualizada correctamente',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('success')) {
+                Swal.fire({ icon: 'success', title: '¡Guardado!', text: 'Cambios aplicados correctamente', timer: 2000, showConfirmButton: false });
                 window.history.replaceState({}, '', '/admin/configuracion');
             }
-            if (urlParams.get('error')) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo guardar la configuración'
-                });
+            if (params.get('error')) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo guardar' });
                 window.history.replaceState({}, '', '/admin/configuracion');
             }
         });
         
         // ========== LISTENERS ==========
         function initListeners() {
-            // Color pickers
-            document.getElementById('annBg').addEventListener('input', (e) => {
-                document.getElementById('hexAnnBg').textContent = e.target.value.toUpperCase();
-                updatePreview();
+            // Color pickers - actualizan swatch y preview INMEDIATAMENTE
+            const annBg = document.getElementById('annBg');
+            const annColor = document.getElementById('annColor');
+            const annText = document.getElementById('annText');
+            const annPreview = document.getElementById('annPreview');
+            
+            function refreshAnnPreview() {
+                annPreview.style.background = annBg.value;
+                annPreview.style.color = annColor.value;
+                annPreview.textContent = annText.value || '¡Contáctanos hoy mismo!';
+            }
+            
+            annBg.addEventListener('input', (e) => {
+                document.getElementById('swatchBg').style.backgroundColor = e.target.value;
+                document.getElementById('hexBg').textContent = e.target.value.toUpperCase();
+                refreshAnnPreview();
+                schedulePreviewReload();
             });
             
-            document.getElementById('annColor').addEventListener('input', (e) => {
-                document.getElementById('hexAnnColor').textContent = e.target.value.toUpperCase();
-                updatePreview();
+            annColor.addEventListener('input', (e) => {
+                document.getElementById('swatchColor').style.backgroundColor = e.target.value;
+                document.getElementById('hexColor').textContent = e.target.value.toUpperCase();
+                refreshAnnPreview();
+                schedulePreviewReload();
             });
             
-            // Sliders
+            annText.addEventListener('input', refreshAnnPreview);
+            
+            // Sliders - actualización inmediata del display
             document.getElementById('sliderSpeed').addEventListener('input', (e) => {
                 document.getElementById('sliderSpeedText').textContent = e.target.value + 's';
             });
             
-            document.getElementById('tickerSpeedRange').addEventListener('input', (e) => {
+            document.getElementById('tickerSpeed').addEventListener('input', (e) => {
                 document.getElementById('speedDisplay').textContent = e.target.value + 's';
             });
             
-            // Switches
-            document.getElementById('maintSwitch').addEventListener('change', updatePreview);
-            document.getElementById('annSwitch').addEventListener('change', updatePreview);
-            document.getElementById('tickerSwitch').addEventListener('change', updatePreview);
+            // Switches - feedback inmediato + preview
+            ['maintSwitch', 'annSwitch', 'tickerSwitch'].forEach(id => {
+                document.getElementById(id).addEventListener('change', schedulePreviewReload);
+            });
             
-            // Upload zone
+            // Upload
             const uploadZone = document.getElementById('uploadZone');
             const fileInput = document.getElementById('fileInput');
             
@@ -293,44 +386,59 @@
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 uploadZone.style.borderColor = 'var(--config-primary)';
+                uploadZone.style.background = 'rgba(37,99,235,0.05)';
             });
             
             uploadZone.addEventListener('dragleave', () => {
-                uploadZone.style.borderColor = 'var(--config-gray-300)';
+                uploadZone.style.borderColor = '';
+                uploadZone.style.background = '';
             });
             
             uploadZone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                uploadZone.style.borderColor = 'var(--config-gray-300)';
-                const files = e.dataTransfer.files;
-                fileInput.files = files;
-                showUploadedFiles(files);
+                uploadZone.style.borderColor = '';
+                uploadZone.style.background = '';
+                fileInput.files = e.dataTransfer.files;
+                showUploadedPreview(e.dataTransfer.files);
             });
             
-            fileInput.addEventListener('change', (e) => {
-                showUploadedFiles(e.target.files);
+            fileInput.addEventListener('change', (e) => showUploadedPreview(e.target.files));
+            
+            // Form submit - SIEMPRE permite guardar, sin validaciones bloqueantes
+            document.getElementById('configForm').addEventListener('submit', (e) => {
+                // Actualizar JSON de huinchas antes de enviar
+                document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
+                
+                const btn = document.getElementById('btnSave');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
             });
+        }
+        
+        // ========== EMOJI INSERT ==========
+        function insertEmoji(targetId, emoji) {
+            const el = document.getElementById(targetId);
+            const start = el.selectionStart || el.value.length;
+            const end = el.selectionEnd || el.value.length;
+            el.value = el.value.substring(0, start) + emoji + el.value.substring(end);
+            el.focus();
+            el.setSelectionRange(start + emoji.length, start + emoji.length);
+            el.dispatchEvent(new Event('input'));
         }
         
         // ========== PREVIEW ==========
-        function updatePreview() {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
+        function schedulePreviewReload() {
+            clearTimeout(previewTimer);
+            previewTimer = setTimeout(() => {
                 const iframe = document.getElementById('liveIframe');
-                if (iframe) {
-                    iframe.src = iframe.src;
-                }
-            }, 1000);
+                if (iframe) iframe.src = iframe.src;
+            }, 1500);
         }
         
-        function switchDevice(device) {
-            document.querySelectorAll('.device-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.closest('.device-btn').classList.add('active');
-            
-            const frame = document.getElementById('previewFrame');
-            frame.className = `preview-frame ${device}`;
+        function switchDevice(device, btn) {
+            document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('previewFrame').className = `preview-frame ${device}`;
         }
         
         // ========== HUINCHAS ==========
@@ -338,17 +446,14 @@
             try {
                 const stored = <%- JSON.stringify(config.promo_strips || []) %>;
                 huinchasData = Array.isArray(stored) ? stored : [];
-            } catch(e) {
-                console.error('Error cargando huinchas:', e);
-                huinchasData = [];
-            }
+            } catch(e) { huinchasData = []; }
             renderHuinchas();
         }
         
         function addHuincha() {
             huinchasData.push({
                 id: Date.now(),
-                text: 'Nueva promoción',
+                text: 'Nueva promoción 🎉',
                 icon: 'fa-star',
                 bgColor: '#2563eb',
                 textColor: '#ffffff',
@@ -359,19 +464,23 @@
         
         function renderHuinchas() {
             const container = document.getElementById('huinchasContainer');
-            
             if (huinchasData.length === 0) {
-                container.innerHTML = '<p class="text-muted text-sm">No hay huinchas configuradas. Agrega una para comenzar.</p>';
+                container.innerHTML = '<p class="no-banners-msg">No hay huinchas. Agrega una abajo.</p>';
+                syncHuinchasJson();
                 return;
             }
             
             container.innerHTML = huinchasData.map((h, idx) => `
                 <div class="config-card">
+                    <div class="huincha-preview" style="background:${h.bgColor};color:${h.textColor};">
+                        <i class="fas ${h.icon}"></i>
+                        <span>${escapeHtml(h.text)}</span>
+                    </div>
                     <div class="card-header">
                         <h4 class="card-title">Huincha #${idx + 1}</h4>
                         <div class="card-actions">
                             <label class="toggle-switch">
-                                <input type="checkbox" ${h.active ? 'checked' : ''} onchange="toggleHuincha(${idx}, this.checked)">
+                                <input type="checkbox" ${h.active ? 'checked' : ''} onchange="updateH(${idx},'active',this.checked)">
                                 <span class="toggle-track"></span>
                             </label>
                             <button type="button" class="btn btn-danger btn-sm" onclick="deleteHuincha(${idx})">
@@ -379,91 +488,96 @@
                             </button>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Texto (emojis permitidos)</label>
+                        <input type="text" class="form-input" value="${escapeAttr(h.text)}" oninput="updateH(${idx},'text',this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Icono Font Awesome</label>
+                        <input type="text" class="form-input" value="${escapeAttr(h.icon)}" oninput="updateH(${idx},'icon',this.value)" placeholder="fa-star, fa-heart, fa-fire">
+                    </div>
                     <div class="grid-2">
-                        <div class="form-group">
+                        <div>
+                            <label class="form-label">Fondo</label>
+                            <label class="color-swatch" style="background:${h.bgColor};">
+                                <input type="color" value="${h.bgColor}" oninput="updateH(${idx},'bgColor',this.value)">
+                            </label>
+                        </div>
+                        <div>
                             <label class="form-label">Texto</label>
-                            <input type="text" class="form-input" value="${h.text || ''}" onchange="updateHuincha(${idx}, 'text', this.value)">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Icono (Font Awesome)</label>
-                            <input type="text" class="form-input" value="${h.icon || 'fa-star'}" onchange="updateHuincha(${idx}, 'icon', this.value)" placeholder="fa-star">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Color Fondo</label>
-                            <input type="color" class="form-input" value="${h.bgColor || '#2563eb'}" onchange="updateHuincha(${idx}, 'bgColor', this.value)">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Color Texto</label>
-                            <input type="color" class="form-input" value="${h.textColor || '#ffffff'}" onchange="updateHuincha(${idx}, 'textColor', this.value)">
+                            <label class="color-swatch" style="background:${h.textColor};">
+                                <input type="color" value="${h.textColor}" oninput="updateH(${idx},'textColor',this.value)">
+                            </label>
                         </div>
                     </div>
                 </div>
             `).join('');
-            
-            // Actualizar hidden input
-            document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
+            syncHuinchasJson();
         }
         
-        function toggleHuincha(idx, active) {
-            huinchasData[idx].active = active;
-            document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
-        }
-        
-        function updateHuincha(idx, field, value) {
+        function updateH(idx, field, value) {
             huinchasData[idx][field] = value;
-            document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
+            syncHuinchasJson();
+            // Re-render solo para ver el preview visual, pero manteniendo focus
+            const activeEl = document.activeElement;
+            const activeTag = activeEl ? activeEl.tagName : null;
+            if (activeTag === 'INPUT' && activeEl.type !== 'color' && activeEl.type !== 'checkbox') {
+                // Solo actualizar el preview visual sin re-renderizar todo
+                const card = activeEl.closest('.config-card');
+                if (card) {
+                    const preview = card.querySelector('.huincha-preview');
+                    if (preview) {
+                        preview.style.background = huinchasData[idx].bgColor;
+                        preview.style.color = huinchasData[idx].textColor;
+                        preview.querySelector('i').className = 'fas ' + huinchasData[idx].icon;
+                        preview.querySelector('span').textContent = huinchasData[idx].text;
+                    }
+                }
+            } else {
+                renderHuinchas();
+            }
         }
         
         function deleteHuincha(idx) {
             Swal.fire({
-                title: '¿Eliminar huincha?',
-                text: 'Esta acción no se puede deshacer',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Eliminar',
-                cancelButtonText: 'Cancelar',
+                title: '¿Eliminar?', icon: 'warning', showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#ef4444'
-            }).then((result) => {
-                if (result.isConfirmed) {
+            }).then((r) => {
+                if (r.isConfirmed) {
                     huinchasData.splice(idx, 1);
                     renderHuinchas();
                 }
             });
         }
         
+        function syncHuinchasJson() {
+            document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
+        }
+        
         // ========== BANNERS ==========
-        function showUploadedFiles(files) {
-            if (files.length === 0) return;
-            
+        function showUploadedPreview(files) {
+            if (!files || files.length === 0) return;
             const container = document.getElementById('bannersContainer');
             const uploadZone = document.getElementById('uploadZone');
             
-            Array.from(files).forEach((file, idx) => {
-                if (!file.type.startsWith('image/')) {
-                    Swal.fire('Error', 'Solo se permiten archivos de imagen', 'error');
-                    return;
-                }
-                
+            // Eliminar mensaje de "no hay banners"
+            const noMsg = container.querySelector('.no-banners-msg');
+            if (noMsg) noMsg.remove();
+            
+            Array.from(files).forEach((file) => {
+                if (!file.type.startsWith('image/')) return;
                 if (file.size > 10 * 1024 * 1024) {
-                    Swal.fire('Error', 'El archivo no debe superar 10MB', 'error');
+                    Swal.fire('Error', `${file.name} supera 10MB`, 'error');
                     return;
                 }
-                
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const div = document.createElement('div');
                     div.className = 'banner-item';
                     div.innerHTML = `
-                        <img src="${e.target.result}" alt="Nuevo Banner">
-                        <div class="banner-badge" style="background: var(--config-primary);">Nuevo</div>
-                        <div class="banner-timing">5s</div>
-                        <div class="banner-overlay">
-                            <div class="banner-actions">
-                                <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.banner-item').remove()">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <img src="${e.target.result}" alt="Nuevo">
+                        <div class="banner-badge" style="background:var(--config-primary);">Nuevo</div>
                     `;
                     container.appendChild(div);
                 };
@@ -471,64 +585,32 @@
             });
             
             uploadZone.innerHTML = `
-                <i class="fas fa-check-circle upload-icon" style="color: var(--config-success);"></i>
-                <p class="upload-text">${files.length} archivo(s) seleccionado(s)</p>
-                <p class="upload-hint">Click para agregar más</p>
+                <i class="fas fa-check-circle upload-icon" style="color:var(--config-success);"></i>
+                <p class="upload-text">${files.length} archivo(s) listos para subir</p>
+                <p class="upload-hint">Se guardarán al presionar "Guardar"</p>
             `;
         }
         
-        function removeBanner(index) {
+        function removeBanner(btn, idx) {
             Swal.fire({
-                title: '¿Eliminar banner?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Eliminar',
-                cancelButtonText: 'Cancelar',
+                title: '¿Eliminar banner?', icon: 'warning', showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#ef4444'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const banner = document.querySelector(`.banner-item[data-index="${index}"]`);
-                    if (banner) banner.remove();
+            }).then((r) => {
+                if (r.isConfirmed) {
+                    btn.closest('.banner-item').remove();
                 }
             });
         }
         
-        function initBannersSortable() {
-            new Sortable(document.getElementById('bannersContainer'), {
-                animation: 200,
-                ghostClass: 'sortable-ghost',
-                handle: '.banner-item'
-            });
+        // ========== UTILS ==========
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, m => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[m]));
         }
-        
-        // ========== GUARDAR ==========
-        function saveConfiguration() {
-            const btnSave = document.getElementById('btnSave');
-            const originalText = btnSave.innerHTML;
-            
-            // Validar que hay al menos un banner
-            const existingBanners = document.querySelectorAll('input[name="existing_banners_urls"]').length;
-            const newBanners = document.getElementById('fileInput').files.length;
-            
-            if (existingBanners === 0 && newBanners === 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Atención',
-                    text: 'Debes tener al menos un banner en el slider'
-                });
-                return;
-            }
-            
-            // Actualizar JSON de huinchas antes de enviar
-            document.getElementById('promoStripsJson').value = JSON.stringify(huinchasData);
-            
-            // Loader
-            btnSave.disabled = true;
-            btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-            
-            // Enviar formulario
-            const form = document.getElementById('configForm');
-            form.submit();
+        function escapeAttr(str) {
+            return String(str || '').replace(/"/g, '&quot;');
         }
     </script>
     
