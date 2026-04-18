@@ -1,0 +1,851 @@
+/* ========================================
+   CYGNUS CONFIG DASHBOARD - Arquitectura Profesional
+   Tipo: Vercel/Shopify Panel de Control
+   ======================================== */
+
+:root {
+    --config-primary: #2563eb;
+    --config-primary-dark: #1e40af;
+    --config-success: #10b981;
+    --config-danger: #ef4444;
+    --config-warning: #f59e0b;
+    --config-gray-50: #f8fafc;
+    --config-gray-100: #f1f5f9;
+    --config-gray-200: #e2e8f0;
+    --config-gray-300: #cbd5e1;
+    --config-gray-400: #94a3b8;
+    --config-gray-500: #64748b;
+    --config-gray-600: #475569;
+    --config-gray-700: #334155;
+    --config-gray-800: #1e293b;
+    --config-gray-900: #0f172a;
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========================================
+   LAYOUT PRINCIPAL - DOS PANELES
+   ======================================== */
+
+.config-dashboard-wrapper {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--config-gray-50);
+}
+
+/* Panel Izquierdo - Editor (450px fijo) */
+.config-editor-panel {
+    width: 450px;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: white;
+    border-right: 1px solid var(--config-gray-200);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Panel Derecho - Preview (Flexible) */
+.config-preview-panel {
+    flex: 1;
+    height: 100vh;
+    background: var(--config-gray-100);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ========================================
+   HEADER DEL EDITOR
+   ======================================== */
+
+.config-editor-header {
+    padding: 24px 24px 20px 24px;
+    border-bottom: 1px solid var(--config-gray-200);
+    background: white;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.config-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--config-gray-900);
+    margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.config-title i {
+    color: var(--config-primary);
+    font-size: 1.4rem;
+}
+
+.config-subtitle {
+    font-size: 0.875rem;
+    color: var(--config-gray-500);
+    margin: 0;
+    font-weight: 500;
+}
+
+/* ========================================
+   CONTENIDO DEL EDITOR
+   ======================================== */
+
+.config-editor-content {
+    flex: 1;
+    padding: 0;
+}
+
+/* Secciones */
+.config-section {
+    padding: 24px;
+    border-bottom: 1px solid var(--config-gray-100);
+}
+
+.config-section:last-child {
+    border-bottom: none;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--config-gray-900);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title i {
+    color: var(--config-primary);
+    font-size: 1.1rem;
+}
+
+/* ========================================
+   TOGGLE SWITCH PROFESIONAL
+   ======================================== */
+
+.toggle-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--config-gray-300);
+    border-radius: 24px;
+    transition: var(--transition);
+}
+
+.toggle-track::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.toggle-switch input:checked + .toggle-track {
+    background: var(--config-primary);
+}
+
+.toggle-switch input:checked + .toggle-track::before {
+    transform: translateX(20px);
+}
+
+.toggle-switch input:focus + .toggle-track {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* ========================================
+   FORM CONTROLS
+   ======================================== */
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--config-gray-700);
+    margin-bottom: 8px;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--config-gray-300);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    transition: var(--transition);
+    background: white;
+    color: var(--config-gray-900);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--config-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-hint {
+    font-size: 0.8125rem;
+    color: var(--config-gray-500);
+    margin-top: 6px;
+}
+
+/* Color Picker */
+.color-picker-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.color-picker-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--config-gray-300);
+    border-radius: 8px;
+    background: var(--config-gray-50);
+    transition: var(--transition);
+}
+
+.color-picker-box:hover {
+    border-color: var(--config-primary);
+}
+
+.color-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    border: 2px solid white;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+}
+
+.color-input-wrapper {
+    flex: 1;
+}
+
+.color-input-wrapper input[type="color"] {
+    width: 100%;
+    height: 40px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.color-hex {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--config-gray-500);
+    text-transform: uppercase;
+    margin-top: 4px;
+    font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* Range Slider */
+.range-slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 6px;
+    background: var(--config-gray-200);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--config-primary);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+.range-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--config-primary);
+    cursor: pointer;
+    border: none;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--config-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--config-primary-dark);
+}
+
+.btn-secondary {
+    background: var(--config-gray-100);
+    color: var(--config-gray-700);
+}
+
+.btn-secondary:hover {
+    background: var(--config-gray-200);
+}
+
+.btn-danger {
+    background: var(--config-danger);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8125rem;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+/* ========================================
+   CARDS Y LISTAS
+   ======================================== */
+
+.config-card {
+    background: white;
+    border: 1px solid var(--config-gray-200);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: var(--transition);
+}
+
+.config-card:hover {
+    border-color: var(--config-gray-300);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.card-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--config-gray-900);
+    margin: 0;
+}
+
+.card-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* ========================================
+   BANNERS GRID
+   ======================================== */
+
+.banners-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.banner-item {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid var(--config-gray-200);
+    cursor: move;
+    transition: var(--transition);
+}
+
+.banner-item:hover {
+    border-color: var(--config-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.banner-item.first-banner {
+    border-color: var(--config-success);
+}
+
+.banner-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.banner-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.7) 100%);
+    opacity: 0;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 12px;
+}
+
+.banner-item:hover .banner-overlay {
+    opacity: 1;
+}
+
+.banner-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.banner-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(10px);
+    border-radius: 6px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.banner-badge.first {
+    background: var(--config-success);
+}
+
+.banner-timing {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(10px);
+    border-radius: 6px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* Upload Zone */
+.upload-zone {
+    border: 2px dashed var(--config-gray-300);
+    border-radius: 10px;
+    padding: 32px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--config-gray-50);
+}
+
+.upload-zone:hover {
+    border-color: var(--config-primary);
+    background: rgba(37, 99, 235, 0.02);
+}
+
+.upload-icon {
+    font-size: 2.5rem;
+    color: var(--config-primary);
+    margin-bottom: 12px;
+}
+
+.upload-text {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--config-gray-700);
+    margin-bottom: 4px;
+}
+
+.upload-hint {
+    font-size: 0.8125rem;
+    color: var(--config-gray-500);
+}
+
+/* ========================================
+   PREVIEW PANEL
+   ======================================== */
+
+.preview-header {
+    padding: 16px 20px;
+    background: white;
+    border-bottom: 1px solid var(--config-gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.preview-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--config-gray-900);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-title i {
+    color: var(--config-primary);
+}
+
+.device-selector {
+    display: flex;
+    gap: 6px;
+    background: var(--config-gray-100);
+    padding: 4px;
+    border-radius: 8px;
+}
+
+.device-btn {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--config-gray-600);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.device-btn:hover {
+    color: var(--config-gray-900);
+}
+
+.device-btn.active {
+    background: white;
+    color: var(--config-primary);
+    box-shadow: var(--shadow-xs);
+}
+
+.preview-viewport {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.preview-frame {
+    width: 100%;
+    height: 95vh;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
+    transition: var(--transition);
+}
+
+.preview-frame.mobile {
+    max-width: 375px;
+    height: 667px;
+}
+
+.preview-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ========================================
+   FOOTER DEL EDITOR
+   ======================================== */
+
+.config-editor-footer {
+    padding: 20px 24px;
+    border-top: 1px solid var(--config-gray-200);
+    background: white;
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
+}
+
+/* ========================================
+   MODALES PROFESIONALES
+   ======================================== */
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.modal-backdrop.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-container {
+    background: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 85vh;
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--config-gray-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--config-gray-900);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-close-modal {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--config-gray-100);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: var(--config-gray-600);
+}
+
+.btn-close-modal:hover {
+    background: var(--config-gray-200);
+    color: var(--config-gray-900);
+}
+
+.modal-body {
+    padding: 24px;
+    max-height: calc(85vh - 140px);
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--config-gray-200);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Cropper Container */
+.cropper-container {
+    max-height: 400px;
+    margin: 16px 0;
+}
+
+/* ========================================
+   QUILL EDITOR STYLING
+   ======================================== */
+
+.quill-editor {
+    background: white;
+    border: 1px solid var(--config-gray-300);
+    border-radius: 8px;
+    min-height: 150px;
+}
+
+.quill-editor:focus-within {
+    border-color: var(--config-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* ========================================
+   UTILITIES
+   ======================================== */
+
+.text-muted {
+    color: var(--config-gray-500);
+}
+
+.text-sm {
+    font-size: 0.8125rem;
+}
+
+.text-xs {
+    font-size: 0.75rem;
+}
+
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 16px; }
+.mb-4 { margin-bottom: 24px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 16px; }
+.mt-4 { margin-top: 24px; }
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.badge-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--config-success);
+}
+
+.badge-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--config-warning);
+}
+
+.badge-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--config-danger);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 1200px) {
+    .config-dashboard-wrapper {
+        flex-direction: column;
+    }
+    
+    .config-editor-panel {
+        width: 100%;
+        height: auto;
+        max-height: 50vh;
+    }
+    
+    .config-preview-panel {
+        height: 50vh;
+    }
+}
+
+@media (max-width: 768px) {
+    .config-editor-panel {
+        max-height: 60vh;
+    }
+    
+    .config-preview-panel {
+        height: 40vh;
+    }
+    
+    .color-picker-group {
+        grid-template-columns: 1fr;
+    }
+    
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+}

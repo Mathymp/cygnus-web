@@ -2,15 +2,14 @@
 <html lang="es">
 <head>
     <%- include('../partials/head') %>
-    <title>Configuración Ultra | Cygnus Group</title>
+    <title>Configuración | Cygnus Group</title>
     
     <!-- External Libraries -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="/css/config-ultra.css">
+    <!-- Custom Dashboard CSS -->
+    <link rel="stylesheet" href="/css/config-dashboard.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
@@ -19,308 +18,246 @@
 </head>
 <body>
     
-    <div class="config-ultra-layout">
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin') %>
         
-        <!-- ========================================
-             SIDEBAR IZQUIERDO - NAVEGACIÓN FIJA
-             ======================================== -->
-        <aside class="config-sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo">
-                    <img src="/img/logo.png" alt="Cygnus">
-                    <h2>Cygnus</h2>
-                </div>
-                <p class="sidebar-subtitle">Panel de Control</p>
-            </div>
+        <main class="main-content">
             
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Sistema</div>
-                    <div class="nav-item active" data-section="maintenance">
-                        <i class="fas fa-hard-hat"></i>
-                        <span>Mantenimiento</span>
-                    </div>
-                    <div class="nav-item" data-section="huinchas">
-                        <i class="fas fa-ribbon"></i>
-                        <span>Huinchas</span>
-                    </div>
-                    <div class="nav-item" data-section="announcement">
-                        <i class="fas fa-bullhorn"></i>
-                        <span>Barra Superior</span>
-                    </div>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Contenido</div>
-                    <div class="nav-item" data-section="banners">
-                        <i class="fas fa-images"></i>
-                        <span>Slider Banners</span>
-                    </div>
-                    <div class="nav-item" data-section="brand">
-                        <i class="fas fa-palette"></i>
-                        <span>Marca</span>
-                    </div>
-                </div>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <button type="button" class="btn-save-all" onclick="saveAllConfiguration()">
-                    <i class="fas fa-save"></i>
-                    Guardar Todo
-                </button>
-            </div>
-        </aside>
-        
-        <!-- ========================================
-             COLUMNA EDITOR - SCROLL INDEPENDIENTE
-             ======================================== -->
-        <main class="config-editor">
-            <div class="editor-header">
-                <h1 class="editor-title">
-                    <i class="fas fa-sliders-h"></i>
-                    Configuración del Sitio
-                </h1>
-                <p class="editor-subtitle">Gestiona todos los aspectos visuales y funcionales de tu sitio web</p>
-            </div>
-            
-            <form id="configForm">
-                <!-- Hidden Fields -->
-                <input type="hidden" name="promo_strips_json" id="promoStripsJson">
-                <input type="hidden" name="ticker_speed" id="tickerSpeedHidden" value="<%= config.ticker_speed || 35 %>">
+            <!-- ========================================
+                 DASHBOARD DE CONFIGURACIÓN
+                 ======================================== -->
+            <div class="config-dashboard-wrapper">
                 
                 <!-- ========================================
-                     SECCIÓN: MODO MANTENIMIENTO
+                     PANEL IZQUIERDO - EDITOR (450px)
                      ======================================== -->
-                <section class="section-panel active" id="section-maintenance">
-                    <div class="panel-header">
-                        <h2 class="panel-title">
-                            <i class="fas fa-hard-hat"></i>
-                            Modo Mantenimiento
-                        </h2>
-                        <label class="toggle-switch">
-                            <input type="checkbox" name="maintenance_active" id="maintSwitch" <%= config.maintenance_active ? 'checked' : '' %>>
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">Activar</span>
-                        </label>
+                <div class="config-editor-panel">
+                    
+                    <!-- Header del Editor -->
+                    <div class="config-editor-header">
+                        <h1 class="config-title">
+                            <i class="fas fa-cog"></i>
+                            Configuración del Sitio
+                        </h1>
+                        <p class="config-subtitle">Gestiona el contenido y apariencia de tu sitio web</p>
                     </div>
                     
-                    <div class="form-group">
-                        <label class="form-label">Mensaje para los visitantes</label>
-                        <div id="maintQuill" style="background: white; border-radius: 10px; min-height: 200px;">
-                            <%- config.maintenance_message || '<h1 style="text-align: center;">Sitio en Mantenimiento</h1><p style="text-align: center;">Volvemos pronto con mejoras.</p>' %>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Tiempo estimado de regreso</label>
-                        <input type="text" class="form-input" name="maintenance_eta" value="<%= config.maintenance_eta || '2 horas' %>" placeholder="Ej: 2 horas, 1 día">
-                    </div>
-                </section>
-                
-                <!-- ========================================
-                     SECCIÓN: HUINCHAS PROMOCIONALES
-                     ======================================== -->
-                <section class="section-panel" id="section-huinchas">
-                    <div class="panel-header">
-                        <h2 class="panel-title">
-                            <i class="fas fa-ribbon"></i>
-                            Huinchas Promocionales
-                        </h2>
-                        <label class="toggle-switch">
-                            <input type="checkbox" name="ticker_active" id="tickerSwitch" <%= (config.ticker_active !== false) ? 'checked' : '' %>>
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">Activar Ticker</span>
-                        </label>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Velocidad de desplazamiento (segundos)</label>
-                        <input type="range" min="20" max="60" value="<%= config.ticker_speed || 35 %>" id="tickerSpeedRange" class="form-input">
-                        <p class="text-muted text-sm mt-2">Velocidad actual: <strong id="speedDisplay"><%= config.ticker_speed || 35 %>s</strong></p>
-                    </div>
-                    
-                    <div class="huinchas-list" id="huinchasContainer">
-                        <!-- Las huinchas se cargarán dinámicamente aquí -->
-                    </div>
-                    
-                    <button type="button" class="btn-add-huincha" onclick="addHuincha()">
-                        <i class="fas fa-plus"></i>
-                        Agregar Nueva Huincha
-                    </button>
-                </section>
-                
-                <!-- ========================================
-                     SECCIÓN: BARRA SUPERIOR (ANNOUNCEMENT)
-                     ======================================== -->
-                <section class="section-panel" id="section-announcement">
-                    <div class="panel-header">
-                        <h2 class="panel-title">
-                            <i class="fas fa-bullhorn"></i>
-                            Barra de Anuncios Superior
-                        </h2>
-                        <label class="toggle-switch">
-                            <input type="checkbox" name="announcement_active" id="annSwitch" <%= config.announcement_active ? 'checked' : '' %>>
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">Mostrar</span>
-                        </label>
-                    </div>
-                    
-                    <div class="color-picker-group mb-4">
-                        <div class="color-picker-item">
-                            <div class="color-preview" id="previewAnnBg" style="background-color: <%= config.announcement_bg || '#1e293b' %>;"></div>
-                            <div class="color-input">
-                                <label class="form-label mb-2">Color de Fondo</label>
-                                <input type="color" name="announcement_bg" id="annBg" value="<%= config.announcement_bg || '#1e293b' %>">
-                                <p class="color-hex mt-2"><%= config.announcement_bg || '#1e293b' %></p>
-                            </div>
-                        </div>
-                        
-                        <div class="color-picker-item">
-                            <div class="color-preview" id="previewAnnColor" style="background-color: <%= config.announcement_color || '#ffffff' %>;"></div>
-                            <div class="color-input">
-                                <label class="form-label mb-2">Color de Texto</label>
-                                <input type="color" name="announcement_color" id="annColor" value="<%= config.announcement_color || '#ffffff' %>">
-                                <p class="color-hex mt-2"><%= config.announcement_color || '#ffffff' %></p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Contenido del anuncio</label>
-                        <div id="annQuill" style="background: white; border-radius: 10px; min-height: 150px;">
-                            <%- config.announcement_text || '¡Contáctanos hoy mismo!' %>
-                        </div>
-                    </div>
-                </section>
-                
-                <!-- ========================================
-                     SECCIÓN: SLIDER BANNERS
-                     ======================================== -->
-                <section class="section-panel" id="section-banners">
-                    <div class="panel-header">
-                        <h2 class="panel-title">
-                            <i class="fas fa-images"></i>
-                            Slider de Banners
-                        </h2>
-                        <div class="form-group" style="margin: 0; max-width: 200px;">
-                            <label class="form-label mb-2">Velocidad</label>
-                            <input type="range" name="slider_speed" id="sliderSpeed" min="2" max="10" value="<%= config.slider_speed || 5 %>" class="form-input">
-                            <p class="text-muted text-sm mt-2"><strong id="sliderSpeedText"><%= config.slider_speed || 5 %>s</strong></p>
-                        </div>
-                    </div>
-                    
-                    <div class="upload-zone" id="uploadZone">
-                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                        <p class="upload-text">Arrastra imágenes aquí o haz click</p>
-                        <p class="upload-hint">Formatos: JPG, PNG, WebP (Máx 10MB)</p>
-                        <input type="file" id="fileInput" multiple accept="image/*" style="display:none;">
-                    </div>
-                    
-                    <div class="banners-grid" id="bannersContainer">
-                        <% if(config.banners && config.banners.length > 0) { %>
-                            <% config.banners.forEach((b, idx) => { %>
-                                <div class="banner-card <%= idx === 0 ? 'first-banner' : '' %>" 
-                                     data-type="existing"
-                                     data-url="<%= b.url %>" 
-                                     data-align="<%= b.align || '50% 50%' %>"
-                                     data-duration="<%= b.duration || 5 %>"
-                                     data-animation="<%= b.animation || 'fade' %>">
+                    <!-- Contenido del Editor -->
+                    <div class="config-editor-content">
+                        <form id="configForm">
+                            
+                            <!-- Hidden Fields -->
+                            <input type="hidden" name="promo_strips_json" id="promoStripsJson">
+                            <input type="hidden" name="ticker_speed" id="tickerSpeedHidden" value="<%= config.ticker_speed || 35 %>">
+                            
+                            <!-- ========================================
+                                 SECCIÓN: MODO MANTENIMIENTO
+                                 ======================================== -->
+                            <section class="config-section">
+                                <div class="section-header">
+                                    <h2 class="section-title">
+                                        <i class="fas fa-hard-hat"></i>
+                                        Modo Mantenimiento
+                                    </h2>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="maintenance_active" id="maintSwitch" <%= config.maintenance_active ? 'checked' : '' %>>
+                                        <span class="toggle-track"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Mensaje para los visitantes</label>
+                                    <div id="maintQuill" class="quill-editor">
+                                        <%- config.maintenance_message || '<h2>Sitio en Mantenimiento</h2><p>Volvemos pronto con mejoras.</p>' %>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Tiempo estimado de regreso</label>
+                                    <input type="text" class="form-input" name="maintenance_eta" value="<%= config.maintenance_eta || '2 horas' %>" placeholder="Ej: 2 horas, mañana">
+                                    <p class="form-hint">Este texto se mostrará en la página de mantenimiento</p>
+                                </div>
+                            </section>
+                            
+                            <!-- ========================================
+                                 SECCIÓN: BARRA SUPERIOR
+                                 ======================================== -->
+                            <section class="config-section">
+                                <div class="section-header">
+                                    <h2 class="section-title">
+                                        <i class="fas fa-bullhorn"></i>
+                                        Barra de Anuncios
+                                    </h2>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="announcement_active" id="annSwitch" <%= config.announcement_active ? 'checked' : '' %>>
+                                        <span class="toggle-track"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="color-picker-group mb-3">
+                                    <div class="color-picker-box">
+                                        <div class="color-preview" id="previewAnnBg" style="background-color: <%= config.announcement_bg || '#1e293b' %>;"></div>
+                                        <div class="color-input-wrapper">
+                                            <label class="form-label mb-2">Fondo</label>
+                                            <input type="color" name="announcement_bg" id="annBg" value="<%= config.announcement_bg || '#1e293b' %>">
+                                            <p class="color-hex"><%= config.announcement_bg || '#1e293b' %></p>
+                                        </div>
+                                    </div>
                                     
-                                    <img src="<%= b.url %>" style="object-position: <%= b.align || '50% 50%' %>;">
-                                    
-                                    <% if(idx === 0) { %>
-                                        <div class="banner-badge first">Original</div>
-                                    <% } %>
-                                    
-                                    <div class="banner-timing"><%= b.duration || 5 %>s</div>
-                                    
-                                    <div class="banner-overlay">
-                                        <div class="banner-actions">
-                                            <button type="button" class="btn-banner edit" onclick="editBanner(this)">
-                                                <i class="fas fa-edit"></i> Editar
-                                            </button>
-                                            <% if(idx !== 0) { %>
-                                                <button type="button" class="btn-banner delete" onclick="deleteBanner(this)">
-                                                    <i class="fas fa-trash"></i> Eliminar
-                                                </button>
-                                            <% } %>
+                                    <div class="color-picker-box">
+                                        <div class="color-preview" id="previewAnnColor" style="background-color: <%= config.announcement_color || '#ffffff' %>;"></div>
+                                        <div class="color-input-wrapper">
+                                            <label class="form-label mb-2">Texto</label>
+                                            <input type="color" name="announcement_color" id="annColor" value="<%= config.announcement_color || '#ffffff' %>">
+                                            <p class="color-hex"><%= config.announcement_color || '#ffffff' %></p>
                                         </div>
                                     </div>
                                 </div>
-                            <% }) %>
-                        <% } %>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Contenido del anuncio</label>
+                                    <div id="annQuill" class="quill-editor">
+                                        <%- config.announcement_text || '¡Contáctanos hoy mismo!' %>
+                                    </div>
+                                </div>
+                            </section>
+                            
+                            <!-- ========================================
+                                 SECCIÓN: HUINCHAS PROMOCIONALES
+                                 ======================================== -->
+                            <section class="config-section">
+                                <div class="section-header">
+                                    <h2 class="section-title">
+                                        <i class="fas fa-ribbon"></i>
+                                        Huinchas Promocionales
+                                    </h2>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" name="ticker_active" id="tickerSwitch" <%= (config.ticker_active !== false) ? 'checked' : '' %>>
+                                        <span class="toggle-track"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Velocidad de desplazamiento</label>
+                                    <input type="range" min="20" max="60" value="<%= config.ticker_speed || 35 %>" id="tickerSpeedRange" class="range-slider">
+                                    <p class="form-hint mt-2">Velocidad: <strong id="speedDisplay"><%= config.ticker_speed || 35 %>s</strong></p>
+                                </div>
+                                
+                                <div id="huinchasContainer">
+                                    <!-- Huinchas se cargan dinámicamente -->
+                                </div>
+                                
+                                <button type="button" class="btn btn-secondary btn-block mt-3" onclick="addHuincha()">
+                                    <i class="fas fa-plus"></i>
+                                    Agregar Huincha
+                                </button>
+                            </section>
+                            
+                            <!-- ========================================
+                                 SECCIÓN: SLIDER DE BANNERS
+                                 ======================================== -->
+                            <section class="config-section">
+                                <div class="section-header">
+                                    <h2 class="section-title">
+                                        <i class="fas fa-images"></i>
+                                        Slider de Banners
+                                    </h2>
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <label class="form-label" style="margin: 0;">Velocidad</label>
+                                        <input type="range" name="slider_speed" id="sliderSpeed" min="2" max="10" value="<%= config.slider_speed || 5 %>" class="range-slider" style="width: 100px;">
+                                        <span class="text-sm text-muted"><strong id="sliderSpeedText"><%= config.slider_speed || 5 %>s</strong></span>
+                                    </div>
+                                </div>
+                                
+                                <div class="upload-zone" id="uploadZone">
+                                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                    <p class="upload-text">Arrastra imágenes o haz click</p>
+                                    <p class="upload-hint">JPG, PNG, WebP (Máx 10MB)</p>
+                                    <input type="file" id="fileInput" multiple accept="image/*" style="display:none;">
+                                </div>
+                                
+                                <div class="banners-grid" id="bannersContainer">
+                                    <% if(config.banners && config.banners.length > 0) { %>
+                                        <% config.banners.forEach((b, idx) => { %>
+                                            <div class="banner-item <%= idx === 0 ? 'first-banner' : '' %>" 
+                                                 data-type="existing"
+                                                 data-url="<%= b.url %>" 
+                                                 data-align="<%= b.align || '50% 50%' %>"
+                                                 data-duration="<%= b.duration || 5 %>"
+                                                 data-animation="<%= b.animation || 'fade' %>">
+                                                
+                                                <img src="<%= b.url %>" style="object-position: <%= b.align || '50% 50%' %>;">
+                                                
+                                                <% if(idx === 0) { %>
+                                                    <div class="banner-badge first">Original</div>
+                                                <% } %>
+                                                
+                                                <div class="banner-timing"><%= b.duration || 5 %>s</div>
+                                                
+                                                <div class="banner-overlay">
+                                                    <div class="banner-actions">
+                                                        <button type="button" class="btn btn-primary btn-sm" onclick="editBanner(this)">
+                                                            <i class="fas fa-edit"></i> Editar
+                                                        </button>
+                                                        <% if(idx !== 0) { %>
+                                                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteBanner(this)">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        <% } %>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <% }) %>
+                                    <% } %>
+                                </div>
+                            </section>
+                            
+                        </form>
                     </div>
-                </section>
+                    
+                    <!-- Footer del Editor -->
+                    <div class="config-editor-footer">
+                        <button type="button" class="btn btn-primary btn-block" onclick="saveAllConfiguration()">
+                            <i class="fas fa-save"></i>
+                            Guardar Todos los Cambios
+                        </button>
+                    </div>
+                    
+                </div>
                 
                 <!-- ========================================
-                     SECCIÓN: MARCA
+                     PANEL DERECHO - PREVIEW GIGANTE
                      ======================================== -->
-                <section class="section-panel" id="section-brand">
-                    <div class="panel-header">
-                        <h2 class="panel-title">
-                            <i class="fas fa-palette"></i>
-                            Identidad de Marca
-                        </h2>
-                    </div>
+                <div class="config-preview-panel">
                     
-                    <div class="form-group">
-                        <label class="form-label">Nombre de la empresa</label>
-                        <input type="text" class="form-input" name="company_name" value="<%= config.company_name || 'Cygnus Group Propiedades' %>">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Slogan</label>
-                        <input type="text" class="form-input" name="company_slogan" value="<%= config.company_slogan || 'Tu hogar, nuestra misión' %>">
-                    </div>
-                    
-                    <div class="color-picker-group">
-                        <div class="color-picker-item">
-                            <div class="color-preview" style="background-color: <%= config.brand_primary || '#2563eb' %>;"></div>
-                            <div class="color-input">
-                                <label class="form-label mb-2">Color Primario</label>
-                                <input type="color" name="brand_primary" value="<%= config.brand_primary || '#2563eb' %>">
-                            </div>
-                        </div>
-                        
-                        <div class="color-picker-item">
-                            <div class="color-preview" style="background-color: <%= config.brand_secondary || '#764ba2' %>;"></div>
-                            <div class="color-input">
-                                <label class="form-label mb-2">Color Secundario</label>
-                                <input type="color" name="brand_secondary" value="<%= config.brand_secondary || '#764ba2' %>">
-                            </div>
+                    <!-- Header del Preview -->
+                    <div class="preview-header">
+                        <h3 class="preview-title">
+                            <i class="fas fa-eye"></i>
+                            Vista Previa en Vivo
+                        </h3>
+                        <div class="device-selector">
+                            <button type="button" class="device-btn active" data-device="desktop">
+                                <i class="fas fa-desktop"></i> Escritorio
+                            </button>
+                            <button type="button" class="device-btn" data-device="mobile">
+                                <i class="fas fa-mobile-alt"></i> Móvil
+                            </button>
                         </div>
                     </div>
-                </section>
-                
-            </form>
-        </main>
-        
-        <!-- ========================================
-             LIVE PREVIEW - COLUMNA DERECHA FIJA
-             ======================================== -->
-        <aside class="config-preview">
-            <div class="preview-header">
-                <h3 class="preview-title">
-                    <i class="fas fa-eye"></i>
-                    Vista Previa en Vivo
-                </h3>
-                <div class="device-selector">
-                    <button type="button" class="device-btn active" data-device="desktop">
-                        <i class="fas fa-desktop"></i> Escritorio
-                    </button>
-                    <button type="button" class="device-btn" data-device="mobile">
-                        <i class="fas fa-mobile-alt"></i> Móvil
-                    </button>
+                    
+                    <!-- Viewport del Preview -->
+                    <div class="preview-viewport">
+                        <div class="preview-frame desktop" id="previewFrame">
+                            <iframe id="liveIframe" src="/"></iframe>
+                        </div>
+                    </div>
+                    
                 </div>
+                
             </div>
             
-            <div class="preview-viewport">
-                <div class="preview-frame desktop" id="previewFrame">
-                    <iframe id="liveIframe" src="/"></iframe>
-                </div>
-            </div>
-        </aside>
-        
+        </main>
     </div>
     
     <!-- ========================================
@@ -349,7 +286,7 @@
                     
                     <div class="form-group">
                         <label class="form-label">Animación</label>
-                        <select id="bannerAnimation" class="form-input">
+                        <select id="bannerAnimation" class="form-select">
                             <option value="fade">Fade</option>
                             <option value="slide">Slide</option>
                             <option value="zoom">Zoom</option>
@@ -359,8 +296,11 @@
             </div>
             
             <div class="modal-footer">
-                <button type="button" class="btn-modal secondary" onclick="closeModal('modalEditBanner')">Cancelar</button>
-                <button type="button" class="btn-modal primary" onclick="applyBannerEdit()">Aplicar Cambios</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modalEditBanner')">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="applyBannerEdit()">
+                    <i class="fas fa-check"></i>
+                    Aplicar Cambios
+                </button>
             </div>
         </div>
     </div>
@@ -379,11 +319,9 @@
         // ========== INICIALIZACIÓN ==========
         document.addEventListener('DOMContentLoaded', () => {
             initEditors();
-            initNavigation();
             initListeners();
             initHuinchas();
             initBannersSortable();
-            initPreview();
         });
         
         // ========== EDITORES QUILL ==========
@@ -392,7 +330,7 @@
                 theme: 'snow',
                 modules: {
                     toolbar: [
-                        ['bold', 'italic', 'underline'],
+                        ['bold', 'italic'],
                         [{ 'header': [1, 2, 3, false] }],
                         [{ 'color': [] }, { 'align': [] }]
                     ]
@@ -405,59 +343,29 @@
                     toolbar: [['bold', 'italic'], [{ 'color': [] }]]
                 }
             });
-            
-            qMaint.on('text-change', updatePreview);
-            qAnn.on('text-change', updatePreview);
         }
         
-        // ========== NAVEGACIÓN SIDEBAR ==========
-        function initNavigation() {
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    // Actualizar nav activo
-                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                    item.classList.add('active');
-                    
-                    // Mostrar sección correspondiente
-                    const section = item.dataset.section;
-                    document.querySelectorAll('.section-panel').forEach(panel => {
-                        panel.classList.remove('active');
-                    });
-                    document.getElementById(`section-${section}`).classList.add('active');
-                });
-            });
-        }
-        
-        // ========== LISTENERS GENERALES ==========
+        // ========== LISTENERS ==========
         function initListeners() {
             // Color pickers
             document.getElementById('annBg').addEventListener('input', (e) => {
                 document.getElementById('previewAnnBg').style.backgroundColor = e.target.value;
                 e.target.nextElementSibling.textContent = e.target.value;
-                updatePreview();
             });
             
             document.getElementById('annColor').addEventListener('input', (e) => {
                 document.getElementById('previewAnnColor').style.backgroundColor = e.target.value;
                 e.target.nextElementSibling.textContent = e.target.value;
-                updatePreview();
             });
-            
-            // Switches
-            document.getElementById('maintSwitch').addEventListener('change', updatePreview);
-            document.getElementById('annSwitch').addEventListener('change', updatePreview);
-            document.getElementById('tickerSwitch').addEventListener('change', updatePreview);
             
             // Sliders
             document.getElementById('sliderSpeed').addEventListener('input', (e) => {
                 document.getElementById('sliderSpeedText').textContent = e.target.value + 's';
-                updatePreview();
             });
             
             document.getElementById('tickerSpeedRange').addEventListener('input', (e) => {
                 document.getElementById('speedDisplay').textContent = e.target.value + 's';
                 document.getElementById('tickerSpeedHidden').value = e.target.value;
-                updatePreview();
             });
             
             // Upload zone
@@ -468,16 +376,16 @@
             
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                uploadZone.style.borderColor = 'var(--cygnus-primary)';
+                uploadZone.style.borderColor = 'var(--config-primary)';
             });
             
             uploadZone.addEventListener('dragleave', () => {
-                uploadZone.style.borderColor = '#cbd5e1';
+                uploadZone.style.borderColor = 'var(--config-gray-300)';
             });
             
             uploadZone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                uploadZone.style.borderColor = '#cbd5e1';
+                uploadZone.style.borderColor = 'var(--config-gray-300)';
                 handleFiles(e.dataTransfer.files);
             });
             
@@ -497,13 +405,6 @@
                     frame.className = `preview-frame ${device}`;
                 });
             });
-            
-            // Preview iframe reload
-            setTimeout(() => {
-                document.getElementById('liveIframe').onload = () => {
-                    setTimeout(updatePreview, 500);
-                };
-            }, 1000);
         }
         
         // ========== HUINCHAS ==========
@@ -527,28 +428,31 @@
                 active: true
             });
             renderHuinchas();
-            updatePreview();
         }
         
         function renderHuinchas() {
             const container = document.getElementById('huinchasContainer');
             container.innerHTML = huinchasData.map((h, idx) => `
-                <div class="huincha-card">
-                    <div class="huincha-header">
-                        <h4 style="font-size: 1rem; font-weight: 700; color: #0f172a;">Huincha #${idx + 1}</h4>
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${h.active ? 'checked' : ''} onchange="toggleHuincha(${idx}, this.checked)">
-                            <span class="toggle-slider"></span>
-                            <span class="toggle-label">Activa</span>
-                        </label>
+                <div class="config-card">
+                    <div class="card-header">
+                        <h4 class="card-title">Huincha #${idx + 1}</h4>
+                        <div class="card-actions">
+                            <label class="toggle-switch">
+                                <input type="checkbox" ${h.active ? 'checked' : ''} onchange="toggleHuincha(${idx}, this.checked)">
+                                <span class="toggle-track"></span>
+                            </label>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteHuincha(${idx})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="huincha-controls">
+                    <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Texto</label>
                             <input type="text" class="form-input" value="${h.text}" onchange="updateHuincha(${idx}, 'text', this.value)">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Icono (Font Awesome)</label>
+                            <label class="form-label">Icono</label>
                             <input type="text" class="form-input" value="${h.icon}" onchange="updateHuincha(${idx}, 'icon', this.value)" placeholder="fa-star">
                         </div>
                         <div class="form-group">
@@ -560,27 +464,21 @@
                             <input type="color" class="form-input" value="${h.textColor}" onchange="updateHuincha(${idx}, 'textColor', this.value)">
                         </div>
                     </div>
-                    <button type="button" class="btn-banner delete" style="width: auto; margin-top: 12px;" onclick="deleteHuincha(${idx})">
-                        <i class="fas fa-trash"></i> Eliminar
-                    </button>
                 </div>
             `).join('');
         }
         
         function toggleHuincha(idx, active) {
             huinchasData[idx].active = active;
-            updatePreview();
         }
         
         function updateHuincha(idx, field, value) {
             huinchasData[idx][field] = value;
-            updatePreview();
         }
         
         function deleteHuincha(idx) {
             Swal.fire({
                 title: '¿Eliminar huincha?',
-                text: 'Esta acción no se puede deshacer',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Eliminar',
@@ -589,7 +487,6 @@
                 if (result.isConfirmed) {
                     huinchasData.splice(idx, 1);
                     renderHuinchas();
-                    updatePreview();
                 }
             });
         }
@@ -611,7 +508,6 @@
                         animation: 'fade'
                     });
                     createBannerCard(uid, e.target.result, '50% 50%', 5, 'fade', true);
-                    updatePreview();
                 };
                 reader.readAsDataURL(file);
             });
@@ -620,7 +516,7 @@
         function createBannerCard(id, url, align, duration, animation, isNew) {
             const container = document.getElementById('bannersContainer');
             const div = document.createElement('div');
-            div.className = 'banner-card';
+            div.className = 'banner-item';
             div.dataset.type = isNew ? 'new' : 'existing';
             div.dataset.id = id;
             div.dataset.url = url;
@@ -633,11 +529,11 @@
                 <div class="banner-timing">${duration}s</div>
                 <div class="banner-overlay">
                     <div class="banner-actions">
-                        <button type="button" class="btn-banner edit" onclick="editBanner(this)">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="editBanner(this)">
                             <i class="fas fa-edit"></i> Editar
                         </button>
-                        <button type="button" class="btn-banner delete" onclick="deleteBanner(this)">
-                            <i class="fas fa-trash"></i> Eliminar
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteBanner(this)">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -649,13 +545,12 @@
         function initBannersSortable() {
             new Sortable(document.getElementById('bannersContainer'), {
                 animation: 200,
-                ghostClass: 'sortable-ghost',
-                onEnd: updatePreview
+                ghostClass: 'sortable-ghost'
             });
         }
         
         function editBanner(btn) {
-            const card = btn.closest('.banner-card');
+            const card = btn.closest('.banner-item');
             currentEditingBanner = card;
             
             const img = card.querySelector('img');
@@ -688,11 +583,10 @@
             currentEditingBanner.querySelector('.banner-timing').textContent = document.getElementById('bannerDuration').value + 's';
             
             closeModal('modalEditBanner');
-            updatePreview();
         }
         
         function deleteBanner(btn) {
-            const card = btn.closest('.banner-card');
+            const card = btn.closest('.banner-item');
             if (card.classList.contains('first-banner')) {
                 Swal.fire('No permitido', 'No puedes eliminar el banner original', 'error');
                 return;
@@ -707,26 +601,8 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     card.remove();
-                    updatePreview();
                 }
             });
-        }
-        
-        // ========== PREVIEW ==========
-        function initPreview() {
-            setTimeout(() => {
-                updatePreview();
-            }, 1500);
-        }
-        
-        function updatePreview() {
-            // Esta función inyectaría cambios en el iframe
-            // Por ahora solo recarga
-            const iframe = document.getElementById('liveIframe');
-            if (iframe && iframe.contentWindow) {
-                // Aquí podrías inyectar CSS/HTML dinámicamente
-                console.log('Preview updated');
-            }
         }
         
         // ========== MODALES ==========
@@ -767,7 +643,7 @@
             
             // Banners
             const banners = [];
-            document.querySelectorAll('.banner-card').forEach((card, idx) => {
+            document.querySelectorAll('.banner-item').forEach((card, idx) => {
                 if (card.dataset.type === 'existing') {
                     banners.push({
                         url: card.dataset.url,
@@ -779,18 +655,12 @@
             });
             formData.append('banners', JSON.stringify(banners));
             
-            // Nuevos banners (archivos)
+            // Nuevos banners
             bannerUploads.forEach((upload, idx) => {
                 formData.append(`new_banner_${idx}`, upload.file);
                 formData.append(`new_banner_${idx}_duration`, upload.duration);
                 formData.append(`new_banner_${idx}_animation`, upload.animation);
             });
-            
-            // Marca
-            formData.append('company_name', document.querySelector('[name="company_name"]').value);
-            formData.append('company_slogan', document.querySelector('[name="company_slogan"]').value);
-            formData.append('brand_primary', document.querySelector('[name="brand_primary"]').value);
-            formData.append('brand_secondary', document.querySelector('[name="brand_secondary"]').value);
             
             try {
                 const response = await fetch('/admin/configuracion/update', {
