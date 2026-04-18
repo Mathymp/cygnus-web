@@ -227,7 +227,7 @@ const mainController = {
    updateConfig: async (req, res) => {
         try {
             const { 
-                maintenance_active, maintenance_message,
+                maintenance_active, maintenance_message, maintenance_eta,
                 announcement_active, announcement_bg, announcement_color, announcement_text,
                 slider_speed,
                 existing_banners_urls, existing_banners_align,
@@ -252,7 +252,12 @@ const mainController = {
                 const urls = Array.isArray(existing_banners_urls) ? existing_banners_urls : [existing_banners_urls];
                 const aligns = Array.isArray(existing_banners_align) ? existing_banners_align : [existing_banners_align];
                 urls.forEach((url, index) => {
-                    finalBanners.push({ url: url, align: aligns[index] || '50% 50%' });
+                    finalBanners.push({ 
+                        url: url, 
+                        align: aligns[index] || '50% 50%',
+                        duration: 5,
+                        animation: 'fade'
+                    });
                 });
             }
 
@@ -266,7 +271,13 @@ const mainController = {
                     const file = req.files[i];
                     const result = await cloudinary.uploader.upload(file.path, { folder: 'cygnus_banners' });
                     const alignVal = newAligns[i] || '50% 50%';
-                    finalBanners.push({ url: result.secure_url, public_id: result.public_id, align: alignVal });
+                    finalBanners.push({ 
+                        url: result.secure_url, 
+                        public_id: result.public_id, 
+                        align: alignVal,
+                        duration: 5,
+                        animation: 'fade'
+                    });
                     try { require('fs').unlinkSync(file.path); } catch (e) {}
                 }
             }
@@ -274,26 +285,31 @@ const mainController = {
             const configData = {
                 maintenance_active: maintenance_active === 'on',
                 maintenance_message,
+                maintenance_eta,
                 announcement_active: announcement_active === 'on',
                 announcement_bg,
                 announcement_color,
                 announcement_text,
                 slider_speed: parseInt(slider_speed) || 5,
                 banners: finalBanners,
-                // --- Huinchas ---
                 promo_strips: promoStrips,
                 ticker_active: ticker_active === 'on',
                 ticker_speed: parseInt(ticker_speed) || 35,
                 updated_at: new Date()
             };
 
-            // Intento principal con todas las columnas (incluyendo promo_strips)
+            // Intento principal
             let { error } = await supabase.from('site_config').upsert({ id: 1, ...configData });
 
-            // Fallback: si la columna promo_strips aún no existe en la BD, reintenta sin ella
-            if (error && /promo_strips|ticker_active|ticker_speed/i.test(error.message || '')) {
-                console.warn('⚠️ Columnas de huinchas no existen. Guardando sin ellas. Agrega en Supabase: promo_strips JSONB, ticker_active BOOLEAN, ticker_speed INT');
-                const { promo_strips, ticker_active: _ta, ticker_speed: _ts, ...safeData } = configData;
+            // Fallback si faltan columnas
+            if (error && /promo_strips|ticker_active|ticker_speed|maintenance_eta/i.test(error.message || '')) {
+                console.warn('⚠️ COLUMNAS FALTANTES EN SUPABASE. Ejecuta este SQL:');
+                console.warn('ALTER TABLE site_config ADD COLUMN IF NOT EXISTS promo_strips JSONB DEFAULT \'[]\'::jsonb;');
+                console.warn('ALTER TABLE site_config ADD COLUMN IF NOT EXISTS ticker_active BOOLEAN DEFAULT true;');
+                console.warn('ALTER TABLE site_config ADD COLUMN IF NOT EXISTS ticker_speed INTEGER DEFAULT 35;');
+                console.warn('ALTER TABLE site_config ADD COLUMN IF NOT EXISTS maintenance_eta TEXT;');
+                
+                const { promo_strips, ticker_active: _ta, ticker_speed: _ts, maintenance_eta: _me, ...safeData } = configData;
                 const retry = await supabase.from('site_config').upsert({ id: 1, ...safeData });
                 if (retry.error) throw retry.error;
             } else if (error) {
