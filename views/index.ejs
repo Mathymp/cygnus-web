@@ -66,7 +66,34 @@
         const fmtUF = (v) => 'UF ' + Number(v).toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
     %>
 
-    <% if(siteConfig.announcement_active) { %>
+    <%
+        // --- HUINCHAS / TICKER PROMOCIONAL ---
+        const tickerActive = siteConfig.ticker_active !== false && Array.isArray(siteConfig.promo_strips) && siteConfig.promo_strips.length > 0;
+        const activeStrips = tickerActive ? siteConfig.promo_strips.filter(s => s && s.active !== false) : [];
+        const tickerSpeed = siteConfig.ticker_speed || 35; // segundos por vuelta
+    %>
+
+    <% if(activeStrips.length > 0) { %>
+        <div class="cygnus-ticker-wrap">
+            <% activeStrips.forEach((strip, idx) => { %>
+                <div class="cygnus-ticker"
+                     style="background:<%= strip.bg || '#0f172a' %>;
+                            color:<%= strip.color || '#ffffff' %>;
+                            font-size:<%= strip.fontSize || 14 %>px;
+                            font-weight:<%= strip.fontWeight || 600 %>;
+                            <%= strip.style === 'uppercase' ? 'text-transform:uppercase; letter-spacing:1.5px;' : '' %>">
+                    <div class="cygnus-ticker-track" style="animation-duration: <%= strip.speed || tickerSpeed %>s;">
+                        <% for(let k=0; k<8; k++) { %>
+                            <span class="cygnus-ticker-item">
+                                <% if(strip.icon) { %><i class="<%= strip.icon %>"></i><% } %>
+                                <%- strip.text || '' %>
+                            </span>
+                        <% } %>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+    <% } else if(siteConfig.announcement_active) { %>
         <div class="top-announcement-bar" style="background-color: <%= siteConfig.announcement_bg || '#0f172a' %>; color: <%= siteConfig.announcement_color || '#fff' %>;">
             <div class="container-announcement">
                 <span><i class="fas fa-bullhorn"></i> <%- siteConfig.announcement_text %></span>

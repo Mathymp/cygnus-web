@@ -231,11 +231,23 @@ const mainController = {
                 announcement_active, announcement_bg, announcement_color, announcement_text,
                 slider_speed,
                 existing_banners_urls, existing_banners_align,
-                new_banners_align 
+                new_banners_align,
+                promo_strips_json, ticker_active, ticker_speed
             } = req.body;
 
+            // --- Procesar Huinchas (Ticker de Promociones) ---
+            let promoStrips = [];
+            if (promo_strips_json) {
+                try {
+                    const parsed = JSON.parse(promo_strips_json);
+                    if (Array.isArray(parsed)) promoStrips = parsed;
+                } catch (e) {
+                    console.warn('promo_strips_json inválido, se ignora.');
+                }
+            }
+
+            // --- Procesar Banners existentes ---
             let finalBanners = [];
-            
             if (existing_banners_urls) {
                 const urls = Array.isArray(existing_banners_urls) ? existing_banners_urls : [existing_banners_urls];
                 const aligns = Array.isArray(existing_banners_align) ? existing_banners_align : [existing_banners_align];
@@ -244,9 +256,10 @@ const mainController = {
                 });
             }
 
+            // --- Banners nuevos (Cloudinary) ---
             if (req.files && req.files.length > 0) {
                 let newAligns = [];
-                if(new_banners_align) {
+                if (new_banners_align) {
                     newAligns = Array.isArray(new_banners_align) ? new_banners_align : [new_banners_align];
                 }
                 for (let i = 0; i < req.files.length; i++) {
@@ -254,7 +267,7 @@ const mainController = {
                     const result = await cloudinary.uploader.upload(file.path, { folder: 'cygnus_banners' });
                     const alignVal = newAligns[i] || '50% 50%';
                     finalBanners.push({ url: result.secure_url, public_id: result.public_id, align: alignVal });
-                    try { require('fs').unlinkSync(file.path); } catch(e){}
+                    try { require('fs').unlinkSync(file.path); } catch (e) {}
                 }
             }
 
@@ -267,11 +280,26 @@ const mainController = {
                 announcement_text,
                 slider_speed: parseInt(slider_speed) || 5,
                 banners: finalBanners,
+                // --- Huinchas ---
+                promo_strips: promoStrips,
+                ticker_active: ticker_active === 'on',
+                ticker_speed: parseInt(ticker_speed) || 35,
                 updated_at: new Date()
             };
 
-            const { error } = await supabase.from('site_config').upsert({ id: 1, ...configData });
-            if(error) throw error;
+            // Intento principal con todas las columnas (incluyendo promo_strips)
+            let { error } = await supabase.from('site_config').upsert({ id: 1, ...configData });
+
+            // Fallback: si la columna promo_strips aún no existe en la BD, reintenta sin ella
+            if (error && /promo_strips|ticker_active|ticker_speed/i.test(error.message || '')) {
+                console.warn('⚠️ Columnas de huinchas no existen. Guardando sin ellas. Agrega en Supabase: promo_strips JSONB, ticker_active BOOLEAN, ticker_speed INT');
+                const { promo_strips, ticker_active: _ta, ticker_speed: _ts, ...safeData } = configData;
+                const retry = await supabase.from('site_config').upsert({ id: 1, ...safeData });
+                if (retry.error) throw retry.error;
+            } else if (error) {
+                throw error;
+            }
+
             res.redirect('/admin/configuracion?success=true');
         } catch (error) {
             console.error("Error updating config:", error);

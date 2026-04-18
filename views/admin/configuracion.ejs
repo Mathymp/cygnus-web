@@ -20,6 +20,9 @@
             <div class="publish-wrapper-fluid">
         
                 <form id="configForm" onsubmit="event.preventDefault();">
+                    <!-- campo oculto con las huinchas serializadas -->
+                    <input type="hidden" name="promo_strips_json" id="promoStripsJson">
+                    <input type="hidden" name="ticker_speed" id="tickerSpeedHidden" value="<%= config.ticker_speed || 35 %>">
                     
                     <div class="header-actions-bar">
                         <div class="header-title">
@@ -98,6 +101,30 @@
                                     <div id="annQuill" class="quill-modern-small">
                                         <%- config.announcement_text || '¡Contáctanos hoy mismo!' %>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Panel: Huinchas Promocionales (Ticker) -->
+                            <div class="panel-card animated-entry" style="animation-delay: 0.15s; overflow: visible !important;">
+                                <div class="panel-header-flex">
+                                    <h3 class="panel-title"><i class="fas fa-ribbon"></i> Huinchas Promocionales</h3>
+                                    <label class="privacy-switch">
+                                        <input type="checkbox" name="ticker_active" id="tickerSwitch" <%= (config.ticker_active !== false) ? 'checked' : '' %>>
+                                        <span class="slider-round"></span>
+                                        <span class="switch-text">Activar Ticker</span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <div class="editor-toolbar-extra" style="margin-bottom: 10px;">
+                                        <label>Promociones (desactiva sin borrar)</label>
+                                        <button type="button" class="btn-ghost-sm" onclick="addPromoStrip()">
+                                            <i class="fas fa-plus"></i> Nueva huincha
+                                        </button>
+                                    </div>
+                                    <div id="promoStripsContainer" class="promo-strips-list"></div>
+                                    <p class="text-muted text-sm" style="margin-top:8px;">
+                                        <i class="fas fa-info-circle"></i> Puedes tener varias huinchas activas a la vez. Se apilan bajo el header.
+                                    </p>
                                 </div>
                             </div>
 
@@ -498,20 +525,23 @@
             // 1. Textos y Configuración Base
             formData.append('maintenance_active', document.getElementById('maintSwitch').checked ? 'on' : 'off');
             formData.append('maintenance_message', qMaint.root.innerHTML);
-            
+
             formData.append('announcement_active', document.getElementById('annSwitch').checked ? 'on' : 'off');
             formData.append('announcement_bg', document.getElementById('annBg').value);
             formData.append('announcement_color', document.getElementById('annColor').value);
             formData.append('announcement_text', qAnn.root.innerHTML);
-            
+
             formData.append('slider_speed', document.getElementById('sliderSpeed').value);
+
+            // 1.b Huinchas Promocionales (Ticker)
+            formData.append('ticker_active', document.getElementById('tickerSwitch').checked ? 'on' : 'off');
+            formData.append('ticker_speed', document.getElementById('tickerSpeedHidden').value || '35');
+            formData.append('promo_strips_json', JSON.stringify(collectPromoStrips()));
 
             // 2. Banners (Respetando el orden visual)
             const items = document.querySelectorAll('.banner-item');
-            
             items.forEach(item => {
                 const align = item.dataset.align;
-                
                 if (item.dataset.type === 'existing') {
                     // Es viejo: enviamos URL y Alineación
                     formData.append('existing_banners_urls[]', item.dataset.url);
@@ -614,6 +644,258 @@
                 document.getElementById('emojiMenu').classList.remove('active');
             }
         });
+
+        /* =========================================
+           HUINCHAS PROMOCIONALES (Ticker)
+           ========================================= */
+        const PROMO_ICON_OPTIONS = [
+            { v: 'fas fa-bolt',       label: '⚡ Rápido' },
+            { v: 'fas fa-fire',       label: '🔥 Hot' },
+            { v: 'fas fa-star',       label: '⭐ Destacado' },
+            { v: 'fas fa-tag',        label: '🏷️ Oferta' },
+            { v: 'fas fa-percent',    label: '💯 Descuento' },
+            { v: 'fas fa-gem',        label: '💎 Premium' },
+            { v: 'fas fa-home',       label: '🏠 Casa' },
+            { v: 'fas fa-key',        label: '🔑 Llave' },
+            { v: 'fas fa-map-marker-alt', label: '📍 Ubicación' },
+            { v: 'fas fa-bullhorn',   label: '📢 Anuncio' },
+            { v: 'fas fa-gift',       label: '🎁 Promoción' },
+            { v: 'fas fa-crown',      label: '👑 Luxury' },
+            { v: '',                  label: '— Sin ícono' }
+        ];
+
+        function addPromoStrip(preset) {
+            const data = Object.assign({
+                id: 'p_' + Math.random().toString(36).slice(2, 9),
+                active: true,
+                text: '¡Nueva propiedad destacada! Agenda tu visita hoy.',
+                icon: 'fas fa-fire',
+                bg: '#2563eb',
+                color: '#ffffff',
+                fontSize: 14,
+                fontWeight: 600,
+                style: 'normal',
+                speed: 35
+            }, preset || {});
+
+            const container = document.getElementById('promoStripsContainer');
+            const row = document.createElement('div');
+            row.className = 'promo-strip-row';
+            row.dataset.id = data.id;
+
+            const iconOptionsHTML = PROMO_ICON_OPTIONS.map(o =>
+                `<option value="${o.v}" ${o.v === data.icon ? 'selected' : ''}>${o.label}</option>`
+            ).join('');
+
+            row.innerHTML = `
+                <div class="ps-toprow">
+                    <label class="ps-switch">
+                        <input type="checkbox" class="ps-active" ${data.active ? 'checked' : ''}>
+                        <span></span>
+                    </label>
+                    <input type="text" class="ps-text" value="${(data.text || '').replace(/"/g, '&quot;')}" placeholder="Texto de la promo (puede incluir HTML básico)">
+                    <button type="button" class="ps-del" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="ps-controls">
+                    <div class="ps-ctrl">
+                        <label>Ícono</label>
+                        <select class="ps-icon">${iconOptionsHTML}</select>
+                    </div>
+                    <div class="ps-ctrl">
+                        <label>Fondo</label>
+                        <input type="color" class="ps-bg" value="${data.bg}">
+                    </div>
+                    <div class="ps-ctrl">
+                        <label>Texto</label>
+                        <input type="color" class="ps-color" value="${data.color}">
+                    </div>
+                    <div class="ps-ctrl">
+                        <label>Tamaño (px)</label>
+                        <input type="number" class="ps-fontsize" min="10" max="24" value="${data.fontSize}">
+                    </div>
+                    <div class="ps-ctrl">
+                        <label>Peso</label>
+                        <select class="ps-fontweight">
+                            <option value="400" ${data.fontWeight == 400 ? 'selected' : ''}>Normal</option>
+                            <option value="600" ${data.fontWeight == 600 ? 'selected' : ''}>Semibold</option>
+                            <option value="700" ${data.fontWeight == 700 ? 'selected' : ''}>Bold</option>
+                            <option value="900" ${data.fontWeight == 900 ? 'selected' : ''}>Black</option>
+                        </select>
+                    </div>
+                    <div class="ps-ctrl">
+                        <label>Estilo</label>
+                        <select class="ps-style">
+                            <option value="normal" ${data.style === 'normal' ? 'selected' : ''}>Normal</option>
+                            <option value="uppercase" ${data.style === 'uppercase' ? 'selected' : ''}>MAYÚSCULAS</option>
+                        </select>
+                    </div>
+                    <div class="ps-ctrl">
+                        <label>Velocidad (s)</label>
+                        <input type="number" class="ps-speed" min="10" max="120" value="${data.speed}">
+                    </div>
+                </div>
+                <div class="ps-preview">
+                    <div class="ps-preview-inner"></div>
+                </div>
+            `;
+            container.appendChild(row);
+
+            // Live preview bindings
+            const refresh = () => renderPromoRowPreview(row);
+            row.querySelectorAll('input, select').forEach(el => {
+                el.addEventListener('input', refresh);
+                el.addEventListener('change', refresh);
+            });
+            row.querySelector('.ps-del').addEventListener('click', () => {
+                Swal.fire({
+                    title: '¿Eliminar huincha?',
+                    text: 'Esta promoción se borrará al guardar.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#ef4444'
+                }).then(r => { if (r.isConfirmed) { row.remove(); updatePromoTickerPreview(); } });
+            });
+            refresh();
+            updatePromoTickerPreview();
+        }
+
+        function renderPromoRowPreview(row) {
+            const text = row.querySelector('.ps-text').value || '';
+            const icon = row.querySelector('.ps-icon').value;
+            const bg = row.querySelector('.ps-bg').value;
+            const color = row.querySelector('.ps-color').value;
+            const fs = row.querySelector('.ps-fontsize').value;
+            const fw = row.querySelector('.ps-fontweight').value;
+            const st = row.querySelector('.ps-style').value;
+            const preview = row.querySelector('.ps-preview-inner');
+            preview.style.background = bg;
+            preview.style.color = color;
+            preview.style.fontSize = fs + 'px';
+            preview.style.fontWeight = fw;
+            preview.style.textTransform = (st === 'uppercase') ? 'uppercase' : 'none';
+            preview.style.letterSpacing = (st === 'uppercase') ? '1.5px' : 'normal';
+            preview.innerHTML = (icon ? `<i class="${icon}"></i> ` : '') + text;
+            updatePromoTickerPreview();
+        }
+
+        function collectPromoStrips() {
+            const rows = document.querySelectorAll('#promoStripsContainer .promo-strip-row');
+            return Array.from(rows).map(row => ({
+                id: row.dataset.id,
+                active: row.querySelector('.ps-active').checked,
+                text: row.querySelector('.ps-text').value,
+                icon: row.querySelector('.ps-icon').value,
+                bg: row.querySelector('.ps-bg').value,
+                color: row.querySelector('.ps-color').value,
+                fontSize: parseInt(row.querySelector('.ps-fontsize').value) || 14,
+                fontWeight: parseInt(row.querySelector('.ps-fontweight').value) || 600,
+                style: row.querySelector('.ps-style').value,
+                speed: parseInt(row.querySelector('.ps-speed').value) || 35
+            }));
+        }
+
+        function updatePromoTickerPreview() {
+            const iframe = document.getElementById('liveFrame');
+            const doc = iframe && iframe.contentDocument;
+            if (!doc || !doc.body) return;
+
+            let wrap = doc.querySelector('.cygnus-ticker-wrap');
+            if (!wrap) {
+                wrap = doc.createElement('div');
+                wrap.className = 'cygnus-ticker-wrap';
+                doc.body.prepend(wrap);
+            }
+
+            const tickerOn = document.getElementById('tickerSwitch').checked;
+            const strips = collectPromoStrips().filter(s => s.active);
+
+            if (!tickerOn || strips.length === 0) { wrap.innerHTML = ''; return; }
+
+            wrap.innerHTML = strips.map(s => {
+                const upper = s.style === 'uppercase' ? 'text-transform:uppercase;letter-spacing:1.5px;' : '';
+                const items = Array.from({ length: 8 }).map(() =>
+                    `<span class="cygnus-ticker-item">${s.icon ? '<i class="'+s.icon+'"></i>' : ''} ${s.text}</span>`
+                ).join('');
+                return `<div class="cygnus-ticker" style="background:${s.bg};color:${s.color};font-size:${s.fontSize}px;font-weight:${s.fontWeight};${upper}">
+                            <div class="cygnus-ticker-track" style="animation-duration:${s.speed}s">${items}</div>
+                        </div>`;
+            }).join('');
+        }
+
+        function initPromoStrips() {
+            const existing = <%- JSON.stringify(config.promo_strips || []) %>;
+            if (Array.isArray(existing) && existing.length > 0) {
+                existing.forEach(p => addPromoStrip(p));
+            }
+            document.getElementById('tickerSwitch').addEventListener('change', updatePromoTickerPreview);
+        }
+        document.addEventListener('DOMContentLoaded', () => { setTimeout(initPromoStrips, 300); });
     </script>
-</body>
+
+    <style>
+            .promo-strips-list { display:flex; flex-direction:column; gap:14px; }
+            .promo-strip-row {
+                background: #fff;
+                border: 1px solid #e2e8f0;
+                border-radius: 12px;
+                padding: 14px;
+                box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+            }
+            .ps-toprow { display:flex; gap:10px; align-items:center; }
+            .ps-toprow .ps-text {
+                flex:1; height:40px; border:1px solid #e2e8f0; border-radius:8px;
+                padding:0 12px; font-size:0.92rem; outline:none;
+            }
+            .ps-toprow .ps-text:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+            .ps-del {
+                width:40px; height:40px; border-radius:8px; border:none;
+                background:#fee2e2; color:#dc2626; cursor:pointer; transition:.2s;
+            }
+            .ps-del:hover { background:#fecaca; }
+            .ps-switch { position:relative; width:40px; height:22px; display:inline-block; flex-shrink:0; }
+            .ps-switch input { opacity:0; width:0; height:0; }
+            .ps-switch span {
+                position:absolute; cursor:pointer; inset:0; background:#cbd5e1;
+                border-radius:22px; transition:.2s;
+            }
+            .ps-switch span::before {
+                content:""; position:absolute; height:16px; width:16px; left:3px; bottom:3px;
+                background:white; border-radius:50%; transition:.2s;
+            }
+            .ps-switch input:checked + span { background:#2563eb; }
+            .ps-switch input:checked + span::before { transform:translateX(18px); }
+
+            .ps-controls {
+                display:grid;
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap:10px;
+                margin-top:12px;
+            }
+            .ps-ctrl { display:flex; flex-direction:column; gap:4px; }
+            .ps-ctrl label { font-size:0.7rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:.3px; }
+            .ps-ctrl input[type="number"], .ps-ctrl select {
+                height:36px; border:1px solid #e2e8f0; border-radius:8px;
+                padding:0 8px; font-size:.9rem; outline:none; background:white;
+            }
+            .ps-ctrl input[type="color"] {
+                width:100%; height:36px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer;
+            }
+
+            .ps-preview {
+                margin-top:12px;
+                border-radius:10px;
+                overflow:hidden;
+                border:1px solid #e2e8f0;
+            }
+            .ps-preview-inner {
+                padding:10px 14px;
+                text-align:center;
+            }
+            .ps-preview-inner i { margin-right:6px; }
+        </style>
+    </body>
 </html>

@@ -835,215 +835,288 @@ body {
 
 /* =========================================
    MEDIA QUERIES – MÓVIL Y TABLET (≤900px)
+   Rediseño 2026: full-bleed gallery, no-crop,
+   precio y mapa inmediatos, UI luxury-startup.
    ========================================= */
 @media (max-width: 900px) {
-    /* Contenedor principal: más ancho en móvil */
+
+    /* Contenedor principal ajustado a pantalla */
     .main-container {
-        padding: 20px 16px; /* Ajuste de padding lateral */
+        padding: 18px 14px 40px 14px;
+        max-width: 100%;
     }
 
-    /* Grid se convierte en flujo vertical */
+    /* Flujo vertical */
     .content-grid {
         display: flex;
         flex-direction: column;
+        gap: 0;
+        margin-top: 8px;
     }
-
-    /* Ocultar columnas para reordenar con order */
     .col-left,
-    .col-right {
-        display: contents;
-    }
+    .col-right { display: contents; }
 
-    /* ORDEN DE LOS BLOQUES */
-    .block-header {
-        order: 1;
-    }
-    .block-gallery {
-        order: 2;
-    }
-    .block-price {
-        order: 3;
-    }
-    .block-surface {
-        order: 4;
-    }
-    .block-specs {
-        order: 5;
-    }
-    .block-description {
-        order: 6;
-    }
-    .block-features {
-        order: 7;
-    }
-    .block-map {
-        order: 8;
-    }
+    /* ORDEN: Título → Galería → Precio → Mapa → Superficie → Specs → Descripción → Features */
+    .block-header      { order: 1; }
+    .block-gallery     { order: 2; }
+    .block-price       { order: 3; }
+    .block-map         { order: 4; }
+    .block-surface     { order: 5; }
+    .block-specs       { order: 6; }
+    .block-description { order: 7; }
+    .block-features    { order: 8; }
 
-    /* Espaciado uniforme entre bloques */
+    /* Espaciado vertical uniforme entre bloques */
     .block-header,
     .block-gallery,
     .block-price,
+    .block-map,
     .block-surface,
     .block-specs,
     .block-description,
-    .block-features,
-    .block-map {
-        margin-bottom: 24px;
+    .block-features {
+        margin-bottom: 18px;
     }
+    .block-header { margin-bottom: 14px; }
 
-    /* La galería no necesita margen inferior adicional */
-    .block-gallery {
-        margin-bottom: 0;
-    }
-
-    /* Ajustes de título */
+    /* Título y dirección */
+    .prop-header { margin-bottom: 0; }
     .prop-title {
-        font-size: 1.8rem; /* Reducido para móvil */
-        letter-spacing: -0.5px;
+        font-size: 1.7rem;
+        font-weight: 900;
+        letter-spacing: -0.6px;
+        line-height: 1.15;
+    }
+    .address-inline {
+        font-size: 0.95rem;
+        gap: 8px;
+        margin-top: 4px;
+    }
+    .addr-text { font-size: 0.9rem; }
+
+    /* ---------- GALERÍA FULL-BLEED SIN RECORTE ---------- */
+    .gallery-container {
+        /* rompe el padding del contenedor para usar 100% del ancho */
+        width: calc(100% + 28px);
+        margin-left: -14px;
+        margin-right: -14px;
     }
 
-    /* Imagen principal: aspect ratio y cover para llenar */
+    /* Escenario principal: altura natural según foto, fondo blur que rellena bordes */
     .main-stage {
+        position: relative;
         height: auto;
-        aspect-ratio: 16 / 9;
-        background: #cbd5e1;
+        aspect-ratio: 4 / 3;
+        background: #0f172a;
+        border-radius: 0;
+        box-shadow: none;
+        overflow: hidden;
+        cursor: default;
+    }
+    /* Capa de fondo borrosa (usa la misma imagen via JS src) */
+    .main-stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: inherit; /* fallback */
+        background-size: cover;
+        background-position: center;
+        filter: blur(28px) brightness(0.55) saturate(1.1);
+        transform: scale(1.15);
+        z-index: 0;
     }
     .main-stage img {
-        object-fit: cover; /* Cambiado a cover para que llene el contenedor */
+        position: relative;
+        z-index: 1;
         width: 100%;
         height: 100%;
+        object-fit: contain;           /* NO recortamos la foto original */
+        background: transparent;
+        transition: opacity .2s;
     }
 
-    /* Ocultar referencia en móvil */
-    .ref-pill {
-        display: none !important;
+    /* Overlays más compactos y legibles */
+    .img-overlay-left {
+        top: 14px; left: 14px;
+        gap: 6px;
+        z-index: 60;
+    }
+    .img-overlay-right { top: 14px; right: 14px; z-index: 60; }
+    .badge {
+        padding: 5px 11px;
+        font-size: 0.68rem;
+        letter-spacing: 0.3px;
+    }
+    .ref-pill { display: none !important; }
+
+    /* Controles de navegación SIEMPRE visibles en móvil, impolutos */
+    .nav-btn {
+        opacity: 1 !important;
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(6px);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+        font-size: 0.95rem;
+        z-index: 20;
+    }
+    .nav-btn.prev { left: 12px; }
+    .nav-btn.next { right: 12px; }
+
+    .photo-badge {
+        bottom: 14px; right: 14px;
+        padding: 5px 12px;
+        font-size: 0.75rem;
+        background: rgba(15,23,42,0.82);
+        z-index: 20;
     }
 
-    /* Overlays en móvil */
-    .img-overlay-left,
-    .img-overlay-right {
-        z-index: 60 !important;
-    }
+    /* Estado vendido/arrendado/reservado */
     .status-overlay-center {
         align-items: flex-end;
         justify-content: flex-start;
-        height: auto;
-        top: auto;
-        bottom: 20px;
-        left: 20px;
-        right: auto;
-        width: auto;
-        background: transparent;
-        z-index: 50;
+        top: auto; bottom: 14px; left: 14px; right: auto;
+        height: auto; width: auto;
     }
     .status-glass-card {
-        transform: rotate(0deg);
-        font-size: 1.2rem;
-        padding: 8px 20px;
-        backdrop-filter: blur(8px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        transform: none;
+        font-size: 1rem;
+        padding: 7px 16px;
+        letter-spacing: 1.2px;
+        border-radius: 8px;
     }
 
-    /* Miniaturas: reducimos tamaño para que quepan mejor */
+    /* Miniaturas: padding lateral respecto al contenedor real */
     .thumb-scroll-wrapper {
-        padding: 0 30px;
+        margin-top: 10px;
+        padding: 0 14px;
     }
+    .thumb-track { gap: 8px; }
     .thumb {
-        flex: 0 0 100px; /* Un poco más pequeñas */
-        height: 70px;
+        flex: 0 0 74px;
+        height: 56px;
+        border-radius: 8px;
     }
-    .thumb-nav {
-        width: 28px;
-        height: 28px;
-    }
+    .thumb.active { box-shadow: 0 0 0 2px rgba(37,99,235,.25); }
+    .thumb-nav { display: none; } /* el scroll táctil basta */
 
-    /* Tarjeta de precio: estática y ancho completo */
+    /* ---------- TARJETA DE PRECIO – LUXURY ---------- */
     .sticky-widget {
         position: static !important;
         top: auto;
         width: 100%;
+        padding: 28px 22px 24px 22px !important;
+        border-radius: 20px;
+        box-shadow:
+            0 1px 2px rgba(15,23,42,0.04),
+            0 12px 32px -12px rgba(37,99,235,0.18),
+            0 24px 48px -24px rgba(15,23,42,0.12);
+        border: 1px solid rgba(226,232,240,0.9);
+        background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+    }
+    .status-pill-widget { top: 16px; left: 16px; }
+    .uf-corner-badge   { top: 16px; right: 16px; font-size: 0.6rem; }
+    .price-header { margin: 10px 0 18px 0; }
+    .price-main {
+        font-size: 2.1rem;
+        letter-spacing: -1px;
+        margin: 6px 0 8px 0;
+    }
+    .price-main .period { font-size: 1rem; }
+    .lbl-op { font-size: 0.7rem; }
+    .price-pill-small { font-size: 0.82rem; }
+
+    .extra-costs {
+        padding: 14px 16px;
+        margin-bottom: 18px;
+        border-radius: 10px;
+    }
+    .cost-item { font-size: 0.9rem; }
+
+    .agent-row { gap: 12px; margin-bottom: 18px; }
+    .agent-img-wrap { width: 52px; height: 52px; }
+    .agent-row h4 { font-size: 1rem; }
+
+    .action-btns { gap: 9px; }
+    .btn {
+        padding: 13px;
+        font-size: 0.98rem;
+        border-radius: 11px;
     }
 
-    /* Tarjeta de superficie: menos padding y gap */
+    /* ---------- MAPA (inmediatamente tras el precio) ---------- */
+    .info-section.block-map { padding: 0; }
+    .block-map .section-title {
+        font-size: 1.15rem;
+        margin-bottom: 12px;
+    }
+    .map-frame {
+        height: 260px;
+        border-radius: 16px;
+        border: 1px solid var(--c-border);
+        box-shadow: 0 8px 22px -10px rgba(15,23,42,0.12);
+    }
+
+    /* ---------- SUPERFICIE ---------- */
     .surface-mini-card {
-        margin-top: 0;
-        margin-bottom: 0;
-        justify-content: center;
-        gap: 20px;
-        padding: 16px 16px;
+        margin: 0;
+        padding: 14px 16px;
+        gap: 14px;
+        justify-content: space-around;
+        border-radius: 14px;
     }
-    .surface-mini-value {
-        font-size: 1.2rem;
-    }
+    .surface-mini-item { align-items: center; text-align: center; }
+    .surface-mini-label { font-size: 0.62rem; }
+    .surface-mini-value { font-size: 1.15rem; }
 
-    /* Ficha técnica: padding reducido */
+    /* ---------- SPECS ---------- */
     .specs-section {
-        padding: 20px 16px;
+        padding: 18px 16px;
+        border-radius: 16px;
         margin-bottom: 0;
     }
     .specs-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
     }
-    .spec-card.wide {
-        grid-column: span 2;
-    }
-    .spec-card {
-        padding: 10px;
-    }
+    .spec-card { padding: 12px 8px; min-height: 80px; }
+    .spec-card.wide { grid-column: span 2; }
+    .specs-title { font-size: 0.78rem; }
+    .block-description .desc-text { font-size: 0.98rem; line-height: 1.7; }
 
-    /* Características destacadas: padding reducido */
+    /* ---------- FEATURES ---------- */
     .features-widget {
-        margin-top: 0;
-        margin-bottom: 0;
         padding: 16px;
+        border-radius: 16px;
+        margin: 0;
     }
-    .fw-list {
-        grid-template-columns: 1fr;
+    .fw-list { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .fw-item { padding: 7px 10px; font-size: 0.8rem; }
+
+    /* No zoom en móvil (evita gestos raros) */
+    .main-stage.zoomed img { transform: none; }
+}
+
+/* ---------- MÓVIL PEQUEÑO ≤480 ---------- */
+@media (max-width: 480px) {
+    .prop-title { font-size: 1.45rem; }
+    .main-stage { aspect-ratio: 4 / 3; }
+    .nav-btn { width: 36px; height: 36px; font-size: 0.85rem; }
+    .price-main { font-size: 1.85rem; }
+    .surface-mini-card { gap: 10px; padding: 12px 10px; }
+    .surface-mini-value { font-size: 1.05rem; }
+    .fw-list { grid-template-columns: 1fr; }
+    .map-frame { height: 230px; }
+    .thumb { flex: 0 0 64px; height: 48px; }
+}
+
+/* ---------- MÓVIL ULTRA PEQUEÑO ≤360 ---------- */
+@media (max-width: 360px) {
+    .surface-mini-card {
+        flex-direction: row;
+        flex-wrap: wrap;
         gap: 8px;
     }
-    .fw-item {
-        width: 100%;
-        padding: 8px 12px;
-        font-size: 0.85rem;
-    }
-
-    /* Mapa: altura reducida */
-    .map-frame {
-        height: 240px;
-        margin-bottom: 0;
-    }
-
-    /* Ajustes para pantallas muy pequeñas */
-    @media (max-width: 480px) {
-        .surface-mini-card {
-            gap: 16px;
-            padding: 14px 12px;
-        }
-        .surface-mini-value {
-            font-size: 1.1rem;
-        }
-        .price-main {
-            font-size: 2rem;
-        }
-        .prop-title {
-            font-size: 1.6rem;
-        }
-    }
-
-    @media (max-width: 360px) {
-        .surface-mini-card {
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-        }
-        .surface-mini-item {
-            align-items: center;
-        }
-        .thumb {
-            flex: 0 0 80px;
-            height: 60px;
-        }
-    }
+    .sticky-widget { padding: 22px 16px 20px 16px !important; }
+    .price-main { font-size: 1.65rem; }
 }

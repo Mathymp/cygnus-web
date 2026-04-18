@@ -10,7 +10,7 @@
 }
 
 /* =========================================
-   HUINCHA DE ANUNCIOS
+   HUINCHA DE ANUNCIOS (legacy, una sola cinta)
    ========================================= */
 .top-announcement-bar {
     width: 100%;
@@ -28,8 +28,58 @@
 }
 
 /* =========================================
-   HERO SECTION (Ahora con Swiper)
+   HUINCHAS PROMOCIONALES (Ticker Marquee)
    ========================================= */
+.cygnus-ticker-wrap {
+    position: relative;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+.cygnus-ticker {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    padding: 9px 0;
+    line-height: 1.3;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04) inset;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 60px, #000 calc(100% - 60px), transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0, #000 60px, #000 calc(100% - 60px), transparent 100%);
+}
+.cygnus-ticker-track {
+    display: inline-flex;
+    white-space: nowrap;
+    animation: cygnusTickerScroll linear infinite;
+    animation-duration: 35s;
+    will-change: transform;
+}
+.cygnus-ticker:hover .cygnus-ticker-track { animation-play-state: paused; }
+.cygnus-ticker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 28px;
+    flex-shrink: 0;
+}
+.cygnus-ticker-item i { opacity: 0.95; font-size: 0.95em; }
+.cygnus-ticker-item::after {
+    content: "✦";
+    display: inline-block;
+    margin-left: 28px;
+    opacity: 0.4;
+    font-size: 0.75em;
+}
+@keyframes cygnusTickerScroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+@media (max-width: 600px) {
+    .cygnus-ticker { padding: 7px 0; }
+    .cygnus-ticker-item { padding: 0 18px; gap: 8px; }
+    .cygnus-ticker-item::after { margin-left: 18px; }
+}
+
 .hero-section {
     position: relative; 
     height: 500px;

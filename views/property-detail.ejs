@@ -193,7 +193,7 @@
                 </header>
 
                 <div class="gallery-container block-gallery">
-                    <div class="main-stage" id="mainStage" onclick="toggleZoom(event)">
+                    <div class="main-stage" id="mainStage" style="background-image: url('<%= images[0] %>');" onclick="toggleZoom(event)">
                         <% if(statusConfig.showOverlay) { %>
                             <div class="status-overlay-center">
                                 <div class="status-glass-card <%= statusConfig.glassClass %>">
@@ -468,7 +468,11 @@
             if(mainStage.classList.contains('zoomed')) toggleZoom({target: mainStage});
             currentIdx = idx;
             stageImg.style.opacity = 0.5;
-            setTimeout(() => { stageImg.src = images[currentIdx]; stageImg.style.opacity = 1; }, 150);
+            setTimeout(() => {
+                stageImg.src = images[currentIdx];
+                mainStage.style.backgroundImage = `url('${images[currentIdx]}')`;
+                stageImg.style.opacity = 1;
+            }, 150);
             count.innerText = `${currentIdx + 1} / ${images.length}`;
             thumbs.forEach(t => t.classList.remove('active'));
             if(thumbs[currentIdx]) {
