@@ -263,7 +263,7 @@
         document.addEventListener('mouseup',   () => isDragging = false);
         document.addEventListener('mousemove', e => {
             if (!isDragging) return;
-            lon -= (e.clientX - prevX) * 0.2;
+            lon += (e.clientX - prevX) * 0.2;
             lat -= (e.clientY - prevY) * 0.2;
             lat  = Math.max(-85, Math.min(85, lat));
             prevX = e.clientX; prevY = e.clientY;
@@ -286,7 +286,7 @@
         cv.addEventListener('touchmove', e => {
             e.preventDefault();
             if (e.touches.length === 1) {
-                lon -= (e.touches[0].clientX - touchPrevX) * 0.2;
+                lon += (e.touches[0].clientX - touchPrevX) * 0.2;
                 lat -= (e.touches[0].clientY - touchPrevY) * 0.2;
                 lat  = Math.max(-85, Math.min(85, lat));
                 touchPrevX = e.touches[0].clientX; touchPrevY = e.touches[0].clientY;

@@ -450,7 +450,7 @@
                                 <button class="sl-rst" onclick="resetSl('exposure')" title="Reset">↺</button>
                             </div>
                         </div>
-                        <input type="range" class="psl" id="sl-exposure" min="-100" max="100" value="0" oninput="onSl('exposure',this)">
+                        <input type="range" class="psl" id="sl-exposure" min="-150" max="150" value="0" oninput="onSl('exposure',this)">
                     </div>
 
                     <div class="sl-row">
@@ -668,17 +668,20 @@ async function readDJIExif(file) {
         if (!tags) return null;
 
         const toF = v => (v === undefined || v === null) ? null : parseFloat(v);
+        const pick = (a, b) => { const va = toF(a); return va !== null ? va : toF(b); };
 
-        // DJI escribe los ángulos del gimbal en XMP
-        const yaw   = toF(tags.GimbalYawDegree)   != null ? toF(tags.GimbalYawDegree)   : toF(tags['drone-dji:GimbalYawDegree']);
-        const pitch = toF(tags.GimbalPitchDegree)  != null ? toF(tags.GimbalPitchDegree)  : toF(tags['drone-dji:GimbalPitchDegree']);
-        const roll  = toF(tags.GimbalRollDegree)   != null ? toF(tags.GimbalRollDegree)   : (toF(tags['drone-dji:GimbalRollDegree']) || 0);
-        const fl35  = toF(tags.FocalLengthIn35mmFormat) || toF(tags.FocalLength35efl) || 24;
-        const imgW  = tags.ExifImageWidth  || tags.PixelXDimension || 4000;
-        const imgH  = tags.ExifImageHeight || tags.PixelYDimension || 3000;
+        // DJI XMP — GimbalYaw puede ser relativo al dron (modelos nuevos) o absoluto (modelos viejos)
+        // FlightYaw = rumbo absoluto del dron; GimbalYaw = ángulo del gimbal relativo al cuerpo del dron
+        // Azimut absoluto = FlightYaw + GimbalYaw  (funciona en ambos casos)
+        const rawGimbalYaw = pick(tags.GimbalYawDegree,   tags['drone-dji:GimbalYawDegree']);
+        const flightYaw    = pick(tags.FlightYawDegree,    tags['drone-dji:FlightYawDegree'])  || 0;
+        const pitch        = pick(tags.GimbalPitchDegree,  tags['drone-dji:GimbalPitchDegree']);
+        const fl35         = toF(tags.FocalLengthIn35mmFormat) || toF(tags.FocalLength35efl) || 24;
+        const imgW         = tags.ExifImageWidth  || tags.PixelXDimension || 4000;
+        const imgH         = tags.ExifImageHeight || tags.PixelYDimension || 3000;
 
-        if (yaw === null || pitch === null) return null;
-        return { yaw, pitch, roll, fl35, imgW, imgH };
+        if (rawGimbalYaw === null || pitch === null) return null;
+        return { rawGimbalYaw, flightYaw, pitch, fl35, imgW, imgH };
     } catch (_) { return null; }
 }
 
@@ -707,6 +710,15 @@ async function buildPlanFromExif(sortedFiles, onProgress) {
         return { plan: getDJIPlan(n), usedExif: false, exifCount: validCount };
     }
 
+    // Detectar si GimbalYaw es relativo (modelos nuevos como Mini 3, Air 3) o absoluto (modelos viejos)
+    // Si el rango de GimbalYaw es pequeño (<45°) → es relativo al dron → usar FlightYaw + GimbalYaw
+    // Si el rango es grande (>180°)               → ya es absoluto → usar GimbalYaw directo
+    const yawValues = validArr.map(e => e.rawGimbalYaw);
+    const yawMin = Math.min(...yawValues);
+    const yawMax = Math.max(...yawValues);
+    const yawRange = yawMax - yawMin;
+    const gimbalIsRelative = yawRange < 45;
+
     // Calcular FOV real desde focal length (35mm equivalent)
     const first = validArr[0];
     const fl35  = first.fl35 || 24;
@@ -714,24 +726,30 @@ async function buildPlanFromExif(sortedFiles, onProgress) {
     const hFovDeg = 2 * Math.atan(18 / fl35) * 180 / Math.PI;
     const vFovDeg = 2 * Math.atan(Math.tan(hFovDeg * Math.PI / 360) / ar) * 180 / Math.PI;
 
-    // Construir shots desde ángulos reales
-    // DJI: GimbalPitch -90=nadir, 0=horizontal, +45=arriba
-    //      GimbalYaw   = azimut absoluto en brújula (-180..+180)
+    console.log(`DJI EXIF — ${n} fotos | GimbalYaw rango: ${yawRange.toFixed(1)}° → ${gimbalIsRelative ? 'RELATIVO (usa FlightYaw+GimbalYaw)' : 'ABSOLUTO (usa GimbalYaw)'} | FOV ${hFovDeg.toFixed(1)}°×${vFovDeg.toFixed(1)}°`);
+
+    // Construir shots: [elevation, azimuth_absoluto]
     const shots = exifArr.map((e, i) => {
         if (!e) {
-            // Interpolar desde vecinos
             const prev = exifArr.slice(0, i).reverse().find(Boolean);
             const next = exifArr.slice(i + 1).find(Boolean);
             const ref  = prev || next;
-            return ref ? [ref.pitch, ref.yaw] : [0, 0];
+            if (!ref) return [0, 0];
+            const az = gimbalIsRelative ? (ref.flightYaw + ref.rawGimbalYaw) : ref.rawGimbalYaw;
+            return [ref.pitch, az];
         }
-        return [e.pitch, e.yaw];  // [elevation, azimuth]
+        // Azimut absoluto según detección
+        const absYaw = gimbalIsRelative
+            ? (e.flightYaw + e.rawGimbalYaw)
+            : e.rawGimbalYaw;
+        return [e.pitch, absYaw];  // [elevation, azimuth]
     });
 
     return {
         plan: { shots, hFov: hFovDeg, vFov: vFovDeg },
         usedExif: true,
-        exifCount: validCount
+        exifCount: validCount,
+        gimbalIsRelative
     };
 }
 
@@ -865,12 +883,14 @@ async function stitchDJI(imageFiles) {
                 const dy = sinLat;
                 const dz = cosLat * Math.cos(lon);
 
-                let bCam = -1, bU = 0, bV = 0, bDot = 0.04;
+                // Weighted blend de todas las cámaras que cubren este pixel
+                // → elimina seams duros, produce fusión suave entre imágenes
+                let rSum = 0, gSum = 0, bSum = 0, wSum = 0;
 
                 for (let k = 0; k < NC; k++) {
                     const b   = k * 8;
                     const dot = dx*CD[b] + dy*CD[b+1] + dz*CD[b+2];
-                    if (dot <= bDot) continue;
+                    if (dot <= 0.05) continue;
 
                     const u = (dx*CD[b+3] + dz*CD[b+4]) / dot;
                     if (u < -halfH || u > halfH) continue;
@@ -878,20 +898,29 @@ async function stitchDJI(imageFiles) {
                     const v = (dx*CD[b+5] + dy*CD[b+6] + dz*CD[b+7]) / dot;
                     if (v < -halfV || v > halfV) continue;
 
-                    bDot = dot; bCam = k;
-                    bU = (u / halfH + 1) * 0.5;
-                    bV = (1 - v / halfV) * 0.5;
+                    // Peso: mayor en el centro de la imagen, menor en los bordes
+                    const wu = 1 - Math.abs(u) / halfH;
+                    const wv = 1 - Math.abs(v) / halfV;
+                    const w  = wu * wv * dot;
+
+                    const imgU = (u / halfH + 1) * 0.5;
+                    const imgV = (1 - v / halfV) * 0.5;
+                    const sx   = Math.min(Math.round(imgU * (SW - 1)), SW - 1);
+                    const sy   = Math.min(Math.round(imgV * (SH - 1)), SH - 1);
+                    const si   = (sy * SW + sx) * 4;
+                    const sp   = srcPix[k];
+
+                    rSum += sp[si]   * w;
+                    gSum += sp[si+1] * w;
+                    bSum += sp[si+2] * w;
+                    wSum += w;
                 }
 
-                if (bCam >= 0) {
-                    const sx = Math.min(Math.round(bU * (SW - 1)), SW - 1);
-                    const sy = Math.min(Math.round(bV * (SH - 1)), SH - 1);
-                    const si = (sy * SW + sx) * 4;
+                if (wSum > 0) {
                     const oi = (py * OUT_W + px) * 4;
-                    const sp = srcPix[bCam];
-                    outPix[oi]   = sp[si];
-                    outPix[oi+1] = sp[si+1];
-                    outPix[oi+2] = sp[si+2];
+                    outPix[oi]   = rSum / wSum;
+                    outPix[oi+1] = gSum / wSum;
+                    outPix[oi+2] = bSum / wSum;
                     outPix[oi+3] = 255;
                 }
             }
@@ -940,7 +969,7 @@ function initThree() {
     document.addEventListener('mouseup', () => isDrag = false);
     document.addEventListener('mousemove', e => {
         if (!isDrag) return;
-        lon -= (e.clientX - pX) * 0.22;
+        lon += (e.clientX - pX) * 0.22;
         lat = Math.max(-85, Math.min(85, lat - (e.clientY - pY) * 0.22));
         pX = e.clientX; pY = e.clientY;
     });
@@ -958,7 +987,7 @@ function initThree() {
     cv.addEventListener('touchmove', e => {
         e.preventDefault();
         if (e.touches.length === 1) {
-            lon -= (e.touches[0].clientX - tpX) * 0.22;
+            lon += (e.touches[0].clientX - tpX) * 0.22;
             lat = Math.max(-85, Math.min(85, lat - (e.touches[0].clientY - tpY) * 0.22));
             tpX = e.touches[0].clientX; tpY = e.touches[0].clientY;
         } else if (e.touches.length === 2) {
