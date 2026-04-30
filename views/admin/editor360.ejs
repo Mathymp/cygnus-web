@@ -559,6 +559,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7/dist/full.legacy.umd.js"></script>
 <script>
 'use strict';
 // =============================================================
@@ -623,25 +624,115 @@ const DJI_PLANS = {
 };
 
 function buildAutoPlan(count) {
+    // Estimación: 1 zenith + N anillos de 8 + 1 nadir
     const shots = [];
-    const rings = Math.max(1, Math.round(count / 8));
-    const extra = count - rings * 8;
+    const rings = Math.max(1, Math.round((count - 2) / 8));
+    let remaining = count;
 
-    // Anillos de 8 imágenes equiespaciadas
-    for (let r = 0; r < rings; r++) {
-        const el = (rings === 1) ? 0 : -60 + (r / (rings - 1)) * 120;
+    // Zenith
+    if (remaining > rings * 8) { shots.push([90, 0]); remaining--; }
+
+    // Anillos
+    const ringsToUse = Math.min(rings, Math.floor(remaining / 8));
+    for (let r = 0; r < ringsToUse; r++) {
+        const el = ringsToUse === 1 ? 0 : -50 + (r / (ringsToUse - 1)) * 100;
         const offset = (r % 2) * 22.5;
         for (let i = 0; i < 8; i++) shots.push([el, offset + i * 45]);
     }
+    remaining -= ringsToUse * 8;
 
-    if (extra > 0) shots.unshift([90, 0]);
-    if (extra > 1) shots.push([-90, 0]);
+    // Nadir
+    if (remaining > 0) { shots.push([-90, 0]); remaining--; }
+
+    // Rellenar extras distribuyendo en el ecuador
+    let extra = 0;
+    while (shots.length < count) { shots.push([0, (extra++ * 360) / count]); }
+
+    // Recortar si hay demás (no debería ocurrir)
+    if (shots.length > count) shots.length = count;
 
     return { shots, hFov: 73.7, vFov: 55.2 };
 }
 
 function getDJIPlan(count) {
     return DJI_PLANS[count] || buildAutoPlan(count);
+}
+
+// =============================================================
+//  LECTURA EXIF/XMP DE FOTOS DJI (via exifr)
+// =============================================================
+async function readDJIExif(file) {
+    if (typeof exifr === 'undefined') return null;
+    try {
+        const tags = await exifr.parse(file, { xmp: true, exif: true, iptc: false, icc: false });
+        if (!tags) return null;
+
+        const toF = v => (v === undefined || v === null) ? null : parseFloat(v);
+
+        // DJI escribe los ángulos del gimbal en XMP
+        const yaw   = toF(tags.GimbalYawDegree)   != null ? toF(tags.GimbalYawDegree)   : toF(tags['drone-dji:GimbalYawDegree']);
+        const pitch = toF(tags.GimbalPitchDegree)  != null ? toF(tags.GimbalPitchDegree)  : toF(tags['drone-dji:GimbalPitchDegree']);
+        const roll  = toF(tags.GimbalRollDegree)   != null ? toF(tags.GimbalRollDegree)   : (toF(tags['drone-dji:GimbalRollDegree']) || 0);
+        const fl35  = toF(tags.FocalLengthIn35mmFormat) || toF(tags.FocalLength35efl) || 24;
+        const imgW  = tags.ExifImageWidth  || tags.PixelXDimension || 4000;
+        const imgH  = tags.ExifImageHeight || tags.PixelYDimension || 3000;
+
+        if (yaw === null || pitch === null) return null;
+        return { yaw, pitch, roll, fl35, imgW, imgH };
+    } catch (_) { return null; }
+}
+
+async function buildPlanFromExif(sortedFiles, onProgress) {
+    const n = sortedFiles.length;
+    const exifArr = new Array(n).fill(null);
+
+    // Leer en lotes de 8 en paralelo
+    const BATCH = 8;
+    for (let i = 0; i < n; i += BATCH) {
+        const end = Math.min(i + BATCH, n);
+        await Promise.all(
+            sortedFiles.slice(i, end).map((f, j) =>
+                readDJIExif(f).then(r => { exifArr[i + j] = r; })
+            )
+        );
+        onProgress(1 + (end / n) * 6, `Leyendo EXIF ${end}/${n}...`, '');
+        await yieldThread();
+    }
+
+    const validArr = exifArr.filter(Boolean);
+    const validCount = validArr.length;
+
+    if (validCount < Math.ceil(n * 0.5)) {
+        console.warn(`Solo ${validCount}/${n} fotos tienen EXIF válido. Usando patrón estimado.`);
+        return { plan: getDJIPlan(n), usedExif: false, exifCount: validCount };
+    }
+
+    // Calcular FOV real desde focal length (35mm equivalent)
+    const first = validArr[0];
+    const fl35  = first.fl35 || 24;
+    const ar    = (first.imgW || 4000) / (first.imgH || 3000);
+    const hFovDeg = 2 * Math.atan(18 / fl35) * 180 / Math.PI;
+    const vFovDeg = 2 * Math.atan(Math.tan(hFovDeg * Math.PI / 360) / ar) * 180 / Math.PI;
+
+    // Construir shots desde ángulos reales
+    // DJI: GimbalPitch -90=nadir, 0=horizontal, +45=arriba
+    //      GimbalYaw   = azimut absoluto en brújula (-180..+180)
+    const shots = exifArr.map((e, i) => {
+        if (!e) {
+            // Interpolar desde vecinos
+            const prev = exifArr.slice(0, i).reverse().find(Boolean);
+            const next = exifArr.slice(i + 1).find(Boolean);
+            const ref  = prev || next;
+            return ref ? [ref.pitch, ref.yaw] : [0, 0];
+        }
+        return [e.pitch, e.yaw];  // [elevation, azimuth]
+    });
+
+    return {
+        plan: { shots, hFov: hFovDeg, vFov: vFovDeg },
+        usedExif: true,
+        exifCount: validCount
+    };
 }
 
 // =============================================================
@@ -694,24 +785,29 @@ async function stitchDJI(imageFiles) {
     const n = sorted.length;
     if (n < 4) throw new Error('Se necesitan al menos 4 imágenes para coser el panorama.');
 
-    const plan = getDJIPlan(n);
+    // — PASO 1: Leer ángulos reales de gimbal desde metadatos EXIF/XMP de DJI —
+    setStitchProgress(1, 'Leyendo metadatos EXIF/XMP...', `${n} fotos encontradas`);
+    const { plan, usedExif, exifCount } = await buildPlanFromExif(sorted, setStitchProgress);
+    const exifInfo = usedExif
+        ? `✅ EXIF leído: ${exifCount}/${n} — FoV ${plan.hFov.toFixed(1)}°×${plan.vFov.toFixed(1)}°`
+        : `⚠️ Sin EXIF — usando patrón estimado para ${n} tomas`;
 
-    setStitchProgress(3, `Cargando ${n} fotos DJI...`, `Patrón: ${n} tomas (${plan.shots.length} posiciones)`);
+    setStitchProgress(8, `Cargando ${n} fotos DJI...`, exifInfo);
 
-    // Cargar imágenes a resolución moderada
+    // — PASO 2: Cargar imágenes a resolución moderada —
     const MAX_SRC_PX = 1024;
     const srcCanvases = [];
     for (let i = 0; i < n; i++) {
         const c = await loadImgFromFile(sorted[i], MAX_SRC_PX);
         srcCanvases.push(c);
-        setStitchProgress(3 + (i + 1) / n * 14, `Cargando foto ${i + 1}/${n}...`, sorted[i].name);
+        setStitchProgress(8 + (i + 1) / n * 12, `Cargando foto ${i + 1}/${n}...`, sorted[i].name);
         await yieldThread();
     }
 
     const SW = srcCanvases[0].width;
     const SH = srcCanvases[0].height;
 
-    setStitchProgress(18, 'Leyendo píxeles de fuentes...', '');
+    setStitchProgress(21, 'Leyendo píxeles de fuentes...', '');
     await yieldThread();
 
     // Extraer píxeles de cada fuente (TypedArray para velocidad)
@@ -801,7 +897,7 @@ async function stitchDJI(imageFiles) {
             }
         }
 
-        const pct = 20 + (ci + 1) / totalChunks * 74;
+        const pct = 23 + (ci + 1) / totalChunks * 70;
         setStitchProgress(pct, `Cosiendo panorama... ${Math.round((ci+1)/totalChunks*100)}%`, `Fila ${rowEnd}/${OUT_H}`);
         await yieldThread();
     }
