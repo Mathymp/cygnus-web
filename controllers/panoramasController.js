@@ -1,5 +1,17 @@
-const supabase = require('../config/supabaseClient');
+const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+require('dotenv').config();
+
+// Para panoramas usamos service_role key que bypasea RLS (operación server-side)
+// Si no tienes SUPABASE_SERVICE_KEY en .env, ejecuta en Supabase SQL Editor:
+// ALTER TABLE panoramas_360 DISABLE ROW LEVEL SECURITY;
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
+);
+
+// Cloudinary para eliminar imágenes (la config ya fue cargada por cloudinaryConfig.js)
+const cloudinary = require('cloudinary').v2;
 
 const SQL_CREATE_TABLE = `
 -- Ejecuta esto en Supabase SQL Editor si no existe la tabla:
@@ -137,10 +149,31 @@ const panoramasController = {
     deletePanorama: async (req, res) => {
         try {
             const { id } = req.params;
+
+            // 1. Obtener public_id antes de borrar
+            const { data: pano } = await supabase
+                .from('panoramas_360')
+                .select('public_id, name')
+                .eq('id', id)
+                .single();
+
+            // 2. Eliminar de Cloudinary si tiene public_id
+            if (pano && pano.public_id) {
+                try {
+                    const result = await cloudinary.uploader.destroy(pano.public_id, { invalidate: true });
+                    console.log(`Cloudinary delete "${pano.name}":`, result.result);
+                } catch (cdnErr) {
+                    console.warn('Advertencia Cloudinary delete:', cdnErr.message);
+                }
+            }
+
+            // 3. Eliminar de Supabase
             const { error } = await supabase.from('panoramas_360').delete().eq('id', id);
             if (error) throw error;
+
             res.json({ success: true });
         } catch (e) {
+            console.error('deletePanorama:', e);
             res.json({ success: false, error: e.message });
         }
     },

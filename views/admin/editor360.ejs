@@ -6,620 +6,544 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* Layout de 3 columnas fijo */
         .editor360-root {
             display: flex;
             height: 100vh;
             overflow: hidden;
-            background: #0a0f1e;
+            background: #080e1d;
         }
 
-        /* SIDEBAR IZQUIERDO - Archivos DJI */
-        .sidebar-files {
+        /* ---- SIDEBAR IZQUIERDO ---- */
+        .sf-panel {
             width: 260px;
             min-width: 260px;
-            background: #111827;
+            background: #0f1729;
             border-right: 1px solid rgba(255,255,255,0.07);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
-        .sf-header {
-            padding: 16px;
+        .sf-head {
+            padding: 14px 14px 12px;
             border-bottom: 1px solid rgba(255,255,255,0.07);
         }
-        .sf-header h2 {
+        .sf-head h2 {
             color: #f1f5f9;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 700;
-            letter-spacing: 0.5px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 7px;
+            margin-bottom: 10px;
         }
-        .sf-header h2 i { color: #3b82f6; }
+        .sf-head h2 i { color: #3b82f6; }
         .btn-folder {
             width: 100%;
-            padding: 10px;
+            padding: 9px;
             background: linear-gradient(135deg, #2563eb, #1e40af);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 0.82rem;
+            border-radius: 7px;
+            font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            transition: all 0.2s;
+            gap: 7px;
+            transition: opacity 0.2s;
         }
-        .btn-folder:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn-folder-single {
+        .btn-folder:hover { opacity: 0.88; }
+        .btn-single-file {
             width: 100%;
-            padding: 8px;
+            padding: 7px;
             background: transparent;
-            color: #64748b;
-            border: 1px dashed #334155;
-            border-radius: 8px;
-            font-size: 0.78rem;
+            color: #4b5563;
+            border: 1px dashed #1f2d42;
+            border-radius: 7px;
+            font-size: 0.75rem;
             cursor: pointer;
-            margin-top: 6px;
-            transition: all 0.2s;
+            margin-top: 5px;
+            transition: all 0.15s;
         }
-        .btn-folder-single:hover { border-color: #3b82f6; color: #93c5fd; }
+        .btn-single-file:hover { border-color: #3b82f6; color: #93c5fd; }
+        .sf-hint { font-size: 0.68rem; color: #374151; line-height: 1.5; margin-top: 7px; }
 
-        .sf-hint {
-            font-size: 0.72rem;
-            color: #475569;
-            margin-top: 8px;
-            line-height: 1.5;
-        }
-
-        .sf-file-list {
+        .sf-body {
             flex: 1;
             overflow-y: auto;
             padding: 8px;
         }
-        .sf-file-list::-webkit-scrollbar { width: 4px; }
-        .sf-file-list::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
-
-        .file-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            margin-bottom: 4px;
-            transition: all 0.15s;
-        }
-        .file-item:hover { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.2); }
-        .file-item.active { background: rgba(59,130,246,0.2); border-color: #3b82f6; }
-        .file-item.pano-detected { border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.08); }
-        .file-item.pano-detected.active { border-color: #10b981; background: rgba(16,185,129,0.2); }
-        .file-thumb {
-            width: 44px;
-            height: 28px;
-            border-radius: 4px;
-            object-fit: cover;
-            flex-shrink: 0;
-            background: #1e293b;
-        }
-        .file-info { flex: 1; min-width: 0; }
-        .file-name {
-            font-size: 0.75rem;
-            color: #e2e8f0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-weight: 500;
-        }
-        .file-size { font-size: 0.68rem; color: #64748b; margin-top: 2px; }
-        .file-badge {
-            font-size: 0.6rem;
-            font-weight: 700;
-            padding: 2px 5px;
-            border-radius: 4px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-        .badge-pano { background: #065f46; color: #6ee7b7; }
-        .badge-img  { background: #1e3a5f; color: #93c5fd; }
+        .sf-body::-webkit-scrollbar { width: 3px; }
+        .sf-body::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
 
         .sf-empty {
             text-align: center;
-            padding: 40px 16px;
-            color: #475569;
-            font-size: 0.8rem;
+            padding: 30px 10px;
+            color: #1f2d42;
+            font-size: 0.75rem;
         }
-        .sf-empty i { font-size: 2.5rem; display: block; margin-bottom: 12px; color: #1e293b; }
+        .sf-empty i { font-size: 2rem; display: block; margin-bottom: 8px; }
 
-        /* VISOR CENTRAL */
-        .editor360-viewer {
+        .sf-status-card {
+            background: #0d1c30;
+            border: 1px solid rgba(59,130,246,0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        .sf-status-title { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .sf-stat { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .sf-stat-label { font-size: 0.75rem; color: #64748b; }
+        .sf-stat-value { font-size: 0.75rem; color: #93c5fd; font-weight: 700; }
+
+        .sf-file-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 8px;
+            border-radius: 6px;
+            margin-bottom: 3px;
+            border: 1px solid transparent;
+            transition: all 0.1s;
+        }
+        .sf-file-item.pano { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.05); }
+        .sf-thumb { width: 40px; height: 25px; border-radius: 3px; object-fit: cover; flex-shrink: 0; background: #1e293b; }
+        .sf-fname { font-size: 0.7rem; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+        .sf-fsize { font-size: 0.65rem; color: #374151; white-space: nowrap; }
+        .sf-badge { font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.3px; }
+        .badge-p { background: #064e3b; color: #6ee7b7; }
+        .badge-i { background: #1e3a5f; color: #93c5fd; }
+
+        /* ---- VISOR CENTRAL ---- */
+        .ev-panel {
             flex: 1;
             position: relative;
             overflow: hidden;
-            background: #060d1a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: #04070f;
         }
-        #viewer360 {
-            width: 100%;
-            height: 100%;
-            cursor: grab;
-        }
+        #viewer360 { width: 100%; height: 100%; cursor: grab; }
         #viewer360:active { cursor: grabbing; }
 
-        .viewer-placeholder {
+        /* Drop Zone (estado inicial) */
+        .drop-zone {
             position: absolute;
             inset: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            color: rgba(255,255,255,0.3);
+            gap: 20px;
+            color: rgba(255,255,255,0.15);
             pointer-events: none;
         }
-        .viewer-placeholder i { font-size: 5rem; }
-        .viewer-placeholder p { font-size: 1rem; }
-        .viewer-placeholder.hidden { display: none; }
+        .drop-zone.hidden { display: none; }
+        .drop-zone i { font-size: 7rem; }
+        .drop-zone p { font-size: 1.1rem; max-width: 320px; text-align: center; }
 
-        .viewer-hint {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(8px);
-            color: rgba(255,255,255,0.7);
-            font-size: 0.78rem;
-            padding: 6px 14px;
-            border-radius: 20px;
-            display: flex;
-            gap: 16px;
-        }
-        .viewer-hint span { display: flex; align-items: center; gap: 6px; }
-
-        .loading-overlay {
+        /* Overlay de progreso de stitching */
+        .stitch-overlay {
             position: absolute;
             inset: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(4, 7, 15, 0.95);
+            backdrop-filter: blur(4px);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            color: white;
-            z-index: 10;
+            gap: 24px;
+            z-index: 20;
             display: none;
         }
-        .loading-spinner {
-            width: 48px;
-            height: 48px;
-            border: 3px solid rgba(255,255,255,0.2);
-            border-top-color: #3b82f6;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* SIDEBAR DERECHO - Controles */
-        .sidebar-controls {
+        .stitch-overlay.visible { display: flex; }
+        .stitch-logo { color: rgba(255,255,255,0.3); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; }
+        .stitch-icon { font-size: 4rem; animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { opacity: 0.4; transform: scale(0.95); } 50% { opacity: 0.9; transform: scale(1.05); } }
+        .stitch-progress-wrap {
             width: 300px;
-            min-width: 300px;
-            background: #111827;
+            background: rgba(255,255,255,0.07);
+            border-radius: 4px;
+            overflow: hidden;
+            height: 6px;
+        }
+        .stitch-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #2563eb, #06b6d4, #2563eb);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s linear infinite;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .stitch-text { color: rgba(255,255,255,0.6); font-size: 0.9rem; font-weight: 500; }
+        .stitch-sub  { color: rgba(255,255,255,0.3); font-size: 0.75rem; }
+
+        /* Hint viewer */
+        .viewer-hint {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .viewer-hint.visible { opacity: 1; }
+        .vh-pill {
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 4px 10px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
+
+        /* ---- SIDEBAR DERECHO ---- */
+        .sc-panel {
+            width: 290px;
+            min-width: 290px;
+            background: #0f1729;
             border-left: 1px solid rgba(255,255,255,0.07);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
         }
-        .sidebar-controls::-webkit-scrollbar { width: 4px; }
-        .sidebar-controls::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+        .sc-panel::-webkit-scrollbar { width: 3px; }
+        .sc-panel::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
 
-        .sc-section {
-            padding: 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.07);
-        }
-        .sc-section-title {
-            font-size: 0.72rem;
+        .sc-sec { padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .sc-label {
+            font-size: 0.68rem;
             font-weight: 700;
-            color: #64748b;
+            color: #374151;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
 
         .sc-name-input {
             width: 100%;
-            padding: 10px 12px;
+            padding: 9px 11px;
             background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 8px;
+            border: 1px solid #1f2d42;
+            border-radius: 7px;
             color: #f1f5f9;
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             outline: none;
             transition: border-color 0.15s;
         }
         .sc-name-input:focus { border-color: #3b82f6; }
-        .sc-name-input::placeholder { color: #475569; }
+        .sc-name-input::placeholder { color: #374151; }
 
-        /* Sliders */
-        .slider-row {
-            margin-bottom: 16px;
-        }
-        .slider-label {
+        /* Slider rows */
+        .sl-row { margin-bottom: 14px; }
+        .sl-head {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
         }
-        .slider-label span { font-size: 0.8rem; color: #94a3b8; font-weight: 500; }
-        .slider-value {
-            font-size: 0.8rem;
-            color: #e2e8f0;
-            font-weight: 700;
-            font-family: monospace;
-            min-width: 36px;
-            text-align: right;
-        }
-        .slider-reset {
-            width: 18px;
-            height: 18px;
-            border: none;
-            background: transparent;
-            color: #475569;
-            cursor: pointer;
-            padding: 0;
-            font-size: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            transition: color 0.15s;
-        }
-        .slider-reset:hover { color: #3b82f6; }
+        .sl-label { font-size: 0.78rem; color: #94a3b8; }
+        .sl-meta { display: flex; align-items: center; gap: 4px; }
+        .sl-val { font-size: 0.78rem; color: #e2e8f0; font-weight: 700; font-family: monospace; min-width: 32px; text-align: right; }
+        .sl-rst { background: none; border: none; color: #374151; cursor: pointer; font-size: 0.7rem; padding: 1px 3px; border-radius: 3px; transition: color 0.1s; }
+        .sl-rst:hover { color: #3b82f6; }
 
-        input[type=range].pano-slider {
+        input[type=range].psl {
+            appearance: none;
             -webkit-appearance: none;
             width: 100%;
-            height: 4px;
+            height: 3px;
             border-radius: 2px;
             background: linear-gradient(to right, #3b82f6 var(--pct, 50%), #1e293b var(--pct, 50%));
             outline: none;
             cursor: pointer;
         }
-        input[type=range].pano-slider::-webkit-slider-thumb {
+        input[type=range].psl::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 14px; height: 14px;
             border-radius: 50%;
             background: white;
             border: 2px solid #3b82f6;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
             cursor: pointer;
             transition: transform 0.1s;
         }
-        input[type=range].pano-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type=range].psl::-webkit-slider-thumb:hover { transform: scale(1.3); }
 
         /* Presets */
-        .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
         .preset-btn {
-            padding: 8px 6px;
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 8px;
-            color: #94a3b8;
-            font-size: 0.75rem;
+            padding: 7px 5px;
+            background: #0d1c30;
+            border: 1px solid #1f2d42;
+            border-radius: 7px;
+            color: #64748b;
+            font-size: 0.72rem;
             cursor: pointer;
             text-align: center;
-            transition: all 0.15s;
             font-weight: 600;
+            transition: all 0.15s;
         }
-        .preset-btn:hover { border-color: #3b82f6; color: #93c5fd; background: rgba(59,130,246,0.1); }
-        .preset-btn.active { border-color: #3b82f6; color: #93c5fd; background: rgba(59,130,246,0.15); }
+        .preset-btn:hover { border-color: #3b82f6; color: #93c5fd; background: rgba(59,130,246,0.08); }
+        .preset-btn.active { border-color: #3b82f6; color: #93c5fd; background: rgba(59,130,246,0.12); }
 
-        /* Save section */
-        .btn-save-360 {
+        /* Guardar */
+        .btn-save360 {
             width: 100%;
-            padding: 13px;
+            padding: 12px;
             background: linear-gradient(135deg, #2563eb, #1e40af);
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 0.95rem;
+            border-radius: 9px;
+            font-size: 0.9rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.3);
             transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(37,99,235,0.35);
         }
-        .btn-save-360:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); }
-        .btn-save-360:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-save360:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(37,99,235,0.4); }
+        .btn-save360:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
         .btn-back {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            color: #64748b;
-            font-size: 0.82rem;
+            gap: 7px;
+            color: #374151;
+            font-size: 0.78rem;
             text-decoration: none;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             transition: color 0.15s;
         }
         .btn-back:hover { color: #93c5fd; text-decoration: none; }
 
-        .saved-link-box {
-            background: rgba(16,185,129,0.1);
-            border: 1px solid rgba(16,185,129,0.3);
+        .saved-box {
+            background: rgba(16,185,129,0.08);
+            border: 1px solid rgba(16,185,129,0.25);
             border-radius: 8px;
-            padding: 12px;
+            padding: 11px;
             margin-top: 10px;
             display: none;
         }
-        .saved-link-box.visible { display: block; }
-        .saved-link-label { font-size: 0.72rem; color: #6ee7b7; font-weight: 700; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .saved-link-url { font-size: 0.78rem; color: #a7f3d0; font-family: monospace; word-break: break-all; }
-        .saved-link-actions { display: flex; gap: 6px; margin-top: 8px; }
-        .saved-link-btn {
-            flex: 1;
-            padding: 6px 8px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            text-align: center;
-            text-decoration: none;
-            transition: all 0.15s;
+        .saved-box.visible { display: block; }
+        .saved-lbl { font-size: 0.68rem; color: #6ee7b7; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .saved-url { font-size: 0.72rem; color: #a7f3d0; font-family: monospace; word-break: break-all; }
+        .saved-btns { display: flex; gap: 5px; margin-top: 7px; }
+        .saved-btn {
+            flex: 1; padding: 6px; border-radius: 6px; font-size: 0.72rem; font-weight: 600;
+            cursor: pointer; border: none; text-align: center; text-decoration: none;
         }
-        .btn-copy-link { background: #064e3b; color: #6ee7b7; }
-        .btn-copy-link:hover { background: #065f46; }
-        .btn-open-link { background: #1e3a5f; color: #93c5fd; }
-        .btn-open-link:hover { background: #1e40af; color: white; text-decoration: none; }
+        .sb-copy { background: #064e3b; color: #6ee7b7; }
+        .sb-copy:hover { background: #065f46; }
+        .sb-open { background: #1e3a5f; color: #93c5fd; display:flex; align-items:center; justify-content:center; }
+        .sb-open:hover { background: #1e40af; color: white; text-decoration:none; }
 
-        .existing-img-preview {
-            width: 100%;
-            aspect-ratio: 16/9;
-            border-radius: 8px;
-            object-fit: cover;
-            border: 1px solid #334155;
-            margin-bottom: 10px;
-            display: block;
+        .existing-thumb {
+            width: 100%; aspect-ratio: 16/9;
+            border-radius: 7px; object-fit: cover;
+            border: 1px solid #1f2d42; display: block; margin-bottom: 8px;
         }
-
-        .upload-progress {
-            height: 4px;
-            background: #1e293b;
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 8px;
-            display: none;
-        }
-        .upload-progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #2563eb, #06b6d4);
-            border-radius: 2px;
-            width: 0%;
-            transition: width 0.3s;
-        }
-        .upload-progress.visible { display: block; }
+        .upload-bar { height: 3px; background: #0d1c30; border-radius: 2px; overflow: hidden; margin-top: 8px; display: none; }
+        .upload-bar-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #06b6d4); border-radius: 2px; width: 0%; transition: width 0.3s; }
+        .upload-bar.v { display: block; }
     </style>
 </head>
 <body>
 <div class="app-layout">
     <%- include('../partials/sidebar-admin') %>
 
-    <main class="main-content" style="padding:0; overflow:hidden;">
-
+    <main class="main-content" style="padding:0;overflow:hidden;">
         <div class="editor360-root">
 
-            <!-- ===== SIDEBAR IZQUIERDO: ARCHIVOS DJI ===== -->
-            <div class="sidebar-files">
-                <div class="sf-header">
-                    <h2><i class="ph-bold ph-folder-open"></i> Archivos DJI</h2>
+            <!-- ====== PANEL IZQUIERDO: ARCHIVOS ====== -->
+            <div class="sf-panel">
+                <div class="sf-head">
+                    <h2><i class="ph-bold ph-folder-open"></i> Fotos DJI</h2>
 
                     <button class="btn-folder" onclick="document.getElementById('folderInput').click()">
-                        <i class="ph-bold ph-folder-open"></i>
-                        Seleccionar Carpeta
+                        <i class="ph-bold ph-folder-open"></i> Seleccionar Carpeta DJI
                     </button>
-
-                    <button class="btn-folder-single" onclick="document.getElementById('singleInput').click()">
-                        <i class="ph-bold ph-file-image"></i>
-                        Seleccionar imagen individual
+                    <button class="btn-single-file" onclick="document.getElementById('singleInput').click()">
+                        <i class="ph-bold ph-file-image"></i> Imagen individual (ya cosida)
                     </button>
+                    <p class="sf-hint">Selecciona la carpeta del DJI. Las fotos se cosen automáticamente.</p>
 
-                    <p class="sf-hint">
-                        Selecciona la carpeta del DJI. Se detectará automáticamente el archivo panorámico (PANO o más grande).
-                    </p>
-
-                    <!-- Input para carpeta completa -->
                     <input type="file" id="folderInput" webkitdirectory directory multiple accept="image/*" style="display:none;">
-                    <!-- Input para imagen individual -->
                     <input type="file" id="singleInput" accept="image/*" style="display:none;">
                 </div>
 
-                <div class="sf-file-list" id="fileList">
-                    <div class="sf-empty">
+                <div class="sf-body" id="sfBody">
+                    <div class="sf-empty" id="sfEmpty">
                         <i class="ph-bold ph-images"></i>
-                        <p>Selecciona una carpeta DJI o una imagen para comenzar</p>
+                        <p>Selecciona la carpeta de tu dron DJI</p>
                     </div>
                 </div>
             </div>
 
-            <!-- ===== VISOR CENTRAL THREE.JS ===== -->
-            <div class="editor360-viewer">
+            <!-- ====== VISOR CENTRAL ====== -->
+            <div class="ev-panel">
                 <div id="viewer360"></div>
 
-                <div class="viewer-placeholder" id="viewerPlaceholder">
-                    <i class="ph-bold ph-globe-hemisphere-west" style="font-size:6rem; color:rgba(255,255,255,0.08);"></i>
-                    <p>Selecciona una imagen para ver la panorámica</p>
+                <div class="drop-zone" id="dropZone">
+                    <i class="ph-bold ph-globe-hemisphere-west"></i>
+                    <p>Selecciona la carpeta de fotos DJI para coser y ver el panorama 360°</p>
                 </div>
 
-                <div class="loading-overlay" id="loadingOverlay">
-                    <div class="loading-spinner"></div>
-                    <p>Cargando panorámica...</p>
+                <div class="stitch-overlay" id="stitchOverlay">
+                    <p class="stitch-logo">Cygnus Group · Visor 360 Pro</p>
+                    <div class="stitch-icon">🌐</div>
+                    <div class="stitch-progress-wrap">
+                        <div class="stitch-progress-bar" id="stitchBar"></div>
+                    </div>
+                    <p class="stitch-text" id="stitchText">Iniciando...</p>
+                    <p class="stitch-sub" id="stitchSub">Esto puede tomar unos segundos</p>
                 </div>
 
-                <div class="viewer-hint" id="viewerHint" style="display:none;">
-                    <span><i class="ph ph-cursor"></i> Arrastra para girar</span>
-                    <span><i class="ph ph-magnifying-glass"></i> Scroll para zoom</span>
-                    <span><i class="ph ph-device-mobile"></i> Pellizca en móvil</span>
+                <div class="viewer-hint" id="viewerHint">
+                    <span class="vh-pill">🖱️ Arrastra para girar</span>
+                    <span class="vh-pill">🔍 Scroll = zoom</span>
+                    <span class="vh-pill">📱 Pellizca en móvil</span>
                 </div>
             </div>
 
-            <!-- ===== SIDEBAR DERECHO: AJUSTES ===== -->
-            <div class="sidebar-controls">
+            <!-- ====== SIDEBAR DERECHO: AJUSTES ====== -->
+            <div class="sc-panel">
 
-                <div class="sc-section">
+                <div class="sc-sec">
                     <a href="/admin/360" class="btn-back">
-                        <i class="ph-bold ph-arrow-left"></i> Volver al panel
+                        <i class="ph-bold ph-arrow-left"></i> Panel 360
                     </a>
-                    <div class="sc-section-title">Nombre del Proyecto</div>
+                    <div class="sc-label">Nombre del Proyecto</div>
                     <input type="text" id="projectName" class="sc-name-input"
-                           placeholder="Ej: Lote 45 — Proyecto Valle Norte"
+                           placeholder="Ej: Lote 12 – Valle del Norte"
                            value="<%= panorama ? panorama.name : '' %>">
                 </div>
 
-                <!-- Si viene una imagen existente, mostrar preview -->
                 <% if (panorama && panorama.image_url) { %>
-                <div class="sc-section">
-                    <div class="sc-section-title">Imagen actual</div>
-                    <img src="<%= panorama.image_url %>" class="existing-img-preview" alt="Panorama actual">
-                    <p style="font-size:0.72rem;color:#64748b;">Sube una nueva imagen para reemplazarla, o deja en blanco para mantenerla.</p>
+                <div class="sc-sec">
+                    <div class="sc-label">Imagen actual</div>
+                    <img src="<%= panorama.image_url %>" class="existing-thumb" alt="Panorama">
+                    <p style="font-size:0.68rem;color:#374151;">Carga nueva carpeta para reemplazar.</p>
                 </div>
                 <% } %>
 
                 <!-- AJUSTES DE IMAGEN -->
-                <div class="sc-section">
-                    <div class="sc-section-title">Ajustes de imagen</div>
+                <div class="sc-sec">
+                    <div class="sc-label">Ajustes de imagen</div>
 
-                    <div class="slider-row">
-                        <div class="slider-label">
-                            <span>☀️ Exposición</span>
-                            <div style="display:flex;align-items:center;gap:4px;">
-                                <span class="slider-value" id="val-exposure">0</span>
-                                <button class="slider-reset" onclick="resetSlider('exposure')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                    <div class="sl-row">
+                        <div class="sl-head">
+                            <span class="sl-label">☀️ Exposición</span>
+                            <div class="sl-meta">
+                                <span class="sl-val" id="v-exposure">0</span>
+                                <button class="sl-rst" onclick="resetSl('exposure')" title="Reset">↺</button>
                             </div>
                         </div>
-                        <input type="range" class="pano-slider" id="sl-exposure" min="-100" max="100" value="0" oninput="onSlider('exposure',this)">
+                        <input type="range" class="psl" id="sl-exposure" min="-100" max="100" value="0" oninput="onSl('exposure',this)">
                     </div>
 
-                    <div class="slider-row">
-                        <div class="slider-label">
-                            <span>◑ Contraste</span>
-                            <div style="display:flex;align-items:center;gap:4px;">
-                                <span class="slider-value" id="val-contrast">0</span>
-                                <button class="slider-reset" onclick="resetSlider('contrast')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                    <div class="sl-row">
+                        <div class="sl-head">
+                            <span class="sl-label">◑ Contraste</span>
+                            <div class="sl-meta">
+                                <span class="sl-val" id="v-contrast">0</span>
+                                <button class="sl-rst" onclick="resetSl('contrast')">↺</button>
                             </div>
                         </div>
-                        <input type="range" class="pano-slider" id="sl-contrast" min="-100" max="100" value="0" oninput="onSlider('contrast',this)">
+                        <input type="range" class="psl" id="sl-contrast" min="-100" max="100" value="0" oninput="onSl('contrast',this)">
                     </div>
 
-                    <div class="slider-row">
-                        <div class="slider-label">
-                            <span>🎨 Saturación</span>
-                            <div style="display:flex;align-items:center;gap:4px;">
-                                <span class="slider-value" id="val-saturation">0</span>
-                                <button class="slider-reset" onclick="resetSlider('saturation')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                    <div class="sl-row">
+                        <div class="sl-head">
+                            <span class="sl-label">🎨 Saturación</span>
+                            <div class="sl-meta">
+                                <span class="sl-val" id="v-saturation">0</span>
+                                <button class="sl-rst" onclick="resetSl('saturation')">↺</button>
                             </div>
                         </div>
-                        <input type="range" class="pano-slider" id="sl-saturation" min="-100" max="100" value="0" oninput="onSlider('saturation',this)">
+                        <input type="range" class="psl" id="sl-saturation" min="-100" max="100" value="0" oninput="onSl('saturation',this)">
                     </div>
 
-                    <div class="slider-row">
-                        <div class="slider-label">
-                            <span>🔆 Nitidez</span>
-                            <div style="display:flex;align-items:center;gap:4px;">
-                                <span class="slider-value" id="val-sharpness">0</span>
-                                <button class="slider-reset" onclick="resetSlider('sharpness')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                    <div class="sl-row">
+                        <div class="sl-head">
+                            <span class="sl-label">🔆 Nitidez</span>
+                            <div class="sl-meta">
+                                <span class="sl-val" id="v-sharpness">0</span>
+                                <button class="sl-rst" onclick="resetSl('sharpness')">↺</button>
                             </div>
                         </div>
-                        <input type="range" class="pano-slider" id="sl-sharpness" min="-50" max="50" value="0" oninput="onSlider('sharpness',this)">
+                        <input type="range" class="psl" id="sl-sharpness" min="-50" max="50" value="0" oninput="onSl('sharpness',this)">
                     </div>
 
-                    <div class="slider-row">
-                        <div class="slider-label">
-                            <span>🌡️ Temperatura</span>
-                            <div style="display:flex;align-items:center;gap:4px;">
-                                <span class="slider-value" id="val-temperature">0</span>
-                                <button class="slider-reset" onclick="resetSlider('temperature')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                    <div class="sl-row">
+                        <div class="sl-head">
+                            <span class="sl-label">🌡️ Temperatura</span>
+                            <div class="sl-meta">
+                                <span class="sl-val" id="v-temperature">0</span>
+                                <button class="sl-rst" onclick="resetSl('temperature')">↺</button>
                             </div>
                         </div>
-                        <input type="range" class="pano-slider" id="sl-temperature" min="-50" max="50" value="0" oninput="onSlider('temperature',this)">
+                        <input type="range" class="psl" id="sl-temperature" min="-50" max="50" value="0" oninput="onSl('temperature',this)">
                     </div>
 
-                    <div class="slider-row">
-                        <div class="slider-label">
-                            <span>🌑 Viñeta</span>
-                            <div style="display:flex;align-items:center;gap:4px;">
-                                <span class="slider-value" id="val-vignette">0</span>
-                                <button class="slider-reset" onclick="resetSlider('vignette')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                    <div class="sl-row" style="margin-bottom:0;">
+                        <div class="sl-head">
+                            <span class="sl-label">🌑 Viñeta</span>
+                            <div class="sl-meta">
+                                <span class="sl-val" id="v-vignette">0</span>
+                                <button class="sl-rst" onclick="resetSl('vignette')">↺</button>
                             </div>
                         </div>
-                        <input type="range" class="pano-slider" id="sl-vignette" min="0" max="100" value="0" oninput="onSlider('vignette',this)">
+                        <input type="range" class="psl" id="sl-vignette" min="0" max="100" value="0" oninput="onSl('vignette',this)">
                     </div>
                 </div>
 
                 <!-- PRESETS -->
-                <div class="sc-section">
-                    <div class="sc-section-title">Presets rápidos</div>
+                <div class="sc-sec">
+                    <div class="sc-label">Presets</div>
                     <div class="preset-grid">
                         <button class="preset-btn" onclick="applyPreset('natural')">🌿 Natural</button>
                         <button class="preset-btn" onclick="applyPreset('vivid')">💥 Vívido</button>
                         <button class="preset-btn" onclick="applyPreset('warm')">🌅 Cálido</button>
                         <button class="preset-btn" onclick="applyPreset('cool')">❄️ Frío</button>
                         <button class="preset-btn" onclick="applyPreset('dramatic')">🎬 Dramático</button>
-                        <button class="preset-btn" onclick="applyPreset('reset')">↺ Resetear</button>
+                        <button class="preset-btn" onclick="applyPreset('reset')">↺ Reset</button>
                     </div>
                 </div>
 
                 <!-- GUARDAR -->
-                <div class="sc-section">
-                    <div class="sc-section-title">Guardar Proyecto</div>
-
-                    <button class="btn-save-360" id="btnSave360" onclick="saveProject()">
+                <div class="sc-sec" style="border-bottom:none;">
+                    <div class="sc-label">Guardar</div>
+                    <button class="btn-save360" id="btnSave" onclick="saveProject()">
                         <i class="ph-bold ph-cloud-arrow-up"></i>
-                        <span id="btnSaveText">Guardar en Cloudinary</span>
+                        <span id="btnSaveTxt">Guardar en Cloudinary</span>
                     </button>
-
-                    <div class="upload-progress" id="uploadProgress">
-                        <div class="upload-progress-bar" id="progressBar"></div>
+                    <div class="upload-bar" id="uploadBar">
+                        <div class="upload-bar-fill" id="uploadBarFill"></div>
                     </div>
 
-                    <div class="saved-link-box" id="savedLinkBox">
-                        <div class="saved-link-label">✅ Link público generado</div>
-                        <div class="saved-link-url" id="savedLinkUrl"></div>
-                        <div class="saved-link-actions">
-                            <button class="saved-link-btn btn-copy-link" onclick="copyPublicLink()">
-                                <i class="ph-bold ph-copy"></i> Copiar link
+                    <div class="saved-box" id="savedBox">
+                        <div class="saved-lbl">✅ Link público</div>
+                        <div class="saved-url" id="savedUrl"></div>
+                        <div class="saved-btns">
+                            <button class="saved-btn sb-copy" onclick="copyLink()">
+                                <i class="ph-bold ph-copy"></i> Copiar
                             </button>
-                            <a class="saved-link-btn btn-open-link" id="savedLinkOpen" href="#" target="_blank">
-                                <i class="ph-bold ph-arrow-square-out"></i> Abrir
+                            <a class="saved-btn sb-open" id="savedOpen" href="#" target="_blank">
+                                <i class="ph-bold ph-arrow-square-out"></i>
                             </a>
                         </div>
-                    </div>
-                </div>
-
-                <!-- INFO -->
-                <div class="sc-section" style="border-bottom:none; padding-bottom:24px;">
-                    <div class="sc-section-title">Información</div>
-                    <div id="fileInfoBox" style="font-size:0.75rem;color:#64748b;line-height:1.8;">
-                        <% if (panorama) { %>
-                        <p>ID: <code style="color:#93c5fd;font-size:0.7rem;"><%= panorama.id %></code></p>
-                        <p>Creado: <%= new Date(panorama.created_at).toLocaleDateString('es-CL') %></p>
-                        <% } else { %>
-                        <p>Ningún archivo seleccionado</p>
-                        <% } %>
                     </div>
                 </div>
 
@@ -628,132 +552,339 @@
     </main>
 </div>
 
-<!-- Datos del panorama existente para JS -->
 <script>
-    const EXISTING_PANORAMA = <%- JSON.stringify(panorama || null) %>;
-    const BASE_URL = '<%= baseUrl %>';
+    const EXISTING = <%- JSON.stringify(panorama || null) %>;
+    const BASE_URL  = '<%= baseUrl %>';
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 <script>
-// ============================================================
+'use strict';
+// =============================================================
 //  ESTADO GLOBAL
-// ============================================================
-let selectedFile   = null;   // File object actualmente en visor
-let allFiles       = [];     // Todos los archivos de la carpeta
-let currentBlobUrl = null;   // objectURL activo
-let panoramaId     = EXISTING_PANORAMA ? EXISTING_PANORAMA.id : null;
+// =============================================================
+let panoramaId    = EXISTING ? EXISTING.id : null;
+let stitchedCanvas = null; // Canvas con el panorama cosido listo para subir
+let selectedSingleFile = null; // Archivo individual (ya cosido)
 
-const filters = {
-    exposure:    0,
-    contrast:    0,
-    saturation:  0,
-    sharpness:   0,
-    temperature: 0,
-    vignette:    0
-};
+const filters = { exposure:0, contrast:0, saturation:0, sharpness:0, temperature:0, vignette:0 };
 
 // Cargar settings del panorama existente
-if (EXISTING_PANORAMA && EXISTING_PANORAMA.settings) {
-    Object.assign(filters, EXISTING_PANORAMA.settings);
+if (EXISTING && EXISTING.settings) {
+    Object.assign(filters, EXISTING.settings);
     Object.keys(filters).forEach(k => {
         const sl = document.getElementById('sl-' + k);
-        if (sl) { sl.value = filters[k]; updateSliderGradient(sl); }
-        const vl = document.getElementById('val-' + k);
-        if (vl) vl.textContent = filters[k] > 0 ? '+' + filters[k] : filters[k];
+        if (sl) { sl.value = filters[k]; updateSlGradient(sl); }
+        const vl = document.getElementById('v-' + k);
+        if (vl) vl.textContent = filters[k] > 0 ? '+' + filters[k] : String(filters[k]);
     });
 }
 
-// ============================================================
-//  THREE.JS — VISOR 360
-// ============================================================
-let threeScene, threeCamera, threeRenderer, threeSphere, threeMaterial;
-let lon = 0, lat = 0, isDragging = false, prevX = 0, prevY = 0;
-let touchPrevX = 0, touchPrevY = 0, touchPrevDist = 0;
-let autoRotate = true;
+// =============================================================
+//  PATRONES DE CAPTURA DJI (elevation_deg, azimuth_deg)
+// =============================================================
+const DJI_PLANS = {
+    26: {
+        shots: [
+            [90,0],
+            [50,0],[50,45],[50,90],[50,135],[50,180],[50,225],[50,270],[50,315],
+            [0,22.5],[0,67.5],[0,112.5],[0,157.5],[0,202.5],[0,247.5],[0,292.5],[0,337.5],
+            [-50,0],[-50,45],[-50,90],[-50,135],[-50,180],[-50,225],[-50,270],[-50,315],
+            [-90,0]
+        ],
+        hFov: 73.7, vFov: 55.2
+    },
+    25: {
+        shots: [
+            [50,0],[50,45],[50,90],[50,135],[50,180],[50,225],[50,270],[50,315],
+            [0,22.5],[0,67.5],[0,112.5],[0,157.5],[0,202.5],[0,247.5],[0,292.5],[0,337.5],
+            [-50,0],[-50,45],[-50,90],[-50,135],[-50,180],[-50,225],[-50,270],[-50,315],
+            [-90,0]
+        ],
+        hFov: 73.7, vFov: 55.2
+    },
+    24: {
+        shots: [
+            [50,0],[50,45],[50,90],[50,135],[50,180],[50,225],[50,270],[50,315],
+            [0,22.5],[0,67.5],[0,112.5],[0,157.5],[0,202.5],[0,247.5],[0,292.5],[0,337.5],
+            [-50,0],[-50,45],[-50,90],[-50,135],[-50,180],[-50,225],[-50,270],[-50,315]
+        ],
+        hFov: 73.7, vFov: 55.2
+    },
+    20: {
+        shots: [
+            [60,0],[60,45],[60,90],[60,135],[60,180],[60,225],[60,270],[60,315],
+            [0,22.5],[0,67.5],[0,112.5],[0,157.5],[0,202.5],[0,247.5],[0,292.5],[0,337.5],
+            [-60,0],[-60,90],[-60,180],[-60,270]
+        ],
+        hFov: 73.7, vFov: 55.2
+    }
+};
+
+function buildAutoPlan(count) {
+    const shots = [];
+    const rings = Math.max(1, Math.round(count / 8));
+    const extra = count - rings * 8;
+
+    // Anillos de 8 imágenes equiespaciadas
+    for (let r = 0; r < rings; r++) {
+        const el = (rings === 1) ? 0 : -60 + (r / (rings - 1)) * 120;
+        const offset = (r % 2) * 22.5;
+        for (let i = 0; i < 8; i++) shots.push([el, offset + i * 45]);
+    }
+
+    if (extra > 0) shots.unshift([90, 0]);
+    if (extra > 1) shots.push([-90, 0]);
+
+    return { shots, hFov: 73.7, vFov: 55.2 };
+}
+
+function getDJIPlan(count) {
+    return DJI_PLANS[count] || buildAutoPlan(count);
+}
+
+// =============================================================
+//  HELPER: cargar imagen desde File con escala
+// =============================================================
+function loadImgFromFile(file, maxPx = 1024) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            // Escalar si excede maxPx
+            let w = img.naturalWidth, h = img.naturalHeight;
+            if (w > maxPx || h > maxPx) {
+                const ratio = Math.min(maxPx / w, maxPx / h);
+                w = Math.round(w * ratio);
+                h = Math.round(h * ratio);
+            }
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(c);
+        };
+        img.onerror = reject;
+        img.src = url;
+    });
+}
+
+function yieldThread() { return new Promise(r => setTimeout(r, 0)); }
+
+function fmtBytes(b) {
+    return b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
+}
+
+// =============================================================
+//  STITCHING DJI — PROYECCIÓN EQUIRECTANGULAR
+// =============================================================
+async function stitchDJI(imageFiles) {
+    const IMG_EXT = /\.(jpg|jpeg|png|webp)$/i;
+
+    // Ordenar archivos por número en el nombre (DJI_0001, DJI_0002...)
+    const sorted = [...imageFiles]
+        .filter(f => IMG_EXT.test(f.name))
+        .sort((a, b) => {
+            const na = parseInt(a.name.match(/\d+/)?.[0] || '0', 10);
+            const nb = parseInt(b.name.match(/\d+/)?.[0] || '0', 10);
+            return na - nb;
+        });
+
+    const n = sorted.length;
+    if (n < 4) throw new Error('Se necesitan al menos 4 imágenes para coser el panorama.');
+
+    const plan = getDJIPlan(n);
+
+    setStitchProgress(3, `Cargando ${n} fotos DJI...`, `Patrón: ${n} tomas (${plan.shots.length} posiciones)`);
+
+    // Cargar imágenes a resolución moderada
+    const MAX_SRC_PX = 1024;
+    const srcCanvases = [];
+    for (let i = 0; i < n; i++) {
+        const c = await loadImgFromFile(sorted[i], MAX_SRC_PX);
+        srcCanvases.push(c);
+        setStitchProgress(3 + (i + 1) / n * 14, `Cargando foto ${i + 1}/${n}...`, sorted[i].name);
+        await yieldThread();
+    }
+
+    const SW = srcCanvases[0].width;
+    const SH = srcCanvases[0].height;
+
+    setStitchProgress(18, 'Leyendo píxeles de fuentes...', '');
+    await yieldThread();
+
+    // Extraer píxeles de cada fuente (TypedArray para velocidad)
+    const srcPix = srcCanvases.map(c => c.getContext('2d').getImageData(0, 0, SW, SH).data);
+
+    // Salida equirectangular 2:1
+    const OUT_W = 3840;
+    const OUT_H = 1920;
+    const outPix = new Uint8ClampedArray(OUT_W * OUT_H * 4);
+
+    const PI2 = Math.PI * 2;
+    const hFovR = plan.hFov * Math.PI / 180;
+    const vFovR = plan.vFov * Math.PI / 180;
+    const halfH = Math.tan(hFovR / 2);
+    const halfV = Math.tan(vFovR / 2);
+
+    // Pre-calcular vectores de cámara (Float32Array para cache-efficiency)
+    // Layout: [fx,fy,fz,rx,rz,ux,uy,uz] × nCams
+    const NC = plan.shots.length;
+    const CD = new Float32Array(NC * 8);
+    plan.shots.forEach(([el, az], i) => {
+        const e = el * Math.PI / 180;
+        const a = az * Math.PI / 180;
+        const b = i * 8;
+        CD[b]   = Math.cos(e) * Math.sin(a); // fx
+        CD[b+1] = Math.sin(e);               // fy
+        CD[b+2] = Math.cos(e) * Math.cos(a); // fz
+        CD[b+3] = Math.cos(a);               // rx
+        CD[b+4] = -Math.sin(a);              // rz
+        CD[b+5] = -Math.sin(e) * Math.sin(a);// ux
+        CD[b+6] = Math.cos(e);               // uy
+        CD[b+7] = -Math.sin(e) * Math.cos(a);// uz
+    });
+
+    // Procesar en bloques de 32 filas para no bloquear la UI
+    const CHUNK = 32;
+    const totalChunks = Math.ceil(OUT_H / CHUNK);
+
+    for (let ci = 0; ci < totalChunks; ci++) {
+        const rowStart = ci * CHUNK;
+        const rowEnd   = Math.min(rowStart + CHUNK, OUT_H);
+
+        for (let py = rowStart; py < rowEnd; py++) {
+            // Latitud: de +90° (arriba) a -90° (abajo)
+            const lat    = Math.PI / 2 - (py / OUT_H) * Math.PI;
+            const cosLat = Math.cos(lat);
+            const sinLat = Math.sin(lat);
+
+            for (let px = 0; px < OUT_W; px++) {
+                // Longitud: -180° a +180°
+                const lon = (px / OUT_W) * PI2 - Math.PI;
+
+                // Vector de dirección 3D
+                const dx = cosLat * Math.sin(lon);
+                const dy = sinLat;
+                const dz = cosLat * Math.cos(lon);
+
+                let bCam = -1, bU = 0, bV = 0, bDot = 0.04;
+
+                for (let k = 0; k < NC; k++) {
+                    const b   = k * 8;
+                    const dot = dx*CD[b] + dy*CD[b+1] + dz*CD[b+2];
+                    if (dot <= bDot) continue;
+
+                    const u = (dx*CD[b+3] + dz*CD[b+4]) / dot;
+                    if (u < -halfH || u > halfH) continue;
+
+                    const v = (dx*CD[b+5] + dy*CD[b+6] + dz*CD[b+7]) / dot;
+                    if (v < -halfV || v > halfV) continue;
+
+                    bDot = dot; bCam = k;
+                    bU = (u / halfH + 1) * 0.5;
+                    bV = (1 - v / halfV) * 0.5;
+                }
+
+                if (bCam >= 0) {
+                    const sx = Math.min(Math.round(bU * (SW - 1)), SW - 1);
+                    const sy = Math.min(Math.round(bV * (SH - 1)), SH - 1);
+                    const si = (sy * SW + sx) * 4;
+                    const oi = (py * OUT_W + px) * 4;
+                    const sp = srcPix[bCam];
+                    outPix[oi]   = sp[si];
+                    outPix[oi+1] = sp[si+1];
+                    outPix[oi+2] = sp[si+2];
+                    outPix[oi+3] = 255;
+                }
+            }
+        }
+
+        const pct = 20 + (ci + 1) / totalChunks * 74;
+        setStitchProgress(pct, `Cosiendo panorama... ${Math.round((ci+1)/totalChunks*100)}%`, `Fila ${rowEnd}/${OUT_H}`);
+        await yieldThread();
+    }
+
+    setStitchProgress(95, 'Finalizando imagen...', '');
+    await yieldThread();
+
+    const outC = document.createElement('canvas');
+    outC.width = OUT_W; outC.height = OUT_H;
+    outC.getContext('2d').putImageData(new ImageData(outPix, OUT_W, OUT_H), 0, 0);
+
+    setStitchProgress(100, '¡Panorama cosido!', '');
+    return outC;
+}
+
+// =============================================================
+//  THREE.JS VIEWER
+// =============================================================
+let threeScene, threeCamera, threeRenderer, threeMat;
+let lon = 0, lat = 0, isDrag = false, pX = 0, pY = 0;
+let tpX = 0, tpY = 0, tpD = 0;
+let autoRot = true;
 
 function initThree() {
-    const container = document.getElementById('viewer360');
+    const cont = document.getElementById('viewer360');
     threeScene    = new THREE.Scene();
-    threeCamera   = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 1, 1100);
-    threeCamera.position.set(0, 0, 0);
-
+    threeCamera   = new THREE.PerspectiveCamera(75, cont.clientWidth / cont.clientHeight, 1, 1100);
     threeRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    threeRenderer.setSize(container.clientWidth, container.clientHeight);
+    threeRenderer.setSize(cont.clientWidth, cont.clientHeight);
     threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(threeRenderer.domElement);
+    cont.appendChild(threeRenderer.domElement);
 
-    // Esfera invertida para vista interior
-    const geo  = new THREE.SphereGeometry(500, 60, 40);
+    const geo = new THREE.SphereGeometry(500, 60, 40);
     geo.scale(-1, 1, 1);
-    threeMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0f1e });
-    threeSphere   = new THREE.Mesh(geo, threeMaterial);
-    threeScene.add(threeSphere);
+    threeMat = new THREE.MeshBasicMaterial({ color: 0x040710 });
+    threeScene.add(new THREE.Mesh(geo, threeMat));
 
-    // Controles de mouse
     const cv = threeRenderer.domElement;
-    cv.addEventListener('mousedown',  e => { isDragging = true; autoRotate = false; prevX = e.clientX; prevY = e.clientY; });
-    document.addEventListener('mouseup', () => isDragging = false);
+    cv.addEventListener('mousedown', e => { isDrag = true; autoRot = false; pX = e.clientX; pY = e.clientY; });
+    document.addEventListener('mouseup', () => isDrag = false);
     document.addEventListener('mousemove', e => {
-        if (!isDragging) return;
-        lon -= (e.clientX - prevX) * 0.25;
-        lat -= (e.clientY - prevY) * 0.25;
-        lat  = Math.max(-85, Math.min(85, lat));
-        prevX = e.clientX; prevY = e.clientY;
+        if (!isDrag) return;
+        lon -= (e.clientX - pX) * 0.22;
+        lat = Math.max(-85, Math.min(85, lat - (e.clientY - pY) * 0.22));
+        pX = e.clientX; pY = e.clientY;
     });
     cv.addEventListener('wheel', e => {
         threeCamera.fov = Math.max(30, Math.min(100, threeCamera.fov + e.deltaY * 0.04));
         threeCamera.updateProjectionMatrix();
         e.preventDefault();
     }, { passive: false });
-
-    // Touch
     cv.addEventListener('touchstart', e => {
-        touchPrevX = e.touches[0].clientX;
-        touchPrevY = e.touches[0].clientY;
-        autoRotate = false;
-        if (e.touches.length === 2) {
-            touchPrevDist = Math.hypot(
-                e.touches[0].clientX - e.touches[1].clientX,
-                e.touches[0].clientY - e.touches[1].clientY
-            );
-        }
+        autoRot = false;
+        tpX = e.touches[0].clientX; tpY = e.touches[0].clientY;
+        if (e.touches.length === 2)
+            tpD = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
     });
     cv.addEventListener('touchmove', e => {
         e.preventDefault();
         if (e.touches.length === 1) {
-            lon -= (e.touches[0].clientX - touchPrevX) * 0.25;
-            lat -= (e.touches[0].clientY - touchPrevY) * 0.25;
-            lat  = Math.max(-85, Math.min(85, lat));
-            touchPrevX = e.touches[0].clientX;
-            touchPrevY = e.touches[0].clientY;
+            lon -= (e.touches[0].clientX - tpX) * 0.22;
+            lat = Math.max(-85, Math.min(85, lat - (e.touches[0].clientY - tpY) * 0.22));
+            tpX = e.touches[0].clientX; tpY = e.touches[0].clientY;
         } else if (e.touches.length === 2) {
-            const d = Math.hypot(
-                e.touches[0].clientX - e.touches[1].clientX,
-                e.touches[0].clientY - e.touches[1].clientY
-            );
-            threeCamera.fov = Math.max(30, Math.min(100, threeCamera.fov - (d - touchPrevDist) * 0.1));
+            const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            threeCamera.fov = Math.max(30, Math.min(100, threeCamera.fov - (d - tpD) * 0.08));
             threeCamera.updateProjectionMatrix();
-            touchPrevDist = d;
+            tpD = d;
         }
     }, { passive: false });
-
-    // Resize
     window.addEventListener('resize', () => {
-        threeRenderer.setSize(container.clientWidth, container.clientHeight);
-        threeCamera.aspect = container.clientWidth / container.clientHeight;
+        threeRenderer.setSize(cont.clientWidth, cont.clientHeight);
+        threeCamera.aspect = cont.clientWidth / cont.clientHeight;
         threeCamera.updateProjectionMatrix();
     });
 
-    animate();
+    animateThree();
 }
 
-function animate() {
-    requestAnimationFrame(animate);
-    if (autoRotate) lon += 0.04;
-    const phi   = THREE.MathUtils.degToRad(90 - lat);
+function animateThree() {
+    requestAnimationFrame(animateThree);
+    if (autoRot) lon += 0.035;
+    const phi = THREE.MathUtils.degToRad(90 - lat);
     const theta = THREE.MathUtils.degToRad(lon);
     threeCamera.lookAt(
         500 * Math.sin(phi) * Math.cos(theta),
@@ -763,355 +894,317 @@ function animate() {
     threeRenderer.render(threeScene, threeCamera);
 }
 
-function loadPanoramaIntoViewer(urlOrBlobUrl) {
-    document.getElementById('loadingOverlay').style.display = 'flex';
-    document.getElementById('viewerPlaceholder').classList.add('hidden');
-
-    const loader = new THREE.TextureLoader();
-    loader.crossOrigin = 'anonymous';
-    loader.load(
-        urlOrBlobUrl,
-        (texture) => {
-            texture.colorSpace = THREE.SRGBColorSpace;
-            threeMaterial.map   = texture;
-            threeMaterial.color = new THREE.Color(0xffffff);
-            threeMaterial.needsUpdate = true;
-            document.getElementById('loadingOverlay').style.display = 'none';
-            document.getElementById('viewerHint').style.display = 'flex';
-            applyCanvasFilters();
-        },
-        undefined,
-        (err) => {
-            console.error('Error cargando textura:', err);
-            document.getElementById('loadingOverlay').style.display = 'none';
-            Swal.fire('Error', 'No se pudo cargar la imagen en el visor.', 'error');
-        }
-    );
+function loadCanvasIntoViewer(canvas) {
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    threeMat.map   = texture;
+    threeMat.color = new THREE.Color(0xffffff);
+    threeMat.needsUpdate = true;
+    document.getElementById('dropZone').classList.add('hidden');
+    document.getElementById('viewerHint').classList.add('visible');
+    applyFilters();
 }
 
-// ============================================================
-//  DETECCIÓN DE ARCHIVOS DJI
-// ============================================================
-const PANO_KEYWORDS = /pano|panorama|sphere|360|esfera|equi/i;
-const IMG_EXTS      = /\.(jpg|jpeg|png|webp)$/i;
-
-function detectPanoFile(files) {
-    const images = Array.from(files).filter(f => IMG_EXTS.test(f.name));
-    if (images.length === 0) return null;
-
-    // Prioridad 1: Keyword en nombre
-    const byKeyword = images.find(f => PANO_KEYWORDS.test(f.name));
-    if (byKeyword) return byKeyword;
-
-    // Prioridad 2: Archivo más grande (stitched panorama)
-    return images.sort((a, b) => b.size - a.size)[0];
+function loadUrlIntoViewer(url) {
+    new THREE.TextureLoader().load(url, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        threeMat.map   = tex;
+        threeMat.color = new THREE.Color(0xffffff);
+        threeMat.needsUpdate = true;
+        document.getElementById('dropZone').classList.add('hidden');
+        document.getElementById('viewerHint').classList.add('visible');
+        applyFilters();
+    });
 }
 
-function formatBytes(bytes) {
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-function populateFileList(files) {
-    allFiles = Array.from(files).filter(f => IMG_EXTS.test(f.name))
-                                .sort((a, b) => b.size - a.size);
-
-    if (allFiles.length === 0) {
-        document.getElementById('fileList').innerHTML = '<div class="sf-empty"><i class="ph ph-warning"></i><p>No se encontraron imágenes JPG/PNG en esta carpeta.</p></div>';
+// =============================================================
+//  INPUTS DE ARCHIVOS
+// =============================================================
+document.getElementById('folderInput').addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    const imgs  = files.filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f.name));
+    if (imgs.length === 0) {
+        Swal.fire('Sin imágenes', 'No se encontraron JPG/PNG en esa carpeta.', 'warning');
         return;
     }
 
-    const detected = detectPanoFile(allFiles);
-    const list = document.getElementById('fileList');
-    list.innerHTML = '';
+    // Mostrar lista de archivos en sidebar
+    showFileList(imgs);
 
-    allFiles.forEach((f, idx) => {
-        const isPano = (f === detected);
-        const blobUrl = URL.createObjectURL(f);
-
-        const item = document.createElement('div');
-        item.className = 'file-item' + (isPano ? ' pano-detected' : '') + (idx === 0 ? ' active' : '');
-        item.dataset.idx = idx;
-
-        item.innerHTML = `
-            <img class="file-thumb" src="${blobUrl}" alt="" loading="lazy">
-            <div class="file-info">
-                <div class="file-name">${f.name}</div>
-                <div class="file-size">${formatBytes(f.size)}</div>
-            </div>
-            <span class="file-badge ${isPano ? 'badge-pano' : 'badge-img'}">${isPano ? 'PANO' : 'IMG'}</span>
-        `;
-
-        item.addEventListener('click', () => selectFile(f, item));
-        list.appendChild(item);
-    });
-
-    // Auto-seleccionar el panorama detectado
-    const detectedItem = list.querySelector('.pano-detected');
-    if (detectedItem) detectedItem.click();
-    else list.querySelector('.file-item').click();
-}
-
-function selectFile(file, itemEl) {
-    // Marcar activo
-    document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
-    itemEl.classList.add('active');
-
-    selectedFile = file;
-    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
-    currentBlobUrl = URL.createObjectURL(file);
-
-    // Info
-    document.getElementById('fileInfoBox').innerHTML = `
-        <p>Archivo: <strong style="color:#e2e8f0;">${file.name}</strong></p>
-        <p>Tamaño: <strong style="color:#e2e8f0;">${formatBytes(file.size)}</strong></p>
-    `;
-
-    loadPanoramaIntoViewer(currentBlobUrl);
-}
-
-// ============================================================
-//  INPUT EVENTS
-// ============================================================
-document.getElementById('folderInput').addEventListener('change', (e) => {
-    if (e.target.files.length > 0) populateFileList(e.target.files);
+    if (imgs.length >= 4) {
+        // AUTO-STITCH
+        showStitchOverlay(true);
+        try {
+            stitchedCanvas = await stitchDJI(imgs);
+            showStitchOverlay(false);
+            loadCanvasIntoViewer(stitchedCanvas);
+            selectedSingleFile = null;
+        } catch (err) {
+            showStitchOverlay(false);
+            Swal.fire('Error al coser', err.message, 'error');
+        }
+    } else if (imgs.length === 1) {
+        // Imagen individual
+        selectedSingleFile = imgs[0];
+        stitchedCanvas = null;
+        const url = URL.createObjectURL(imgs[0]);
+        loadUrlIntoViewer(url);
+    } else {
+        Swal.fire('Pocas imágenes', `Se encontraron ${imgs.length} imágenes. Para coser el panorama se necesitan al menos 4.`, 'warning');
+    }
 });
 
 document.getElementById('singleInput').addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-        const f = e.target.files[0];
-        const fakeList = document.getElementById('fileList');
-        fakeList.innerHTML = '';
-        const blobUrl = URL.createObjectURL(f);
-        const item = document.createElement('div');
-        item.className = 'file-item pano-detected active';
-        item.innerHTML = `
-            <img class="file-thumb" src="${blobUrl}" alt="">
-            <div class="file-info">
-                <div class="file-name">${f.name}</div>
-                <div class="file-size">${formatBytes(f.size)}</div>
-            </div>
-            <span class="file-badge badge-pano">PANO</span>
-        `;
-        fakeList.appendChild(item);
-        selectedFile = f;
-        currentBlobUrl = blobUrl;
-        document.getElementById('fileInfoBox').innerHTML = `<p>Archivo: <strong style="color:#e2e8f0;">${f.name}</strong></p><p>Tamaño: <strong style="color:#e2e8f0;">${formatBytes(f.size)}</strong></p>`;
-        document.getElementById('viewerPlaceholder').classList.add('hidden');
-        loadPanoramaIntoViewer(blobUrl);
-    }
+    if (!e.target.files[0]) return;
+    selectedSingleFile = e.target.files[0];
+    stitchedCanvas = null;
+    showFileList([e.target.files[0]]);
+    const url = URL.createObjectURL(e.target.files[0]);
+    loadUrlIntoViewer(url);
 });
 
-// Si hay panorama existente, cargarlo al abrir el editor
-if (EXISTING_PANORAMA && EXISTING_PANORAMA.image_url) {
-    setTimeout(() => {
-        document.getElementById('viewerPlaceholder').classList.add('hidden');
-        loadPanoramaIntoViewer(EXISTING_PANORAMA.image_url);
-    }, 400);
+// Si hay panorama existente, cargarlo al abrir editor
+if (EXISTING && EXISTING.image_url) {
+    setTimeout(() => loadUrlIntoViewer(EXISTING.image_url), 300);
 }
 
-// ============================================================
-//  FILTROS CSS — 60fps sin CPU
-// ============================================================
-function applyCanvasFilters() {
+// =============================================================
+//  SIDEBAR: Lista de archivos
+// =============================================================
+function showFileList(imgs) {
+    const body = document.getElementById('sfBody');
+    document.getElementById('sfEmpty').style.display = 'none';
+
+    // Mostrar info rápida
+    const plan = getDJIPlan(imgs.length);
+    body.innerHTML = `
+        <div class="sf-status-card">
+            <div class="sf-status-title">Detección DJI</div>
+            <div class="sf-stat"><span class="sf-stat-label">Fotos</span><span class="sf-stat-value">${imgs.length}</span></div>
+            <div class="sf-stat"><span class="sf-stat-label">Patrón</span><span class="sf-stat-value">${imgs.length} tomas</span></div>
+            <div class="sf-stat"><span class="sf-stat-label">FoV H/V</span><span class="sf-stat-value">${plan.hFov}° / ${plan.vFov}°</span></div>
+        </div>
+        <div id="fileListItems"></div>
+    `;
+
+    // Listar hasta 30 archivos
+    const container = document.getElementById('fileListItems');
+    const display = imgs.slice(0, 30);
+    display.forEach((f, idx) => {
+        const item = document.createElement('div');
+        item.className = 'sf-file-item' + (idx < 2 ? ' pano' : '');
+        const blobUrl = URL.createObjectURL(f);
+        item.innerHTML = `
+            <img class="sf-thumb" src="${blobUrl}" loading="lazy">
+            <span class="sf-fname">${f.name}</span>
+            <span class="sf-fsize">${fmtBytes(f.size)}</span>
+            <span class="sf-badge ${idx < 2 ? 'badge-p' : 'badge-i'}">${idx < 2 ? 'KEY' : 'IMG'}</span>
+        `;
+        container.appendChild(item);
+    });
+    if (imgs.length > 30) {
+        container.insertAdjacentHTML('beforeend',
+            `<div style="text-align:center;font-size:0.68rem;color:#374151;padding:6px;">+${imgs.length-30} más...</div>`
+        );
+    }
+}
+
+// =============================================================
+//  PROGRESS OVERLAY
+// =============================================================
+function showStitchOverlay(visible) {
+    const ov = document.getElementById('stitchOverlay');
+    if (visible) ov.classList.add('visible');
+    else ov.classList.remove('visible');
+}
+
+function setStitchProgress(pct, text, sub) {
+    document.getElementById('stitchBar').style.width  = pct + '%';
+    document.getElementById('stitchText').textContent = text;
+    document.getElementById('stitchSub').textContent  = sub || '';
+}
+
+// =============================================================
+//  FILTROS CSS — GPU, 60fps
+// =============================================================
+function applyFilters() {
     if (!threeRenderer) return;
-    const canvas = threeRenderer.domElement;
+    const cv = threeRenderer.domElement;
+    const brightness = Math.pow(2, filters.exposure / 100).toFixed(3);
+    const contrast   = Math.max(0, 1 + filters.contrast   / 100).toFixed(3);
+    const saturate   = Math.max(0, 1 + filters.saturation / 100).toFixed(3);
 
-    const brightness   = Math.pow(2, filters.exposure / 100).toFixed(3);
-    const contrast     = Math.max(0, 1 + filters.contrast / 100).toFixed(3);
-    const saturate     = Math.max(0, 1 + filters.saturation / 100).toFixed(3);
+    let f = `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})`;
 
-    let filterStr = `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})`;
+    if (filters.temperature > 0)
+        f += ` sepia(${(filters.temperature*0.25).toFixed(1)}%) hue-rotate(-${(filters.temperature*0.2).toFixed(1)}deg)`;
+    else if (filters.temperature < 0)
+        f += ` hue-rotate(${(Math.abs(filters.temperature)*0.3).toFixed(1)}deg)`;
 
-    // Temperatura: warm = naranja/sepia, cool = azulado
-    if (filters.temperature > 0) {
-        filterStr += ` sepia(${(filters.temperature * 0.25).toFixed(1)}%) hue-rotate(-${(filters.temperature * 0.2).toFixed(1)}deg)`;
-    } else if (filters.temperature < 0) {
-        filterStr += ` hue-rotate(${(Math.abs(filters.temperature) * 0.3).toFixed(1)}deg)`;
+    if (filters.sharpness < 0)
+        f += ` blur(${(Math.abs(filters.sharpness)*0.04).toFixed(2)}px)`;
+    else if (filters.sharpness > 0)
+        f += ` contrast(${(1 + filters.sharpness*0.006).toFixed(3)})`;
+
+    cv.style.filter = f;
+
+    let vig = document.getElementById('vigOv');
+    if (!vig) {
+        vig = document.createElement('div');
+        vig.id = 'vigOv';
+        vig.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:1;transition:background 0.3s;';
+        document.querySelector('.ev-panel').appendChild(vig);
     }
-
-    // Nitidez: negativo = blur
-    if (filters.sharpness < 0) {
-        filterStr += ` blur(${(Math.abs(filters.sharpness) * 0.04).toFixed(2)}px)`;
-    } else if (filters.sharpness > 0) {
-        // Simular nitidez con ligero aumento de contraste
-        const extraC = (1 + filters.sharpness * 0.006).toFixed(3);
-        filterStr += ` contrast(${extraC})`;
-    }
-
-    canvas.style.filter = filterStr;
-
-    // Viñeta como overlay
-    let vignetteEl = document.getElementById('vignetteOverlay');
-    if (!vignetteEl) {
-        vignetteEl = document.createElement('div');
-        vignetteEl.id = 'vignetteOverlay';
-        vignetteEl.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:1;transition:background 0.3s;';
-        document.querySelector('.editor360-viewer').appendChild(vignetteEl);
-    }
-    if (filters.vignette > 0) {
-        const strength = (filters.vignette / 100 * 0.8).toFixed(2);
-        vignetteEl.style.background = `radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,${strength}) 100%)`;
-    } else {
-        vignetteEl.style.background = 'none';
-    }
+    vig.style.background = filters.vignette > 0
+        ? `radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,${(filters.vignette/100*0.8).toFixed(2)}) 100%)`
+        : 'none';
 }
 
-function onSlider(name, el) {
-    filters[name] = parseInt(el.value);
-    const val = filters[name];
-    document.getElementById('val-' + name).textContent = val > 0 ? '+' + val : val;
-    updateSliderGradient(el);
-    applyCanvasFilters();
+function onSl(name, el) {
+    filters[name] = parseInt(el.value, 10);
+    const v = filters[name];
+    document.getElementById('v-' + name).textContent = v > 0 ? '+' + v : String(v);
+    updateSlGradient(el);
+    applyFilters();
 }
 
-function updateSliderGradient(el) {
-    const min = parseFloat(el.min), max = parseFloat(el.max), val = parseFloat(el.value);
-    const pct = ((val - min) / (max - min) * 100).toFixed(1) + '%';
+function updateSlGradient(el) {
+    const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min)) * 100).toFixed(1) + '%';
     el.style.setProperty('--pct', pct);
 }
 
-function resetSlider(name) {
+function resetSl(name) {
     const el = document.getElementById('sl-' + name);
-    el.value = 0;
-    filters[name] = 0;
-    document.getElementById('val-' + name).textContent = '0';
-    updateSliderGradient(el);
-    applyCanvasFilters();
+    el.value = 0; filters[name] = 0;
+    document.getElementById('v-' + name).textContent = '0';
+    updateSlGradient(el);
+    applyFilters();
 }
 
-// ============================================================
-//  PRESETS
-// ============================================================
 const PRESETS = {
-    natural:   { exposure:  5, contrast:  5, saturation: 15, sharpness: 10, temperature:  5, vignette:  0 },
-    vivid:     { exposure: 10, contrast: 20, saturation: 40, sharpness: 15, temperature:  0, vignette: 10 },
-    warm:      { exposure:  5, contrast:  5, saturation: 10, sharpness:  5, temperature: 35, vignette:  5 },
-    cool:      { exposure:  0, contrast: 10, saturation:  5, sharpness:  5, temperature:-30, vignette:  5 },
-    dramatic:  { exposure: -5, contrast: 40, saturation: 20, sharpness: 20, temperature: -5, vignette: 50 },
-    reset:     { exposure:  0, contrast:  0, saturation:  0, sharpness:  0, temperature:  0, vignette:  0 }
+    natural:  { exposure:5,  contrast:5,  saturation:15, sharpness:10, temperature:5,  vignette:0  },
+    vivid:    { exposure:10, contrast:20, saturation:40, sharpness:15, temperature:0,  vignette:10 },
+    warm:     { exposure:5,  contrast:5,  saturation:10, sharpness:5,  temperature:35, vignette:5  },
+    cool:     { exposure:0,  contrast:10, saturation:5,  sharpness:5,  temperature:-30,vignette:5  },
+    dramatic: { exposure:-5, contrast:40, saturation:20, sharpness:20, temperature:-5, vignette:50 },
+    reset:    { exposure:0,  contrast:0,  saturation:0,  sharpness:0,  temperature:0,  vignette:0  }
 };
 
 function applyPreset(name) {
-    const preset = PRESETS[name];
-    Object.keys(preset).forEach(k => {
-        filters[k] = preset[k];
+    Object.assign(filters, PRESETS[name]);
+    Object.keys(filters).forEach(k => {
         const sl = document.getElementById('sl-' + k);
-        if (sl) { sl.value = preset[k]; updateSliderGradient(sl); }
-        const vl = document.getElementById('val-' + k);
-        if (vl) vl.textContent = preset[k] > 0 ? '+' + preset[k] : preset[k];
+        if (sl) { sl.value = filters[k]; updateSlGradient(sl); }
+        const vl = document.getElementById('v-' + k);
+        if (vl) vl.textContent = filters[k] > 0 ? '+' + filters[k] : String(filters[k]);
     });
-    applyCanvasFilters();
-
+    applyFilters();
     document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.preset-btn').forEach(b => {
-        if (b.textContent.toLowerCase().includes(name.replace('reset', 'resetear'))) b.classList.add('active');
-    });
+    event.currentTarget.classList.add('active');
 }
 
-// ============================================================
-//  GUARDAR PROYECTO
-// ============================================================
+// =============================================================
+//  GUARDAR
+// =============================================================
+function canvasToBlob(canvas, quality) {
+    return new Promise(res => canvas.toBlob(res, 'image/jpeg', quality || 0.88));
+}
+
 async function saveProject() {
     const name = document.getElementById('projectName').value.trim();
     if (!name) {
-        Swal.fire({ icon: 'warning', title: 'Falta el nombre', text: 'Escribe un nombre para el proyecto' });
+        Swal.fire({ icon: 'warning', title: 'Falta el nombre', text: 'Escribe el nombre del proyecto' });
         document.getElementById('projectName').focus();
         return;
     }
 
-    const hasNewFile     = !!selectedFile;
-    const hasExistingImg = EXISTING_PANORAMA && EXISTING_PANORAMA.image_url;
-
-    if (!hasNewFile && !hasExistingImg) {
-        Swal.fire({ icon: 'warning', title: 'Sin imagen', text: 'Selecciona una imagen panorámica primero' });
+    const hasNew      = !!(stitchedCanvas || selectedSingleFile);
+    const hasExisting = !!(EXISTING && EXISTING.image_url);
+    if (!hasNew && !hasExisting) {
+        Swal.fire({ icon: 'warning', title: 'Sin imagen', text: 'Carga una carpeta DJI o una imagen primero' });
         return;
     }
 
-    const btn = document.getElementById('btnSave360');
-    const txt = document.getElementById('btnSaveText');
+    const btn = document.getElementById('btnSave');
+    const txt = document.getElementById('btnSaveTxt');
     btn.disabled = true;
     txt.textContent = 'Subiendo...';
-    document.getElementById('uploadProgress').classList.add('visible');
+    document.getElementById('uploadBar').classList.add('v');
 
-    // Simular progreso (Cloudinary no devuelve progreso real en este flujo)
     let prog = 0;
-    const progressTimer = setInterval(() => {
-        prog = Math.min(prog + Math.random() * 15, 85);
-        document.getElementById('progressBar').style.width = prog + '%';
-    }, 300);
+    const pt = setInterval(() => {
+        prog = Math.min(prog + Math.random() * 12, 88);
+        document.getElementById('uploadBarFill').style.width = prog + '%';
+    }, 400);
 
     try {
         const fd = new FormData();
         fd.append('name', name);
         fd.append('settings_json', JSON.stringify(filters));
         if (panoramaId) fd.append('panorama_id', panoramaId);
-        if (hasNewFile) {
-            fd.append('panorama_file', selectedFile, selectedFile.name);
+
+        if (stitchedCanvas) {
+            const blob = await canvasToBlob(stitchedCanvas);
+            fd.append('panorama_file', blob, 'pano_stitched.jpg');
+        } else if (selectedSingleFile) {
+            fd.append('panorama_file', selectedSingleFile, selectedSingleFile.name);
         } else {
-            fd.append('existing_image_url', EXISTING_PANORAMA.image_url);
-            fd.append('existing_public_id',  EXISTING_PANORAMA.public_id || '');
+            fd.append('existing_image_url', EXISTING.image_url);
+            fd.append('existing_public_id',  EXISTING.public_id || '');
         }
 
         const res  = await fetch('/admin/360/save', { method: 'POST', body: fd });
         const data = await res.json();
 
-        clearInterval(progressTimer);
-        document.getElementById('progressBar').style.width = '100%';
+        clearInterval(pt);
+        document.getElementById('uploadBarFill').style.width = '100%';
 
         if (!data.success) throw new Error(data.error || 'Error desconocido');
 
-        // Éxito
         panoramaId = data.panorama.id;
-        const publicLink = window.location.origin + '/view/360/' + data.panorama.public_token;
-        document.getElementById('savedLinkUrl').textContent  = publicLink;
-        document.getElementById('savedLinkOpen').href        = publicLink;
-        document.getElementById('savedLinkBox').classList.add('visible');
+        const link = window.location.origin + '/view/360/' + data.panorama.public_token;
+
+        document.getElementById('savedUrl').textContent  = link;
+        document.getElementById('savedOpen').href        = link;
+        document.getElementById('savedBox').classList.add('visible');
 
         setTimeout(() => {
-            document.getElementById('uploadProgress').classList.remove('visible');
-            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('uploadBar').classList.remove('v');
+            document.getElementById('uploadBarFill').style.width = '0%';
             btn.disabled = false;
-            txt.textContent = 'Guardar cambios';
+            txt.textContent = 'Actualizar';
         }, 800);
 
         Swal.fire({
-            icon: 'success',
-            title: '¡Guardado!',
-            html: `Link público listo:<br><a href="${publicLink}" target="_blank" style="color:#3b82f6;word-break:break-all;">${publicLink}</a>`,
-            showConfirmButton: true,
-            confirmButtonText: 'Copiar link',
-            confirmButtonColor: '#2563eb',
-            showCancelButton: true,
-            cancelButtonText: 'Cerrar'
-        }).then(r => { if (r.isConfirmed) navigator.clipboard.writeText(publicLink); });
+            icon: 'success', title: '¡Guardado!',
+            html: `Link del cliente:<br><a href="${link}" target="_blank" style="color:#3b82f6;word-break:break-all;">${link}</a>`,
+            confirmButtonText: 'Copiar link', confirmButtonColor: '#2563eb',
+            showCancelButton: true, cancelButtonText: 'Cerrar'
+        }).then(r => { if (r.isConfirmed) navigator.clipboard.writeText(link); });
 
-    } catch (e) {
-        clearInterval(progressTimer);
-        document.getElementById('uploadProgress').classList.remove('visible');
+    } catch (err) {
+        clearInterval(pt);
+        document.getElementById('uploadBar').classList.remove('v');
         btn.disabled = false;
         txt.textContent = 'Guardar en Cloudinary';
-        Swal.fire('Error al guardar', e.message, 'error');
+        Swal.fire('Error al guardar', err.message, 'error');
     }
 }
 
-function copyPublicLink() {
-    const url = document.getElementById('savedLinkUrl').textContent;
-    navigator.clipboard.writeText(url).then(() => {
-        const btn = document.querySelector('.btn-copy-link');
-        btn.textContent = '✅ Copiado';
-        setTimeout(() => { btn.innerHTML = '<i class="ph-bold ph-copy"></i> Copiar link'; }, 2000);
+function copyLink() {
+    navigator.clipboard.writeText(document.getElementById('savedUrl').textContent).then(() => {
+        const b = document.querySelector('.sb-copy');
+        b.textContent = '✅ Copiado';
+        setTimeout(() => { b.innerHTML = '<i class="ph-bold ph-copy"></i> Copiar'; }, 2000);
     });
 }
 
-// ============================================================
-//  INICIAR
-// ============================================================
+// =============================================================
+//  INIT
+// =============================================================
 window.addEventListener('DOMContentLoaded', () => {
     initThree();
-
-    // Inicializar gradientes de sliders
-    document.querySelectorAll('.pano-slider').forEach(sl => updateSliderGradient(sl));
+    document.querySelectorAll('.psl').forEach(updateSlGradient);
 });
 </script>
 </body>
