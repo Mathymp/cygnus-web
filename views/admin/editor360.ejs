@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <title><%= title %></title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* Layout de 3 columnas fijo */
+        .editor360-root {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background: #0a0f1e;
+        }
+
+        /* SIDEBAR IZQUIERDO - Archivos DJI */
+        .sidebar-files {
+            width: 260px;
+            min-width: 260px;
+            background: #111827;
+            border-right: 1px solid rgba(255,255,255,0.07);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .sf-header {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .sf-header h2 {
+            color: #f1f5f9;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .sf-header h2 i { color: #3b82f6; }
+        .btn-folder {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-folder:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-folder-single {
+            width: 100%;
+            padding: 8px;
+            background: transparent;
+            color: #64748b;
+            border: 1px dashed #334155;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: all 0.2s;
+        }
+        .btn-folder-single:hover { border-color: #3b82f6; color: #93c5fd; }
+
+        .sf-hint {
+            font-size: 0.72rem;
+            color: #475569;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        .sf-file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .sf-file-list::-webkit-scrollbar { width: 4px; }
+        .sf-file-list::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            margin-bottom: 4px;
+            transition: all 0.15s;
+        }
+        .file-item:hover { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.2); }
+        .file-item.active { background: rgba(59,130,246,0.2); border-color: #3b82f6; }
+        .file-item.pano-detected { border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.08); }
+        .file-item.pano-detected.active { border-color: #10b981; background: rgba(16,185,129,0.2); }
+        .file-thumb {
+            width: 44px;
+            height: 28px;
+            border-radius: 4px;
+            object-fit: cover;
+            flex-shrink: 0;
+            background: #1e293b;
+        }
+        .file-info { flex: 1; min-width: 0; }
+        .file-name {
+            font-size: 0.75rem;
+            color: #e2e8f0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+        .file-size { font-size: 0.68rem; color: #64748b; margin-top: 2px; }
+        .file-badge {
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .badge-pano { background: #065f46; color: #6ee7b7; }
+        .badge-img  { background: #1e3a5f; color: #93c5fd; }
+
+        .sf-empty {
+            text-align: center;
+            padding: 40px 16px;
+            color: #475569;
+            font-size: 0.8rem;
+        }
+        .sf-empty i { font-size: 2.5rem; display: block; margin-bottom: 12px; color: #1e293b; }
+
+        /* VISOR CENTRAL */
+        .editor360-viewer {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #060d1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #viewer360 {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        #viewer360:active { cursor: grabbing; }
+
+        .viewer-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            color: rgba(255,255,255,0.3);
+            pointer-events: none;
+        }
+        .viewer-placeholder i { font-size: 5rem; }
+        .viewer-placeholder p { font-size: 1rem; }
+        .viewer-placeholder.hidden { display: none; }
+
+        .viewer-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            color: rgba(255,255,255,0.7);
+            font-size: 0.78rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            display: flex;
+            gap: 16px;
+        }
+        .viewer-hint span { display: flex; align-items: center; gap: 6px; }
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            color: white;
+            z-index: 10;
+            display: none;
+        }
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* SIDEBAR DERECHO - Controles */
+        .sidebar-controls {
+            width: 300px;
+            min-width: 300px;
+            background: #111827;
+            border-left: 1px solid rgba(255,255,255,0.07);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .sidebar-controls::-webkit-scrollbar { width: 4px; }
+        .sidebar-controls::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+        .sc-section {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .sc-section-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 14px;
+        }
+
+        .sc-name-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #f1f5f9;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .sc-name-input:focus { border-color: #3b82f6; }
+        .sc-name-input::placeholder { color: #475569; }
+
+        /* Sliders */
+        .slider-row {
+            margin-bottom: 16px;
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .slider-label span { font-size: 0.8rem; color: #94a3b8; font-weight: 500; }
+        .slider-value {
+            font-size: 0.8rem;
+            color: #e2e8f0;
+            font-weight: 700;
+            font-family: monospace;
+            min-width: 36px;
+            text-align: right;
+        }
+        .slider-reset {
+            width: 18px;
+            height: 18px;
+            border: none;
+            background: transparent;
+            color: #475569;
+            cursor: pointer;
+            padding: 0;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: color 0.15s;
+        }
+        .slider-reset:hover { color: #3b82f6; }
+
+        input[type=range].pano-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: linear-gradient(to right, #3b82f6 var(--pct, 50%), #1e293b var(--pct, 50%));
+            outline: none;
+            cursor: pointer;
+        }
+        input[type=range].pano-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #3b82f6;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        input[type=range].pano-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        /* Presets */
+        .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .preset-btn {
+            padding: 8px 6px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+            font-weight: 600;
+        }
+        .preset-btn:hover { border-color: #3b82f6; color: #93c5fd; background: rgba(59,130,246,0.1); }
+        .preset-btn.active { border-color: #3b82f6; color: #93c5fd; background: rgba(59,130,246,0.15); }
+
+        /* Save section */
+        .btn-save-360 {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.35);
+        }
+        .btn-save-360:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); }
+        .btn-save-360:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-back {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #64748b;
+            font-size: 0.82rem;
+            text-decoration: none;
+            margin-bottom: 12px;
+            transition: color 0.15s;
+        }
+        .btn-back:hover { color: #93c5fd; text-decoration: none; }
+
+        .saved-link-box {
+            background: rgba(16,185,129,0.1);
+            border: 1px solid rgba(16,185,129,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            display: none;
+        }
+        .saved-link-box.visible { display: block; }
+        .saved-link-label { font-size: 0.72rem; color: #6ee7b7; font-weight: 700; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .saved-link-url { font-size: 0.78rem; color: #a7f3d0; font-family: monospace; word-break: break-all; }
+        .saved-link-actions { display: flex; gap: 6px; margin-top: 8px; }
+        .saved-link-btn {
+            flex: 1;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+        .btn-copy-link { background: #064e3b; color: #6ee7b7; }
+        .btn-copy-link:hover { background: #065f46; }
+        .btn-open-link { background: #1e3a5f; color: #93c5fd; }
+        .btn-open-link:hover { background: #1e40af; color: white; text-decoration: none; }
+
+        .existing-img-preview {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #334155;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .upload-progress {
+            height: 4px;
+            background: #1e293b;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+            display: none;
+        }
+        .upload-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #2563eb, #06b6d4);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .upload-progress.visible { display: block; }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <%- include('../partials/sidebar-admin') %>
+
+    <main class="main-content" style="padding:0; overflow:hidden;">
+
+        <div class="editor360-root">
+
+            <!-- ===== SIDEBAR IZQUIERDO: ARCHIVOS DJI ===== -->
+            <div class="sidebar-files">
+                <div class="sf-header">
+                    <h2><i class="ph-bold ph-folder-open"></i> Archivos DJI</h2>
+
+                    <button class="btn-folder" onclick="document.getElementById('folderInput').click()">
+                        <i class="ph-bold ph-folder-open"></i>
+                        Seleccionar Carpeta
+                    </button>
+
+                    <button class="btn-folder-single" onclick="document.getElementById('singleInput').click()">
+                        <i class="ph-bold ph-file-image"></i>
+                        Seleccionar imagen individual
+                    </button>
+
+                    <p class="sf-hint">
+                        Selecciona la carpeta del DJI. Se detectará automáticamente el archivo panorámico (PANO o más grande).
+                    </p>
+
+                    <!-- Input para carpeta completa -->
+                    <input type="file" id="folderInput" webkitdirectory directory multiple accept="image/*" style="display:none;">
+                    <!-- Input para imagen individual -->
+                    <input type="file" id="singleInput" accept="image/*" style="display:none;">
+                </div>
+
+                <div class="sf-file-list" id="fileList">
+                    <div class="sf-empty">
+                        <i class="ph-bold ph-images"></i>
+                        <p>Selecciona una carpeta DJI o una imagen para comenzar</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== VISOR CENTRAL THREE.JS ===== -->
+            <div class="editor360-viewer">
+                <div id="viewer360"></div>
+
+                <div class="viewer-placeholder" id="viewerPlaceholder">
+                    <i class="ph-bold ph-globe-hemisphere-west" style="font-size:6rem; color:rgba(255,255,255,0.08);"></i>
+                    <p>Selecciona una imagen para ver la panorámica</p>
+                </div>
+
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="loading-spinner"></div>
+                    <p>Cargando panorámica...</p>
+                </div>
+
+                <div class="viewer-hint" id="viewerHint" style="display:none;">
+                    <span><i class="ph ph-cursor"></i> Arrastra para girar</span>
+                    <span><i class="ph ph-magnifying-glass"></i> Scroll para zoom</span>
+                    <span><i class="ph ph-device-mobile"></i> Pellizca en móvil</span>
+                </div>
+            </div>
+
+            <!-- ===== SIDEBAR DERECHO: AJUSTES ===== -->
+            <div class="sidebar-controls">
+
+                <div class="sc-section">
+                    <a href="/admin/360" class="btn-back">
+                        <i class="ph-bold ph-arrow-left"></i> Volver al panel
+                    </a>
+                    <div class="sc-section-title">Nombre del Proyecto</div>
+                    <input type="text" id="projectName" class="sc-name-input"
+                           placeholder="Ej: Lote 45 — Proyecto Valle Norte"
+                           value="<%= panorama ? panorama.name : '' %>">
+                </div>
+
+                <!-- Si viene una imagen existente, mostrar preview -->
+                <% if (panorama && panorama.image_url) { %>
+                <div class="sc-section">
+                    <div class="sc-section-title">Imagen actual</div>
+                    <img src="<%= panorama.image_url %>" class="existing-img-preview" alt="Panorama actual">
+                    <p style="font-size:0.72rem;color:#64748b;">Sube una nueva imagen para reemplazarla, o deja en blanco para mantenerla.</p>
+                </div>
+                <% } %>
+
+                <!-- AJUSTES DE IMAGEN -->
+                <div class="sc-section">
+                    <div class="sc-section-title">Ajustes de imagen</div>
+
+                    <div class="slider-row">
+                        <div class="slider-label">
+                            <span>☀️ Exposición</span>
+                            <div style="display:flex;align-items:center;gap:4px;">
+                                <span class="slider-value" id="val-exposure">0</span>
+                                <button class="slider-reset" onclick="resetSlider('exposure')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                            </div>
+                        </div>
+                        <input type="range" class="pano-slider" id="sl-exposure" min="-100" max="100" value="0" oninput="onSlider('exposure',this)">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-label">
+                            <span>◑ Contraste</span>
+                            <div style="display:flex;align-items:center;gap:4px;">
+                                <span class="slider-value" id="val-contrast">0</span>
+                                <button class="slider-reset" onclick="resetSlider('contrast')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                            </div>
+                        </div>
+                        <input type="range" class="pano-slider" id="sl-contrast" min="-100" max="100" value="0" oninput="onSlider('contrast',this)">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-label">
+                            <span>🎨 Saturación</span>
+                            <div style="display:flex;align-items:center;gap:4px;">
+                                <span class="slider-value" id="val-saturation">0</span>
+                                <button class="slider-reset" onclick="resetSlider('saturation')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                            </div>
+                        </div>
+                        <input type="range" class="pano-slider" id="sl-saturation" min="-100" max="100" value="0" oninput="onSlider('saturation',this)">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-label">
+                            <span>🔆 Nitidez</span>
+                            <div style="display:flex;align-items:center;gap:4px;">
+                                <span class="slider-value" id="val-sharpness">0</span>
+                                <button class="slider-reset" onclick="resetSlider('sharpness')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                            </div>
+                        </div>
+                        <input type="range" class="pano-slider" id="sl-sharpness" min="-50" max="50" value="0" oninput="onSlider('sharpness',this)">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-label">
+                            <span>🌡️ Temperatura</span>
+                            <div style="display:flex;align-items:center;gap:4px;">
+                                <span class="slider-value" id="val-temperature">0</span>
+                                <button class="slider-reset" onclick="resetSlider('temperature')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                            </div>
+                        </div>
+                        <input type="range" class="pano-slider" id="sl-temperature" min="-50" max="50" value="0" oninput="onSlider('temperature',this)">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-label">
+                            <span>🌑 Viñeta</span>
+                            <div style="display:flex;align-items:center;gap:4px;">
+                                <span class="slider-value" id="val-vignette">0</span>
+                                <button class="slider-reset" onclick="resetSlider('vignette')" title="Reset"><i class="ph ph-arrows-clockwise"></i></button>
+                            </div>
+                        </div>
+                        <input type="range" class="pano-slider" id="sl-vignette" min="0" max="100" value="0" oninput="onSlider('vignette',this)">
+                    </div>
+                </div>
+
+                <!-- PRESETS -->
+                <div class="sc-section">
+                    <div class="sc-section-title">Presets rápidos</div>
+                    <div class="preset-grid">
+                        <button class="preset-btn" onclick="applyPreset('natural')">🌿 Natural</button>
+                        <button class="preset-btn" onclick="applyPreset('vivid')">💥 Vívido</button>
+                        <button class="preset-btn" onclick="applyPreset('warm')">🌅 Cálido</button>
+                        <button class="preset-btn" onclick="applyPreset('cool')">❄️ Frío</button>
+                        <button class="preset-btn" onclick="applyPreset('dramatic')">🎬 Dramático</button>
+                        <button class="preset-btn" onclick="applyPreset('reset')">↺ Resetear</button>
+                    </div>
+                </div>
+
+                <!-- GUARDAR -->
+                <div class="sc-section">
+                    <div class="sc-section-title">Guardar Proyecto</div>
+
+                    <button class="btn-save-360" id="btnSave360" onclick="saveProject()">
+                        <i class="ph-bold ph-cloud-arrow-up"></i>
+                        <span id="btnSaveText">Guardar en Cloudinary</span>
+                    </button>
+
+                    <div class="upload-progress" id="uploadProgress">
+                        <div class="upload-progress-bar" id="progressBar"></div>
+                    </div>
+
+                    <div class="saved-link-box" id="savedLinkBox">
+                        <div class="saved-link-label">✅ Link público generado</div>
+                        <div class="saved-link-url" id="savedLinkUrl"></div>
+                        <div class="saved-link-actions">
+                            <button class="saved-link-btn btn-copy-link" onclick="copyPublicLink()">
+                                <i class="ph-bold ph-copy"></i> Copiar link
+                            </button>
+                            <a class="saved-link-btn btn-open-link" id="savedLinkOpen" href="#" target="_blank">
+                                <i class="ph-bold ph-arrow-square-out"></i> Abrir
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INFO -->
+                <div class="sc-section" style="border-bottom:none; padding-bottom:24px;">
+                    <div class="sc-section-title">Información</div>
+                    <div id="fileInfoBox" style="font-size:0.75rem;color:#64748b;line-height:1.8;">
+                        <% if (panorama) { %>
+                        <p>ID: <code style="color:#93c5fd;font-size:0.7rem;"><%= panorama.id %></code></p>
+                        <p>Creado: <%= new Date(panorama.created_at).toLocaleDateString('es-CL') %></p>
+                        <% } else { %>
+                        <p>Ningún archivo seleccionado</p>
+                        <% } %>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Datos del panorama existente para JS -->
+<script>
+    const EXISTING_PANORAMA = <%- JSON.stringify(panorama || null) %>;
+    const BASE_URL = '<%= baseUrl %>';
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+// ============================================================
+//  ESTADO GLOBAL
+// ============================================================
+let selectedFile   = null;   // File object actualmente en visor
+let allFiles       = [];     // Todos los archivos de la carpeta
+let currentBlobUrl = null;   // objectURL activo
+let panoramaId     = EXISTING_PANORAMA ? EXISTING_PANORAMA.id : null;
+
+const filters = {
+    exposure:    0,
+    contrast:    0,
+    saturation:  0,
+    sharpness:   0,
+    temperature: 0,
+    vignette:    0
+};
+
+// Cargar settings del panorama existente
+if (EXISTING_PANORAMA && EXISTING_PANORAMA.settings) {
+    Object.assign(filters, EXISTING_PANORAMA.settings);
+    Object.keys(filters).forEach(k => {
+        const sl = document.getElementById('sl-' + k);
+        if (sl) { sl.value = filters[k]; updateSliderGradient(sl); }
+        const vl = document.getElementById('val-' + k);
+        if (vl) vl.textContent = filters[k] > 0 ? '+' + filters[k] : filters[k];
+    });
+}
+
+// ============================================================
+//  THREE.JS — VISOR 360
+// ============================================================
+let threeScene, threeCamera, threeRenderer, threeSphere, threeMaterial;
+let lon = 0, lat = 0, isDragging = false, prevX = 0, prevY = 0;
+let touchPrevX = 0, touchPrevY = 0, touchPrevDist = 0;
+let autoRotate = true;
+
+function initThree() {
+    const container = document.getElementById('viewer360');
+    threeScene    = new THREE.Scene();
+    threeCamera   = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 1, 1100);
+    threeCamera.position.set(0, 0, 0);
+
+    threeRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    threeRenderer.setSize(container.clientWidth, container.clientHeight);
+    threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(threeRenderer.domElement);
+
+    // Esfera invertida para vista interior
+    const geo  = new THREE.SphereGeometry(500, 60, 40);
+    geo.scale(-1, 1, 1);
+    threeMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0f1e });
+    threeSphere   = new THREE.Mesh(geo, threeMaterial);
+    threeScene.add(threeSphere);
+
+    // Controles de mouse
+    const cv = threeRenderer.domElement;
+    cv.addEventListener('mousedown',  e => { isDragging = true; autoRotate = false; prevX = e.clientX; prevY = e.clientY; });
+    document.addEventListener('mouseup', () => isDragging = false);
+    document.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        lon -= (e.clientX - prevX) * 0.25;
+        lat -= (e.clientY - prevY) * 0.25;
+        lat  = Math.max(-85, Math.min(85, lat));
+        prevX = e.clientX; prevY = e.clientY;
+    });
+    cv.addEventListener('wheel', e => {
+        threeCamera.fov = Math.max(30, Math.min(100, threeCamera.fov + e.deltaY * 0.04));
+        threeCamera.updateProjectionMatrix();
+        e.preventDefault();
+    }, { passive: false });
+
+    // Touch
+    cv.addEventListener('touchstart', e => {
+        touchPrevX = e.touches[0].clientX;
+        touchPrevY = e.touches[0].clientY;
+        autoRotate = false;
+        if (e.touches.length === 2) {
+            touchPrevDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+        }
+    });
+    cv.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            lon -= (e.touches[0].clientX - touchPrevX) * 0.25;
+            lat -= (e.touches[0].clientY - touchPrevY) * 0.25;
+            lat  = Math.max(-85, Math.min(85, lat));
+            touchPrevX = e.touches[0].clientX;
+            touchPrevY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+            const d = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            threeCamera.fov = Math.max(30, Math.min(100, threeCamera.fov - (d - touchPrevDist) * 0.1));
+            threeCamera.updateProjectionMatrix();
+            touchPrevDist = d;
+        }
+    }, { passive: false });
+
+    // Resize
+    window.addEventListener('resize', () => {
+        threeRenderer.setSize(container.clientWidth, container.clientHeight);
+        threeCamera.aspect = container.clientWidth / container.clientHeight;
+        threeCamera.updateProjectionMatrix();
+    });
+
+    animate();
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    if (autoRotate) lon += 0.04;
+    const phi   = THREE.MathUtils.degToRad(90 - lat);
+    const theta = THREE.MathUtils.degToRad(lon);
+    threeCamera.lookAt(
+        500 * Math.sin(phi) * Math.cos(theta),
+        500 * Math.cos(phi),
+        500 * Math.sin(phi) * Math.sin(theta)
+    );
+    threeRenderer.render(threeScene, threeCamera);
+}
+
+function loadPanoramaIntoViewer(urlOrBlobUrl) {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    document.getElementById('viewerPlaceholder').classList.add('hidden');
+
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+    loader.load(
+        urlOrBlobUrl,
+        (texture) => {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            threeMaterial.map   = texture;
+            threeMaterial.color = new THREE.Color(0xffffff);
+            threeMaterial.needsUpdate = true;
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('viewerHint').style.display = 'flex';
+            applyCanvasFilters();
+        },
+        undefined,
+        (err) => {
+            console.error('Error cargando textura:', err);
+            document.getElementById('loadingOverlay').style.display = 'none';
+            Swal.fire('Error', 'No se pudo cargar la imagen en el visor.', 'error');
+        }
+    );
+}
+
+// ============================================================
+//  DETECCIÓN DE ARCHIVOS DJI
+// ============================================================
+const PANO_KEYWORDS = /pano|panorama|sphere|360|esfera|equi/i;
+const IMG_EXTS      = /\.(jpg|jpeg|png|webp)$/i;
+
+function detectPanoFile(files) {
+    const images = Array.from(files).filter(f => IMG_EXTS.test(f.name));
+    if (images.length === 0) return null;
+
+    // Prioridad 1: Keyword en nombre
+    const byKeyword = images.find(f => PANO_KEYWORDS.test(f.name));
+    if (byKeyword) return byKeyword;
+
+    // Prioridad 2: Archivo más grande (stitched panorama)
+    return images.sort((a, b) => b.size - a.size)[0];
+}
+
+function formatBytes(bytes) {
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function populateFileList(files) {
+    allFiles = Array.from(files).filter(f => IMG_EXTS.test(f.name))
+                                .sort((a, b) => b.size - a.size);
+
+    if (allFiles.length === 0) {
+        document.getElementById('fileList').innerHTML = '<div class="sf-empty"><i class="ph ph-warning"></i><p>No se encontraron imágenes JPG/PNG en esta carpeta.</p></div>';
+        return;
+    }
+
+    const detected = detectPanoFile(allFiles);
+    const list = document.getElementById('fileList');
+    list.innerHTML = '';
+
+    allFiles.forEach((f, idx) => {
+        const isPano = (f === detected);
+        const blobUrl = URL.createObjectURL(f);
+
+        const item = document.createElement('div');
+        item.className = 'file-item' + (isPano ? ' pano-detected' : '') + (idx === 0 ? ' active' : '');
+        item.dataset.idx = idx;
+
+        item.innerHTML = `
+            <img class="file-thumb" src="${blobUrl}" alt="" loading="lazy">
+            <div class="file-info">
+                <div class="file-name">${f.name}</div>
+                <div class="file-size">${formatBytes(f.size)}</div>
+            </div>
+            <span class="file-badge ${isPano ? 'badge-pano' : 'badge-img'}">${isPano ? 'PANO' : 'IMG'}</span>
+        `;
+
+        item.addEventListener('click', () => selectFile(f, item));
+        list.appendChild(item);
+    });
+
+    // Auto-seleccionar el panorama detectado
+    const detectedItem = list.querySelector('.pano-detected');
+    if (detectedItem) detectedItem.click();
+    else list.querySelector('.file-item').click();
+}
+
+function selectFile(file, itemEl) {
+    // Marcar activo
+    document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
+    itemEl.classList.add('active');
+
+    selectedFile = file;
+    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+    currentBlobUrl = URL.createObjectURL(file);
+
+    // Info
+    document.getElementById('fileInfoBox').innerHTML = `
+        <p>Archivo: <strong style="color:#e2e8f0;">${file.name}</strong></p>
+        <p>Tamaño: <strong style="color:#e2e8f0;">${formatBytes(file.size)}</strong></p>
+    `;
+
+    loadPanoramaIntoViewer(currentBlobUrl);
+}
+
+// ============================================================
+//  INPUT EVENTS
+// ============================================================
+document.getElementById('folderInput').addEventListener('change', (e) => {
+    if (e.target.files.length > 0) populateFileList(e.target.files);
+});
+
+document.getElementById('singleInput').addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        const f = e.target.files[0];
+        const fakeList = document.getElementById('fileList');
+        fakeList.innerHTML = '';
+        const blobUrl = URL.createObjectURL(f);
+        const item = document.createElement('div');
+        item.className = 'file-item pano-detected active';
+        item.innerHTML = `
+            <img class="file-thumb" src="${blobUrl}" alt="">
+            <div class="file-info">
+                <div class="file-name">${f.name}</div>
+                <div class="file-size">${formatBytes(f.size)}</div>
+            </div>
+            <span class="file-badge badge-pano">PANO</span>
+        `;
+        fakeList.appendChild(item);
+        selectedFile = f;
+        currentBlobUrl = blobUrl;
+        document.getElementById('fileInfoBox').innerHTML = `<p>Archivo: <strong style="color:#e2e8f0;">${f.name}</strong></p><p>Tamaño: <strong style="color:#e2e8f0;">${formatBytes(f.size)}</strong></p>`;
+        document.getElementById('viewerPlaceholder').classList.add('hidden');
+        loadPanoramaIntoViewer(blobUrl);
+    }
+});
+
+// Si hay panorama existente, cargarlo al abrir el editor
+if (EXISTING_PANORAMA && EXISTING_PANORAMA.image_url) {
+    setTimeout(() => {
+        document.getElementById('viewerPlaceholder').classList.add('hidden');
+        loadPanoramaIntoViewer(EXISTING_PANORAMA.image_url);
+    }, 400);
+}
+
+// ============================================================
+//  FILTROS CSS — 60fps sin CPU
+// ============================================================
+function applyCanvasFilters() {
+    if (!threeRenderer) return;
+    const canvas = threeRenderer.domElement;
+
+    const brightness   = Math.pow(2, filters.exposure / 100).toFixed(3);
+    const contrast     = Math.max(0, 1 + filters.contrast / 100).toFixed(3);
+    const saturate     = Math.max(0, 1 + filters.saturation / 100).toFixed(3);
+
+    let filterStr = `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})`;
+
+    // Temperatura: warm = naranja/sepia, cool = azulado
+    if (filters.temperature > 0) {
+        filterStr += ` sepia(${(filters.temperature * 0.25).toFixed(1)}%) hue-rotate(-${(filters.temperature * 0.2).toFixed(1)}deg)`;
+    } else if (filters.temperature < 0) {
+        filterStr += ` hue-rotate(${(Math.abs(filters.temperature) * 0.3).toFixed(1)}deg)`;
+    }
+
+    // Nitidez: negativo = blur
+    if (filters.sharpness < 0) {
+        filterStr += ` blur(${(Math.abs(filters.sharpness) * 0.04).toFixed(2)}px)`;
+    } else if (filters.sharpness > 0) {
+        // Simular nitidez con ligero aumento de contraste
+        const extraC = (1 + filters.sharpness * 0.006).toFixed(3);
+        filterStr += ` contrast(${extraC})`;
+    }
+
+    canvas.style.filter = filterStr;
+
+    // Viñeta como overlay
+    let vignetteEl = document.getElementById('vignetteOverlay');
+    if (!vignetteEl) {
+        vignetteEl = document.createElement('div');
+        vignetteEl.id = 'vignetteOverlay';
+        vignetteEl.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:1;transition:background 0.3s;';
+        document.querySelector('.editor360-viewer').appendChild(vignetteEl);
+    }
+    if (filters.vignette > 0) {
+        const strength = (filters.vignette / 100 * 0.8).toFixed(2);
+        vignetteEl.style.background = `radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,${strength}) 100%)`;
+    } else {
+        vignetteEl.style.background = 'none';
+    }
+}
+
+function onSlider(name, el) {
+    filters[name] = parseInt(el.value);
+    const val = filters[name];
+    document.getElementById('val-' + name).textContent = val > 0 ? '+' + val : val;
+    updateSliderGradient(el);
+    applyCanvasFilters();
+}
+
+function updateSliderGradient(el) {
+    const min = parseFloat(el.min), max = parseFloat(el.max), val = parseFloat(el.value);
+    const pct = ((val - min) / (max - min) * 100).toFixed(1) + '%';
+    el.style.setProperty('--pct', pct);
+}
+
+function resetSlider(name) {
+    const el = document.getElementById('sl-' + name);
+    el.value = 0;
+    filters[name] = 0;
+    document.getElementById('val-' + name).textContent = '0';
+    updateSliderGradient(el);
+    applyCanvasFilters();
+}
+
+// ============================================================
+//  PRESETS
+// ============================================================
+const PRESETS = {
+    natural:   { exposure:  5, contrast:  5, saturation: 15, sharpness: 10, temperature:  5, vignette:  0 },
+    vivid:     { exposure: 10, contrast: 20, saturation: 40, sharpness: 15, temperature:  0, vignette: 10 },
+    warm:      { exposure:  5, contrast:  5, saturation: 10, sharpness:  5, temperature: 35, vignette:  5 },
+    cool:      { exposure:  0, contrast: 10, saturation:  5, sharpness:  5, temperature:-30, vignette:  5 },
+    dramatic:  { exposure: -5, contrast: 40, saturation: 20, sharpness: 20, temperature: -5, vignette: 50 },
+    reset:     { exposure:  0, contrast:  0, saturation:  0, sharpness:  0, temperature:  0, vignette:  0 }
+};
+
+function applyPreset(name) {
+    const preset = PRESETS[name];
+    Object.keys(preset).forEach(k => {
+        filters[k] = preset[k];
+        const sl = document.getElementById('sl-' + k);
+        if (sl) { sl.value = preset[k]; updateSliderGradient(sl); }
+        const vl = document.getElementById('val-' + k);
+        if (vl) vl.textContent = preset[k] > 0 ? '+' + preset[k] : preset[k];
+    });
+    applyCanvasFilters();
+
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.preset-btn').forEach(b => {
+        if (b.textContent.toLowerCase().includes(name.replace('reset', 'resetear'))) b.classList.add('active');
+    });
+}
+
+// ============================================================
+//  GUARDAR PROYECTO
+// ============================================================
+async function saveProject() {
+    const name = document.getElementById('projectName').value.trim();
+    if (!name) {
+        Swal.fire({ icon: 'warning', title: 'Falta el nombre', text: 'Escribe un nombre para el proyecto' });
+        document.getElementById('projectName').focus();
+        return;
+    }
+
+    const hasNewFile     = !!selectedFile;
+    const hasExistingImg = EXISTING_PANORAMA && EXISTING_PANORAMA.image_url;
+
+    if (!hasNewFile && !hasExistingImg) {
+        Swal.fire({ icon: 'warning', title: 'Sin imagen', text: 'Selecciona una imagen panorámica primero' });
+        return;
+    }
+
+    const btn = document.getElementById('btnSave360');
+    const txt = document.getElementById('btnSaveText');
+    btn.disabled = true;
+    txt.textContent = 'Subiendo...';
+    document.getElementById('uploadProgress').classList.add('visible');
+
+    // Simular progreso (Cloudinary no devuelve progreso real en este flujo)
+    let prog = 0;
+    const progressTimer = setInterval(() => {
+        prog = Math.min(prog + Math.random() * 15, 85);
+        document.getElementById('progressBar').style.width = prog + '%';
+    }, 300);
+
+    try {
+        const fd = new FormData();
+        fd.append('name', name);
+        fd.append('settings_json', JSON.stringify(filters));
+        if (panoramaId) fd.append('panorama_id', panoramaId);
+        if (hasNewFile) {
+            fd.append('panorama_file', selectedFile, selectedFile.name);
+        } else {
+            fd.append('existing_image_url', EXISTING_PANORAMA.image_url);
+            fd.append('existing_public_id',  EXISTING_PANORAMA.public_id || '');
+        }
+
+        const res  = await fetch('/admin/360/save', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        clearInterval(progressTimer);
+        document.getElementById('progressBar').style.width = '100%';
+
+        if (!data.success) throw new Error(data.error || 'Error desconocido');
+
+        // Éxito
+        panoramaId = data.panorama.id;
+        const publicLink = window.location.origin + '/view/360/' + data.panorama.public_token;
+        document.getElementById('savedLinkUrl').textContent  = publicLink;
+        document.getElementById('savedLinkOpen').href        = publicLink;
+        document.getElementById('savedLinkBox').classList.add('visible');
+
+        setTimeout(() => {
+            document.getElementById('uploadProgress').classList.remove('visible');
+            document.getElementById('progressBar').style.width = '0%';
+            btn.disabled = false;
+            txt.textContent = 'Guardar cambios';
+        }, 800);
+
+        Swal.fire({
+            icon: 'success',
+            title: '¡Guardado!',
+            html: `Link público listo:<br><a href="${publicLink}" target="_blank" style="color:#3b82f6;word-break:break-all;">${publicLink}</a>`,
+            showConfirmButton: true,
+            confirmButtonText: 'Copiar link',
+            confirmButtonColor: '#2563eb',
+            showCancelButton: true,
+            cancelButtonText: 'Cerrar'
+        }).then(r => { if (r.isConfirmed) navigator.clipboard.writeText(publicLink); });
+
+    } catch (e) {
+        clearInterval(progressTimer);
+        document.getElementById('uploadProgress').classList.remove('visible');
+        btn.disabled = false;
+        txt.textContent = 'Guardar en Cloudinary';
+        Swal.fire('Error al guardar', e.message, 'error');
+    }
+}
+
+function copyPublicLink() {
+    const url = document.getElementById('savedLinkUrl').textContent;
+    navigator.clipboard.writeText(url).then(() => {
+        const btn = document.querySelector('.btn-copy-link');
+        btn.textContent = '✅ Copiado';
+        setTimeout(() => { btn.innerHTML = '<i class="ph-bold ph-copy"></i> Copiar link'; }, 2000);
+    });
+}
+
+// ============================================================
+//  INICIAR
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+    initThree();
+
+    // Inicializar gradientes de sliders
+    document.querySelectorAll('.pano-slider').forEach(sl => updateSliderGradient(sl));
+});
+</script>
+</body>
+</html>

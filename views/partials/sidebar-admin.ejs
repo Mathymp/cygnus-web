@@ -39,6 +39,12 @@
                     <span>Centro de Marca</span>
                 </a>
             </li>
+            <li>
+                <a href="/admin/360" class="nav-link <%= (typeof page !== 'undefined' && page === 'pano360') ? 'active' : '' %>">
+                    <i class="ph-bold ph-globe-hemisphere-west"></i>
+                    <span>Visor 360 Pro</span>
+                </a>
+            </li>
         </ul>
 
         <% if (user && user.role === 'admin') { %>

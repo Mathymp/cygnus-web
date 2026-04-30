@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <meta name="description" content="Vista panorámica 360° — <%= panorama.name %> | Cygnus Group Propiedades">
+    <meta property="og:title" content="<%= panorama.name %> | Vista 360°">
+    <meta property="og:image" content="<%= panorama.image_url %>">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="/img/favicon.ico">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            width: 100%; height: 100%; overflow: hidden;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        #viewer360 {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+        #viewer360:active { cursor: grabbing; }
+        #viewer360 canvas { display: block; }
+
+        /* Cargando */
+        #loadScreen {
+            position: fixed;
+            inset: 0;
+            background: #060d1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            z-index: 100;
+            transition: opacity 0.6s;
+        }
+        #loadScreen.fade-out { opacity: 0; pointer-events: none; }
+        .load-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .load-logo img { width: 120px; opacity: 0.9; }
+        .load-logo span { color: rgba(255,255,255,0.4); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; }
+        .load-bar-wrap {
+            width: 200px;
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .load-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #2563eb, #06b6d4);
+            border-radius: 2px;
+            animation: loadAnim 2.5s ease-in-out forwards;
+        }
+        @keyframes loadAnim {
+            0%   { width: 0; }
+            60%  { width: 75%; }
+            90%  { width: 95%; }
+            100% { width: 100%; }
+        }
+
+        /* UI flotante */
+        .viewer-ui {
+            position: fixed;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* Esquina superior izquierda — nombre */
+        .ui-title {
+            top: 24px; left: 24px;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        .ui-title-logo {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            opacity: 0.8;
+        }
+        .ui-title-text { color: rgba(255,255,255,0.9); font-size: 0.9rem; font-weight: 600; }
+        .ui-title-sub  { color: rgba(255,255,255,0.45); font-size: 0.7rem; margin-top: 1px; }
+
+        /* Esquina superior derecha — botones */
+        .ui-actions {
+            top: 24px; right: 24px;
+            display: flex;
+            gap: 8px;
+            pointer-events: auto;
+        }
+        .ui-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: rgba(255,255,255,0.8);
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .ui-btn:hover { background: rgba(255,255,255,0.15); color: white; }
+
+        /* Esquina inferior derecha — ayuda */
+        .ui-hint {
+            bottom: 24px; right: 24px;
+            display: flex;
+            gap: 12px;
+            pointer-events: none;
+        }
+        .hint-pill {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 5px 12px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.72rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Logo Cygnus - marca de agua */
+        .ui-watermark {
+            bottom: 24px; left: 24px;
+            opacity: 0.35;
+            transition: opacity 0.2s;
+            pointer-events: auto;
+        }
+        .ui-watermark:hover { opacity: 0.7; }
+        .ui-watermark a { text-decoration: none; }
+        .ui-watermark img { height: 28px; filter: brightness(0) invert(1); }
+
+        /* Auto-rotate indicator */
+        .ui-autorotate {
+            bottom: 72px; right: 24px;
+            pointer-events: auto;
+        }
+        .ui-btn-rotate {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            width: auto;
+        }
+
+        /* Fullscreen */
+        @media (display-mode: fullscreen) {
+            .ui-title { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Pantalla de carga -->
+<div id="loadScreen">
+    <div class="load-logo">
+        <img src="/img/logo.png" alt="Cygnus Group" onerror="this.style.display='none'">
+        <span>Vista 360°</span>
+    </div>
+    <div class="load-bar-wrap">
+        <div class="load-bar"></div>
+    </div>
+    <p style="color:rgba(255,255,255,0.3);font-size:0.78rem;">Cargando panorámica...</p>
+</div>
+
+<!-- Contenedor del visor Three.js -->
+<div id="viewer360"></div>
+
+<!-- UI — Título arriba izquierda -->
+<div class="viewer-ui ui-title">
+    <img src="/img/logo.png" class="ui-title-logo" alt="Logo" onerror="this.style.display='none'">
+    <div>
+        <div class="ui-title-text"><%= panorama.name %></div>
+        <div class="ui-title-sub">Cygnus Group Propiedades · Vista 360°</div>
+    </div>
+</div>
+
+<!-- UI — Botones arriba derecha -->
+<div class="viewer-ui ui-actions">
+    <button class="ui-btn" id="btnFullscreen" title="Pantalla completa" onclick="toggleFullscreen()">⛶</button>
+    <button class="ui-btn" id="btnAutoRotate" title="Auto-rotar" onclick="toggleAutoRotate()" style="font-size:0.9rem;">▶ Auto</button>
+</div>
+
+<!-- UI — Marca de agua abajo izquierda -->
+<div class="viewer-ui ui-watermark">
+    <a href="https://cygnusgroup.cl" target="_blank">
+        <img src="/img/logo.png" alt="Cygnus Group" onerror="this.style.display='none'">
+    </a>
+</div>
+
+<!-- UI — Tips abajo derecha -->
+<div class="viewer-ui ui-hint" id="viewerHint" style="opacity:0;transition:opacity 0.5s;">
+    <span class="hint-pill">⊕ Arrastra para girar</span>
+    <span class="hint-pill">⊕ Scroll = zoom</span>
+</div>
+
+<!-- Datos del servidor -->
+<script>
+    const PANORAMA_DATA = <%- JSON.stringify({ image_url: panorama.image_url, settings: panorama.settings || {} }) %>;
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+<script>
+    // ============================================================
+    //  THREE.JS VIEWER — PÚBLICO
+    // ============================================================
+    let scene, camera, renderer, sphere, material;
+    let lon = 0, lat = 0, isDragging = false, prevX = 0, prevY = 0;
+    let touchPrevX = 0, touchPrevY = 0, touchPrevDist = 0;
+    let autoRotate = true;
+
+    function init() {
+        const container = document.getElementById('viewer360');
+        scene    = new THREE.Scene();
+        camera   = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+        renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const geo = new THREE.SphereGeometry(500, 60, 40);
+        geo.scale(-1, 1, 1);
+        material = new THREE.MeshBasicMaterial({ color: 0x050a12 });
+        sphere   = new THREE.Mesh(geo, material);
+        scene.add(sphere);
+
+        // Mouse
+        const cv = renderer.domElement;
+        cv.addEventListener('mousedown', e => {
+            isDragging = true; autoRotate = false;
+            document.getElementById('btnAutoRotate').style.opacity = '0.5';
+            prevX = e.clientX; prevY = e.clientY;
+        });
+        document.addEventListener('mouseup',   () => isDragging = false);
+        document.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            lon -= (e.clientX - prevX) * 0.2;
+            lat -= (e.clientY - prevY) * 0.2;
+            lat  = Math.max(-85, Math.min(85, lat));
+            prevX = e.clientX; prevY = e.clientY;
+        });
+        cv.addEventListener('wheel', e => {
+            camera.fov = Math.max(30, Math.min(100, camera.fov + e.deltaY * 0.03));
+            camera.updateProjectionMatrix();
+            e.preventDefault();
+        }, { passive: false });
+
+        // Touch
+        cv.addEventListener('touchstart', e => {
+            autoRotate = false;
+            touchPrevX = e.touches[0].clientX;
+            touchPrevY = e.touches[0].clientY;
+            if (e.touches.length === 2) {
+                touchPrevDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            }
+        });
+        cv.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                lon -= (e.touches[0].clientX - touchPrevX) * 0.2;
+                lat -= (e.touches[0].clientY - touchPrevY) * 0.2;
+                lat  = Math.max(-85, Math.min(85, lat));
+                touchPrevX = e.touches[0].clientX; touchPrevY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                camera.fov = Math.max(30, Math.min(100, camera.fov - (d - touchPrevDist) * 0.08));
+                camera.updateProjectionMatrix();
+                touchPrevDist = d;
+            }
+        }, { passive: false });
+
+        // Resize
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        // Cargar imagen con settings
+        loadTexture(PANORAMA_DATA.image_url, PANORAMA_DATA.settings);
+        animate();
+    }
+
+    function loadTexture(url, settings) {
+        new THREE.TextureLoader().load(
+            url,
+            (texture) => {
+                texture.colorSpace = THREE.SRGBColorSpace;
+                material.map   = texture;
+                material.color = new THREE.Color(0xffffff);
+                material.needsUpdate = true;
+                applySettings(settings || {});
+                // Ocultar loading
+                const ls = document.getElementById('loadScreen');
+                ls.classList.add('fade-out');
+                setTimeout(() => { ls.style.display = 'none'; }, 700);
+                // Mostrar hints
+                setTimeout(() => {
+                    document.getElementById('viewerHint').style.opacity = '1';
+                    setTimeout(() => { document.getElementById('viewerHint').style.opacity = '0'; }, 4000);
+                }, 800);
+            },
+            undefined,
+            (err) => {
+                console.error('Error cargando panorámica:', err);
+                document.getElementById('loadScreen').innerHTML = `
+                    <div style="text-align:center;color:white;">
+                        <p style="font-size:2rem;margin-bottom:12px;">⚠️</p>
+                        <p>No se pudo cargar la vista 360.</p>
+                    </div>
+                `;
+            }
+        );
+    }
+
+    function applySettings(s) {
+        const brightness = Math.pow(2, (s.exposure || 0) / 100).toFixed(3);
+        const contrast   = Math.max(0, 1 + (s.contrast  || 0) / 100).toFixed(3);
+        const saturate   = Math.max(0, 1 + (s.saturation|| 0) / 100).toFixed(3);
+        const temp       = s.temperature || 0;
+        const sharp      = s.sharpness   || 0;
+        const vig        = s.vignette    || 0;
+
+        let f = `brightness(${brightness}) contrast(${contrast}) saturate(${saturate})`;
+        if (temp > 0) f += ` sepia(${(temp * 0.25).toFixed(1)}%) hue-rotate(-${(temp * 0.2).toFixed(1)}deg)`;
+        else if (temp < 0) f += ` hue-rotate(${(Math.abs(temp) * 0.3).toFixed(1)}deg)`;
+        if (sharp < 0) f += ` blur(${(Math.abs(sharp) * 0.04).toFixed(2)}px)`;
+        else if (sharp > 0) f += ` contrast(${(1 + sharp * 0.006).toFixed(3)})`;
+
+        renderer.domElement.style.filter = f;
+
+        // Viñeta
+        if (vig > 0) {
+            let ov = document.getElementById('vignetteOv');
+            if (!ov) { ov = document.createElement('div'); ov.id = 'vignetteOv'; ov.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:1;'; document.body.appendChild(ov); }
+            ov.style.background = `radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,${(vig/100*0.8).toFixed(2)}) 100%)`;
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        if (autoRotate) lon += 0.025;
+        const phi   = THREE.MathUtils.degToRad(90 - lat);
+        const theta = THREE.MathUtils.degToRad(lon);
+        camera.lookAt(
+            500 * Math.sin(phi) * Math.cos(theta),
+            500 * Math.cos(phi),
+            500 * Math.sin(phi) * Math.sin(theta)
+        );
+        renderer.render(scene, camera);
+    }
+
+    // ============================================================
+    //  UI ACTIONS
+    // ============================================================
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    let autoRotateActive = true;
+    function toggleAutoRotate() {
+        autoRotateActive = !autoRotateActive;
+        autoRotate = autoRotateActive;
+        const btn = document.getElementById('btnAutoRotate');
+        btn.style.opacity = autoRotateActive ? '1' : '0.5';
+        btn.textContent   = autoRotateActive ? '▶ Auto' : '⏸ Auto';
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+        const btn = document.getElementById('btnFullscreen');
+        btn.textContent = document.fullscreenElement ? '✕' : '⛶';
+    });
+
+    // ============================================================
+    window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

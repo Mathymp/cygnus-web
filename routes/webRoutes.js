@@ -12,6 +12,7 @@ const editPropertyController = require('../controllers/editPropertyController');
 const inventoryController = require('../controllers/inventoryController');
 const pdfController = require('../controllers/pdfController');
 const supabase = require('../config/supabaseClient');
+const panoramasController = require('../controllers/panoramasController');
 
 // --- IMPORTAR CONTROLADORES LOTIFY ---
 const projectController = require('../controllers/projectController');
@@ -20,6 +21,14 @@ const crmController = require('../controllers/crmController');
 
 // --- CONFIGURACIÓN DE UPLOAD ---
 const upload = require('../config/cloudinaryConfig');
+const cloudinaryV2 = require('cloudinary').v2;
+const multerLib = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const panoStorage = new CloudinaryStorage({
+    cloudinary: cloudinaryV2,
+    params: { folder: 'cygnus_360', allowed_formats: ['jpg', 'jpeg', 'png', 'webp'], resource_type: 'image' }
+});
+const uploadPano = multerLib({ storage: panoStorage, limits: { fileSize: 200 * 1024 * 1024 } });
 
 // --- CONEXIÓN NATIVA BD (LOTIFY) ---
 const pool = new Pool({
@@ -50,6 +59,9 @@ router.get('/agentes', userController.listAgents);
 // Detalle y PDF (Inmobiliaria tradicional)
 router.get('/propiedad/:id', mainController.propertyDetail);
 router.get('/propiedad/:id/descargar-pdf', pdfController.generatePropertyPDF);
+
+// --- VISOR 360 PÚBLICO ---
+router.get('/view/360/:slug', panoramasController.publicViewer);
 
 // --- NUEVA RUTA: VISOR PÚBLICO DE PARCELAS (LOTIFY) ---
 router.get('/proyecto/:slug', async (req, res) => {
@@ -162,8 +174,13 @@ router.get('/admin/agents/profile/:id', requireAuth, userController.agentProfile
 router.delete('/admin/agents/delete/:id', requireAuth, userController.deleteAgent);
 
 // ==========================================
-//           CONFIGURACIÓN Y MARCA
+//           CONFIGURACIÓN, MARCA Y VISOR 360
 // ==========================================
+router.get('/admin/360',                      requireAuth, panoramasController.adminPanel);
+router.get('/admin/360/editor/:id',           requireAuth, panoramasController.editorPage);
+router.post('/admin/360/save',                requireAuth, uploadPano.single('panorama_file'), panoramasController.savePanorama);
+router.delete('/admin/360/delete/:id',        requireAuth, panoramasController.deletePanorama);
+
 router.get('/admin/configuracion', requireAuth, mainController.configPage);
 router.post('/admin/configuracion/update', requireAuth, upload.array('new_banners', 5), mainController.updateConfig);
 

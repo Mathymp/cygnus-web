@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <title><%= title %></title>
+    <style>
+        .p360-wrap { padding: 32px; max-width: 1400px; margin: 0 auto; }
+        .p360-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+        .p360-header h1 { font-size: 1.75rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 12px; }
+        .p360-header h1 i { color: #2563eb; }
+        .p360-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+
+        .pano-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .pano-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+
+        .pano-card-thumb {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            display: block;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .pano-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .pano-thumb-placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #312e81 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: rgba(255,255,255,0.7);
+        }
+        .pano-thumb-placeholder i { font-size: 2.5rem; color: rgba(255,255,255,0.4); }
+        .pano-thumb-placeholder span { font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; }
+
+        .pano-card-body { padding: 18px 20px; }
+        .pano-card-name { font-weight: 700; font-size: 1rem; color: #0f172a; margin: 0 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pano-card-date { font-size: 0.78rem; color: #94a3b8; margin: 0 0 14px; }
+
+        .pano-link-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 14px;
+        }
+        .pano-link-url {
+            flex: 1;
+            font-size: 0.75rem;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: monospace;
+        }
+        .pano-link-copy {
+            flex-shrink: 0;
+            padding: 4px 10px;
+            border: none;
+            background: #2563eb;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+        .pano-link-copy:hover { background: #1d4ed8; }
+        .pano-link-copy.copied { background: #10b981; }
+
+        .pano-card-actions { display: flex; gap: 8px; }
+        .btn-pano-edit {
+            flex: 1;
+            padding: 8px;
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+        .btn-pano-edit:hover { background: #2563eb; color: white; }
+        .btn-pano-del {
+            padding: 8px 12px;
+            background: #fef2f2;
+            color: #ef4444;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-pano-del:hover { background: #ef4444; color: white; }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 80px 20px;
+            color: #94a3b8;
+        }
+        .empty-state i { font-size: 4rem; display: block; margin-bottom: 16px; color: #cbd5e1; }
+        .empty-state h3 { font-size: 1.25rem; color: #475569; margin-bottom: 8px; }
+        .empty-state p { font-size: 0.9rem; margin-bottom: 24px; }
+
+        .btn-new {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 22px;
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+            transition: all 0.2s;
+        }
+        .btn-new:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); color: white; text-decoration: none; }
+
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+        .stat-pill {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.875rem;
+        }
+        .stat-pill i { color: #2563eb; font-size: 1.1rem; }
+        .stat-pill strong { font-weight: 700; color: #0f172a; }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <%- include('../partials/sidebar-admin') %>
+
+    <main class="main-content">
+        <div class="p360-wrap">
+
+            <div class="p360-header">
+                <h1>
+                    <i class="ph-bold ph-globe-hemisphere-west"></i>
+                    Visor 360 Pro
+                </h1>
+                <a href="/admin/360/editor/nuevo" class="btn-new">
+                    <i class="ph-bold ph-plus"></i>
+                    Nuevo Panorama
+                </a>
+            </div>
+
+            <div class="stats-bar">
+                <div class="stat-pill">
+                    <i class="ph-bold ph-images"></i>
+                    <span><strong><%= panoramas.length %></strong> panoramas creados</span>
+                </div>
+                <div class="stat-pill">
+                    <i class="ph-bold ph-link"></i>
+                    <span><strong><%= panoramas.length %></strong> links públicos activos</span>
+                </div>
+            </div>
+
+            <div class="p360-grid">
+
+                <% if (panoramas.length === 0) { %>
+                    <div class="empty-state">
+                        <i class="ph-bold ph-globe-hemisphere-west"></i>
+                        <h3>No hay panoramas aún</h3>
+                        <p>Crea tu primer panorama 360 para compartir con clientes.</p>
+                        <a href="/admin/360/editor/nuevo" class="btn-new">
+                            <i class="ph-bold ph-plus"></i> Crear primer panorama
+                        </a>
+                    </div>
+                <% } else { %>
+                    <% panoramas.forEach(p => {
+                        const settings = p.settings || {};
+                        const dateStr = new Date(p.created_at).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+                    %>
+                    <div class="pano-card">
+                        <% if (p.image_url) { %>
+                            <div class="pano-card-thumb">
+                                <img src="<%= p.image_url %>" alt="<%= p.name %>" loading="lazy">
+                            </div>
+                        <% } else { %>
+                            <div class="pano-thumb-placeholder">
+                                <i class="ph-bold ph-globe-hemisphere-west"></i>
+                                <span>Sin imagen</span>
+                            </div>
+                        <% } %>
+
+                        <div class="pano-card-body">
+                            <p class="pano-card-name"><%= p.name %></p>
+                            <p class="pano-card-date"><i class="ph ph-calendar-blank" style="margin-right:4px;"></i><%= dateStr %></p>
+
+                            <div class="pano-link-box">
+                                <span class="pano-link-url" id="url-<%= p.id %>">/view/360/<%= p.public_token %></span>
+                                <button class="pano-link-copy" onclick="copyLink('<%= p.id %>', '<%= p.public_token %>')">
+                                    <i class="ph-bold ph-copy"></i> Copiar
+                                </button>
+                            </div>
+
+                            <div class="pano-card-actions">
+                                <a href="/admin/360/editor/<%= p.id %>" class="btn-pano-edit">
+                                    <i class="ph-bold ph-pencil-simple"></i> Editar
+                                </a>
+                                <a href="/view/360/<%= p.public_token %>" target="_blank" class="btn-pano-edit" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;">
+                                    <i class="ph-bold ph-eye"></i>
+                                </a>
+                                <button class="btn-pano-del" onclick="deletePano('<%= p.id %>', '<%= p.name %>')">
+                                    <i class="ph-bold ph-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <% }) %>
+                <% } %>
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    function copyLink(id, token) {
+        const url = window.location.origin + '/view/360/' + token;
+        navigator.clipboard.writeText(url).then(() => {
+            const btn = document.querySelector(`[onclick="copyLink('${id}', '${token}')"]`);
+            btn.innerHTML = '<i class="ph-bold ph-check"></i> Copiado';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.innerHTML = '<i class="ph-bold ph-copy"></i> Copiar';
+                btn.classList.remove('copied');
+            }, 2000);
+        });
+    }
+
+    function deletePano(id, name) {
+        Swal.fire({
+            title: '¿Eliminar panorama?',
+            html: `<strong>${name}</strong> será eliminado permanentemente.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#ef4444'
+        }).then(async (r) => {
+            if (!r.isConfirmed) return;
+            try {
+                const res = await fetch(`/admin/360/delete/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false });
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudo eliminar', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'Falla de red', 'error');
+            }
+        });
+    }
+</script>
+</body>
+</html>
