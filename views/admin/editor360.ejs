@@ -497,6 +497,17 @@
                         <input type="range" class="psl" id="sl-temperature" min="-50" max="50" value="0" oninput="onSl('temperature',this)">
                     </div>
 
+                    <div class="sl-row">
+                        <div class="sl-head">
+                            <span class="sl-label">🌒 Sombras</span>
+                            <div class="sl-meta">
+                                <span class="sl-val" id="v-shadows">0</span>
+                                <button class="sl-rst" onclick="resetSl('shadows')">↺</button>
+                            </div>
+                        </div>
+                        <input type="range" class="psl" id="sl-shadows" min="0" max="100" value="0" oninput="onSl('shadows',this)">
+                    </div>
+
                     <div class="sl-row" style="margin-bottom:0;">
                         <div class="sl-head">
                             <span class="sl-label">🌑 Viñeta</span>
@@ -569,7 +580,7 @@ let panoramaId    = EXISTING ? EXISTING.id : null;
 let stitchedCanvas = null; // Canvas con el panorama cosido listo para subir
 let selectedSingleFile = null; // Archivo individual (ya cosido)
 
-const filters = { exposure:0, contrast:0, saturation:0, sharpness:0, temperature:0, vignette:0 };
+const filters = { exposure:0, contrast:0, saturation:0, sharpness:0, temperature:0, vignette:0, shadows:0 };
 
 // Cargar settings del panorama existente
 if (EXISTING && EXISTING.settings) {
@@ -831,6 +842,21 @@ async function stitchDJI(imageFiles) {
     // Extraer píxeles de cada fuente (TypedArray para velocidad)
     const srcPix = srcCanvases.map(c => c.getContext('2d').getImageData(0, 0, SW, SH).data);
 
+    // — Normalización de brillo entre cámaras —
+    // Evita seams visibles por diferencias de exposición entre tomas
+    const bAvg = srcPix.map(pix => {
+        let sum = 0, n = 0;
+        for (let i = 0; i < pix.length; i += 20) { // muestra cada 5° pixel
+            sum += 0.299 * pix[i] + 0.587 * pix[i + 1] + 0.114 * pix[i + 2];
+            n++;
+        }
+        return n > 0 ? sum / n : 128;
+    });
+    const bGlobal = bAvg.reduce((a, b) => a + b, 0) / bAvg.length;
+    // Factor de escala por cámara: máximo ±40% para evitar sobre-corrección
+    const bScale = bAvg.map(b => b > 4 ? Math.min(1.4, Math.max(0.7, bGlobal / b)) : 1.0);
+    setStitchProgress(22, 'Normalización lista — cosiendo...', `Brillo global: ${bGlobal.toFixed(0)}`);
+
     // Salida equirectangular 2:1
     const OUT_W = 3840;
     const OUT_H = 1920;
@@ -883,14 +909,14 @@ async function stitchDJI(imageFiles) {
                 const dy = sinLat;
                 const dz = cosLat * Math.cos(lon);
 
-                // Weighted blend de todas las cámaras que cubren este pixel
-                // → elimina seams duros, produce fusión suave entre imágenes
-                let rSum = 0, gSum = 0, bSum = 0, wSum = 0;
+                // Nearest-camera con normalización de brillo
+                // (evita ghosting que produce el blending entre exposiciones distintas)
+                let bCam = -1, bU = 0, bV = 0, bDot = 0.05;
 
                 for (let k = 0; k < NC; k++) {
                     const b   = k * 8;
                     const dot = dx*CD[b] + dy*CD[b+1] + dz*CD[b+2];
-                    if (dot <= 0.05) continue;
+                    if (dot <= bDot) continue;
 
                     const u = (dx*CD[b+3] + dz*CD[b+4]) / dot;
                     if (u < -halfH || u > halfH) continue;
@@ -898,29 +924,21 @@ async function stitchDJI(imageFiles) {
                     const v = (dx*CD[b+5] + dy*CD[b+6] + dz*CD[b+7]) / dot;
                     if (v < -halfV || v > halfV) continue;
 
-                    // Peso: mayor en el centro de la imagen, menor en los bordes
-                    const wu = 1 - Math.abs(u) / halfH;
-                    const wv = 1 - Math.abs(v) / halfV;
-                    const w  = wu * wv * dot;
-
-                    const imgU = (u / halfH + 1) * 0.5;
-                    const imgV = (1 - v / halfV) * 0.5;
-                    const sx   = Math.min(Math.round(imgU * (SW - 1)), SW - 1);
-                    const sy   = Math.min(Math.round(imgV * (SH - 1)), SH - 1);
-                    const si   = (sy * SW + sx) * 4;
-                    const sp   = srcPix[k];
-
-                    rSum += sp[si]   * w;
-                    gSum += sp[si+1] * w;
-                    bSum += sp[si+2] * w;
-                    wSum += w;
+                    bDot = dot; bCam = k;
+                    bU = (u / halfH + 1) * 0.5;
+                    bV = (1 - v / halfV) * 0.5;
                 }
 
-                if (wSum > 0) {
+                if (bCam >= 0) {
+                    const sx = Math.min(Math.round(bU * (SW - 1)), SW - 1);
+                    const sy = Math.min(Math.round(bV * (SH - 1)), SH - 1);
+                    const si = (sy * SW + sx) * 4;
                     const oi = (py * OUT_W + px) * 4;
-                    outPix[oi]   = rSum / wSum;
-                    outPix[oi+1] = gSum / wSum;
-                    outPix[oi+2] = bSum / wSum;
+                    const sp = srcPix[bCam];
+                    const sc = bScale[bCam];
+                    outPix[oi]   = Math.min(255, sp[si]   * sc);
+                    outPix[oi+1] = Math.min(255, sp[si+1] * sc);
+                    outPix[oi+2] = Math.min(255, sp[si+2] * sc);
                     outPix[oi+3] = 255;
                 }
             }
@@ -1053,6 +1071,19 @@ document.getElementById('folderInput').addEventListener('change', async (e) => {
         return;
     }
 
+    // Confirmar si ya hay un panorama cargado
+    if (stitchedCanvas || (threeMat && threeMat.map)) {
+        const { isConfirmed } = await Swal.fire({
+            title: 'Reemplazar panorama',
+            text: `¿Cargar la nueva carpeta (${imgs.length} fotos) y descartar el panorama actual?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, reemplazar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!isConfirmed) { e.target.value = ''; return; }
+    }
+
     // Mostrar lista de archivos en sidebar
     showFileList(imgs);
 
@@ -1171,6 +1202,26 @@ function applyFilters() {
     else if (filters.sharpness > 0)
         f += ` contrast(${(1 + filters.sharpness*0.006).toFixed(3)})`;
 
+    // Sombras: SVG feComponentTransfer — levanta zonas oscuras sin tocar el cielo
+    if (filters.shadows > 0) {
+        const boost = filters.shadows / 100 * 0.45;
+        const tbl = Array.from({ length: 11 }, (_, i) => {
+            const x = i / 10;
+            return Math.min(1, x + boost * Math.pow(1 - x, 2)).toFixed(4);
+        }).join(' ');
+        let svgF = document.getElementById('svgShadowsFilter');
+        if (!svgF) {
+            const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svgEl.setAttribute('width', '0'); svgEl.setAttribute('height', '0');
+            svgEl.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;';
+            svgEl.innerHTML = '<defs><filter id="svgShadowsFilter" color-interpolation-filters="sRGB"><feComponentTransfer><feFuncR id="sfR" type="table"/><feFuncG id="sfG" type="table"/><feFuncB id="sfB" type="table"/></feComponentTransfer></filter></defs>';
+            document.body.appendChild(svgEl);
+            svgF = document.getElementById('svgShadowsFilter');
+        }
+        svgF.querySelectorAll('feFuncR,feFuncG,feFuncB').forEach(fn => fn.setAttribute('tableValues', tbl));
+        f += ' url(#svgShadowsFilter)';
+    }
+
     cv.style.filter = f;
 
     let vig = document.getElementById('vigOv');
@@ -1207,12 +1258,12 @@ function resetSl(name) {
 }
 
 const PRESETS = {
-    natural:  { exposure:5,  contrast:5,  saturation:15, sharpness:10, temperature:5,  vignette:0  },
-    vivid:    { exposure:10, contrast:20, saturation:40, sharpness:15, temperature:0,  vignette:10 },
-    warm:     { exposure:5,  contrast:5,  saturation:10, sharpness:5,  temperature:35, vignette:5  },
-    cool:     { exposure:0,  contrast:10, saturation:5,  sharpness:5,  temperature:-30,vignette:5  },
-    dramatic: { exposure:-5, contrast:40, saturation:20, sharpness:20, temperature:-5, vignette:50 },
-    reset:    { exposure:0,  contrast:0,  saturation:0,  sharpness:0,  temperature:0,  vignette:0  }
+    natural:  { exposure:5,  contrast:5,  saturation:15, sharpness:10, temperature:5,  vignette:0,  shadows:10 },
+    vivid:    { exposure:10, contrast:20, saturation:40, sharpness:15, temperature:0,  vignette:10, shadows:0  },
+    warm:     { exposure:5,  contrast:5,  saturation:10, sharpness:5,  temperature:35, vignette:5,  shadows:15 },
+    cool:     { exposure:0,  contrast:10, saturation:5,  sharpness:5,  temperature:-30,vignette:5,  shadows:0  },
+    dramatic: { exposure:-5, contrast:40, saturation:20, sharpness:20, temperature:-5, vignette:50, shadows:20 },
+    reset:    { exposure:0,  contrast:0,  saturation:0,  sharpness:0,  temperature:0,  vignette:0,  shadows:0  }
 };
 
 function applyPreset(name) {
