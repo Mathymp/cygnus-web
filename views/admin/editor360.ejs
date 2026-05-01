@@ -909,14 +909,15 @@ async function stitchDJI(imageFiles) {
                 const dy = sinLat;
                 const dz = cosLat * Math.cos(lon);
 
-                // Nearest-camera con normalización de brillo
-                // (evita ghosting que produce el blending entre exposiciones distintas)
-                let bCam = -1, bU = 0, bV = 0, bDot = 0.05;
+                // Top-2 seam blend: mezcla solo en la zona de costura (evita ghosting)
+                // Fuera de la costura = nearest-camera puro. En la costura = blend suave.
+                let bCam = -1, bDot = 0.05, bU = 0, bV = 0;
+                let b2Cam = -1, b2Dot = 0.05, b2U = 0, b2V = 0;
 
                 for (let k = 0; k < NC; k++) {
                     const b   = k * 8;
                     const dot = dx*CD[b] + dy*CD[b+1] + dz*CD[b+2];
-                    if (dot <= bDot) continue;
+                    if (dot <= 0.05) continue;
 
                     const u = (dx*CD[b+3] + dz*CD[b+4]) / dot;
                     if (u < -halfH || u > halfH) continue;
@@ -924,21 +925,43 @@ async function stitchDJI(imageFiles) {
                     const v = (dx*CD[b+5] + dy*CD[b+6] + dz*CD[b+7]) / dot;
                     if (v < -halfV || v > halfV) continue;
 
-                    bDot = dot; bCam = k;
-                    bU = (u / halfH + 1) * 0.5;
-                    bV = (1 - v / halfV) * 0.5;
+                    if (dot > bDot) {
+                        b2Cam = bCam; b2Dot = bDot; b2U = bU; b2V = bV;
+                        bDot = dot; bCam = k;
+                        bU = (u / halfH + 1) * 0.5;
+                        bV = (1 - v / halfV) * 0.5;
+                    } else if (dot > b2Dot) {
+                        b2Dot = dot; b2Cam = k;
+                        b2U = (u / halfH + 1) * 0.5;
+                        b2V = (1 - v / halfV) * 0.5;
+                    }
                 }
 
                 if (bCam >= 0) {
-                    const sx = Math.min(Math.round(bU * (SW - 1)), SW - 1);
-                    const sy = Math.min(Math.round(bV * (SH - 1)), SH - 1);
-                    const si = (sy * SW + sx) * 4;
                     const oi = (py * OUT_W + px) * 4;
-                    const sp = srcPix[bCam];
-                    const sc = bScale[bCam];
-                    outPix[oi]   = Math.min(255, sp[si]   * sc);
-                    outPix[oi+1] = Math.min(255, sp[si+1] * sc);
-                    outPix[oi+2] = Math.min(255, sp[si+2] * sc);
+                    const sx1 = Math.min(Math.round(bU  * (SW - 1)), SW - 1);
+                    const sy1 = Math.min(Math.round(bV  * (SH - 1)), SH - 1);
+                    const si1 = (sy1 * SW + sx1) * 4;
+                    const sp1 = srcPix[bCam], sc1 = bScale[bCam];
+
+                    // Umbral adaptativo: zona nadir (lat<-75°) necesita mezcla más ancha
+                    // para suavizar el efecto de "abanico" donde convergen las tomas
+                    const seamThresh = lat < -1.31 ? 0.70 : 0.92;
+
+                    if (b2Cam >= 0 && b2Dot > bDot * seamThresh) {
+                        const sx2 = Math.min(Math.round(b2U * (SW - 1)), SW - 1);
+                        const sy2 = Math.min(Math.round(b2V * (SH - 1)), SH - 1);
+                        const si2 = (sy2 * SW + sx2) * 4;
+                        const sp2 = srcPix[b2Cam], sc2 = bScale[b2Cam];
+                        const wt = bDot + b2Dot;
+                        outPix[oi]   = Math.min(255, (sp1[si1]  *sc1*bDot + sp2[si2]  *sc2*b2Dot) / wt);
+                        outPix[oi+1] = Math.min(255, (sp1[si1+1]*sc1*bDot + sp2[si2+1]*sc2*b2Dot) / wt);
+                        outPix[oi+2] = Math.min(255, (sp1[si1+2]*sc1*bDot + sp2[si2+2]*sc2*b2Dot) / wt);
+                    } else {
+                        outPix[oi]   = Math.min(255, sp1[si1]   * sc1);
+                        outPix[oi+1] = Math.min(255, sp1[si1+1] * sc1);
+                        outPix[oi+2] = Math.min(255, sp1[si1+2] * sc1);
+                    }
                     outPix[oi+3] = 255;
                 }
             }
@@ -947,6 +970,32 @@ async function stitchDJI(imageFiles) {
         const pct = 23 + (ci + 1) / totalChunks * 70;
         setStitchProgress(pct, `Cosiendo panorama... ${Math.round((ci+1)/totalChunks*100)}%`, `Fila ${rowEnd}/${OUT_H}`);
         await yieldThread();
+    }
+
+    // — Rellenar hoyos negros de cénit y nadir (zonas sin cobertura de cámara) —
+    setStitchProgress(93, 'Rellenando hoyos de cénit/nadir...', '');
+    await yieldThread();
+    const rowBytes = OUT_W * 4;
+    let topFill = -1, botFill = OUT_H - 1;
+    outerT: for (let py2 = 0; py2 < OUT_H; py2++) {
+        for (let px2 = 0; px2 < OUT_W; px2++) {
+            if (outPix[(py2 * OUT_W + px2) * 4 + 3] > 0) { topFill = py2; break outerT; }
+        }
+    }
+    outerB: for (let py2 = OUT_H - 1; py2 >= 0; py2--) {
+        for (let px2 = 0; px2 < OUT_W; px2++) {
+            if (outPix[(py2 * OUT_W + px2) * 4 + 3] > 0) { botFill = py2; break outerB; }
+        }
+    }
+    if (topFill > 0) {   // hoyos en el cénit → copiar la fila superior válida hacia arriba
+        const srcOff = topFill * rowBytes;
+        for (let py2 = 0; py2 < topFill; py2++)
+            outPix.copyWithin(py2 * rowBytes, srcOff, srcOff + rowBytes);
+    }
+    if (botFill < OUT_H - 1) {  // hoyos residuales en el nadir
+        const srcOff = botFill * rowBytes;
+        for (let py2 = botFill + 1; py2 < OUT_H; py2++)
+            outPix.copyWithin(py2 * rowBytes, srcOff, srcOff + rowBytes);
     }
 
     setStitchProgress(95, 'Finalizando imagen...', '');
