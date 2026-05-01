@@ -1114,8 +1114,9 @@ function initThree() {
 function animateThree() {
     requestAnimationFrame(animateThree);
     if (autoRot) lon += 0.035;
-    const phi = THREE.MathUtils.degToRad(90 - lat);
+    const phi   = THREE.MathUtils.degToRad(90 - lat);
     const theta = THREE.MathUtils.degToRad(lon);
+    threeCamera.up.set(0, 1, 0);
     threeCamera.lookAt(
         500 * Math.sin(phi) * Math.cos(theta),
         500 * Math.cos(phi),
@@ -1125,6 +1126,7 @@ function animateThree() {
 }
 
 function loadCanvasIntoViewer(canvas) {
+    lon = 0; lat = 0; autoRot = false;
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     threeMat.map   = texture;
@@ -1136,6 +1138,7 @@ function loadCanvasIntoViewer(canvas) {
 }
 
 function loadUrlIntoViewer(url) {
+    lon = 0; lat = 0; autoRot = false;
     new THREE.TextureLoader().load(url, (tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
         threeMat.map   = tex;
@@ -1401,20 +1404,44 @@ async function saveProject() {
     }, 400);
 
     try {
+        let imageUrl = null, publicId = null;
+
+        if (stitchedCanvas || selectedSingleFile) {
+            // Upload directo browser → Cloudinary (evita pasar el archivo por el servidor Node)
+            const sigRes  = await fetch('/admin/360/sign-upload', { method: 'POST' });
+            const sigData = await sigRes.json();
+            if (sigData.error) throw new Error('Error de firma: ' + sigData.error);
+
+            const blob = stitchedCanvas
+                ? await canvasToBlob(stitchedCanvas, 0.88)
+                : selectedSingleFile;
+
+            const cdFd = new FormData();
+            cdFd.append('file', blob, stitchedCanvas ? 'panorama_dji.jpg' : selectedSingleFile.name);
+            cdFd.append('api_key',   sigData.apiKey);
+            cdFd.append('timestamp', sigData.timestamp);
+            cdFd.append('signature', sigData.signature);
+            cdFd.append('folder',    sigData.folder);
+
+            const cdRes  = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`, {
+                method: 'POST', body: cdFd
+            });
+            const cdData = await cdRes.json();
+            if (cdData.error) throw new Error('Cloudinary: ' + cdData.error.message);
+
+            imageUrl = cdData.secure_url;
+            publicId = cdData.public_id;
+        } else if (EXISTING) {
+            imageUrl = EXISTING.image_url;
+            publicId = EXISTING.public_id || '';
+        }
+
         const fd = new FormData();
         fd.append('name', name);
         fd.append('settings_json', JSON.stringify(filters));
-        if (panoramaId) fd.append('panorama_id', panoramaId);
-
-        if (stitchedCanvas) {
-            const blob = await canvasToBlob(stitchedCanvas);
-            fd.append('panorama_file', blob, 'pano_stitched.jpg');
-        } else if (selectedSingleFile) {
-            fd.append('panorama_file', selectedSingleFile, selectedSingleFile.name);
-        } else {
-            fd.append('existing_image_url', EXISTING.image_url);
-            fd.append('existing_public_id',  EXISTING.public_id || '');
-        }
+        if (panoramaId)  fd.append('panorama_id', panoramaId);
+        fd.append('existing_image_url', imageUrl || '');
+        fd.append('existing_public_id',  publicId || '');
 
         const res  = await fetch('/admin/360/save', { method: 'POST', body: fd });
         const data = await res.json();

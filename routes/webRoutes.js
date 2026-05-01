@@ -181,6 +181,24 @@ router.get('/admin/360/editor/:id',           requireAuth, panoramasController.e
 router.post('/admin/360/save',                requireAuth, uploadPano.single('panorama_file'), panoramasController.savePanorama);
 router.delete('/admin/360/delete/:id',        requireAuth, panoramasController.deletePanorama);
 
+// Firma para upload directo browser → Cloudinary (evita pasar el archivo por el servidor)
+router.post('/admin/360/sign-upload', requireAuth, (req, res) => {
+    try {
+        const timestamp = Math.round(Date.now() / 1000);
+        const params    = { folder: 'cygnus_360', timestamp };
+        const signature = cloudinaryV2.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET);
+        res.json({
+            signature,
+            timestamp,
+            cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+            apiKey:    process.env.CLOUDINARY_API_KEY,
+            folder:    'cygnus_360'
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 router.get('/admin/configuracion', requireAuth, mainController.configPage);
 router.post('/admin/configuracion/update', requireAuth, upload.array('new_banners', 5), mainController.updateConfig);
 
