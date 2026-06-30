@@ -83,7 +83,7 @@
 
                     <div class="cli-form-field">
                         <label class="field-lbl">Teléfono</label>
-                        <input type="tel" id="nc-tel" class="si" placeholder="+56 9 1234 5678">
+                        <input type="tel" id="nc-tel" class="si" placeholder="+56 9 1234 5678" oninput="autoFmtTel(this)">
                     </div>
 
                     <div class="cli-form-field full">
@@ -138,7 +138,7 @@
                         </div>
                         <div class="cli-form-field">
                             <label class="field-lbl">Teléfono Cónyuge <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                            <input type="tel" id="nc-con-tel" class="si" placeholder="+56 9 ...">
+                            <input type="tel" id="nc-con-tel" class="si" placeholder="+56 9 1234 5678" oninput="autoFmtTel(this)">
                         </div>
                     </div>
                 </div>
@@ -240,7 +240,7 @@ const $=id=>document.getElementById(id);
 
 // ── RUT helpers ──
 function autoFmtRut(input,statusId){
-    let v=input.value.replace(/[^0-9kK]/g,'').toUpperCase();
+    let v=input.value.replace(/[^0-9kK]/g,'').toUpperCase().slice(0,9);
     if(v.length>1)v=v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'-'+v.slice(-1);
     input.value=v;
     const el=$(statusId);if(!el)return;
@@ -253,6 +253,15 @@ function validarRut(rut){
     const body=c.slice(0,-1),dv=c.slice(-1);let s=0,m=2;
     for(let i=body.length-1;i>=0;i--){s+=parseInt(body[i],10)*m;m=m>=7?2:m+1;}
     const r=11-(s%11);return dv===(r===11?'0':r===10?'K':String(r));
+}
+function autoFmtTel(input){
+    const raw=input.value.replace(/[^\d]/g,'').slice(0,11);
+    let f='';
+    if(raw.length>0)f='+'+raw.slice(0,2);
+    if(raw.length>2)f+=' '+raw.slice(2,3);
+    if(raw.length>3)f+=' '+raw.slice(3,7);
+    if(raw.length>7)f+=' '+raw.slice(7,11);
+    input.value=f;
 }
 
 // ── Modal Nuevo Cliente ──
@@ -390,7 +399,7 @@ function renderExpand(id,c){
                 </div>
                 <div class="cli-form-field">
                     <label class="field-lbl">Teléfono</label>
-                    <input type="tel" id="ec-tel-${id}" class="si" value="${escH(c.telefono||'')}">
+                    <input type="tel" id="ec-tel-${id}" class="si" value="${escH(c.telefono||'')}" oninput="autoFmtTel(this)">
                 </div>
                 <div class="cli-form-field full">
                     <label class="field-lbl">Correo Electrónico</label>
@@ -439,7 +448,7 @@ function renderExpand(id,c){
                     </div>
                     <div class="cli-form-field">
                         <label class="field-lbl">Teléfono <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                        <input type="tel" id="ec-con-tel-${id}" class="si" value="${escH(c.telefono_conyugue||'')}">
+                            <input type="tel" id="ec-con-tel-${id}" class="si" value="${escH(c.telefono_conyugue||'')}" oninput="autoFmtTel(this)">
                     </div>
                 </div>
             </div>

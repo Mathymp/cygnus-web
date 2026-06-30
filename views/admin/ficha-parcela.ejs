@@ -265,7 +265,7 @@
                                             <label>RUT <span style="color:#ef4444;">*</span></label>
                                             <div class="rut-input-wrap"><input type="text" id="cli-rut" class="styled-input" placeholder="12.345.678-9" oninput="autoFmtRut(this,'cli-rut-status')" style="padding-right:38px;"><span id="cli-rut-status" class="rut-status"></span></div>
                                         </div>
-                                        <div class="im-input-group"><label>Teléfono</label><input type="tel" id="cli-telefono" class="styled-input" placeholder="+56 9 1234 5678"></div>
+                                        <div class="im-input-group"><label>Teléfono</label><input type="tel" id="cli-telefono" class="styled-input" placeholder="+56 9 1234 5678" oninput="autoFmtTel(this)"></div>
                                     </div>
                                     <div class="im-input-group"><label>Correo Electrónico</label><input type="email" id="cli-email" class="styled-input" placeholder="correo@ejemplo.cl"></div>
                                     <div class="im-input-group"><label>Dirección</label><textarea id="cli-direccion" class="styled-input" rows="2" placeholder="Calle, número, ciudad, región" style="resize:vertical;"></textarea></div>
@@ -305,7 +305,7 @@
                                             </div>
                                             <div class="im-input-group">
                                                 <label>Teléfono Cónyuge <span style="color:#94a3b8;font-weight:400;font-size:.75rem;">(opcional)</span></label>
-                                                <input type="tel" id="cli-conyuge-tel" class="styled-input" placeholder="+56 9 ...">
+                                                <input type="tel" id="cli-conyuge-tel" class="styled-input" placeholder="+56 9 1234 5678" oninput="autoFmtTel(this)">
                                             </div>
                                         </div>
                                     </div>
@@ -484,11 +484,12 @@ function showToast(msg,type='success',title=''){
 }
 
 function autoFmtRut(input,statusId){
-    let v=input.value.replace(/[^0-9kK]/g,'').toUpperCase();
+    // Extraer solo dígitos y K, limitar a 9 chars (8 dígitos cuerpo + 1 DV)
+    let v=input.value.replace(/[^0-9kK]/g,'').toUpperCase().slice(0,9);
     if(v.length>1)v=v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'-'+v.slice(-1);
     input.value=v;
     const el=$(statusId);if(!el)return;
-    if(v.length<3){el.textContent='';return;}
+    if(v.length<3){el.textContent='';input.style.borderColor='';return;}
     const ok=validarRut(v);
     el.textContent=ok?'✅':'❌';
     input.style.borderColor=ok?'#10b981':(v.length>4?'#ef4444':'');
@@ -498,6 +499,16 @@ function validarRut(rut){
     const body=c.slice(0,-1),dv=c.slice(-1);
     let s=0,m=2;for(let i=body.length-1;i>=0;i--){s+=parseInt(body[i],10)*m;m=m>=7?2:m+1;}
     const r=11-(s%11);const dc=r===11?'0':r===10?'K':String(r);return dv===dc;
+}
+function autoFmtTel(input){
+    // Formato: +XX X XXXX XXXX  (ej: +56 9 1234 5678)
+    const raw=input.value.replace(/[^\d]/g,'').slice(0,11);
+    let f='';
+    if(raw.length>0)f='+'+raw.slice(0,2);
+    if(raw.length>2)f+=' '+raw.slice(2,3);
+    if(raw.length>3)f+=' '+raw.slice(3,7);
+    if(raw.length>7)f+=' '+raw.slice(7,11);
+    input.value=f;
 }
 function toggleConyuge(val){
     $('section-conyuge').style.display=(val==='Casado/a'||val==='Conviviente Civil')?'block':'none';
@@ -672,7 +683,7 @@ function renderParcela(data){
         $('venta-cliente-id').value=venta.cliente_id;
         $('cli-nombre').value=venta.nombre_completo;
         $('cli-rut').value=venta.rut;
-        $('cli-telefono').value=venta.telefono||'';
+        $('cli-telefono').value=venta.telefono||'';if(venta.telefono){autoFmtTel($('cli-telefono'));}
         $('cli-email').value=venta.email||'';
         $('cli-direccion').value=venta.direccion||'';
         $('cli-estado-civil').value=venta.estado_civil;
@@ -681,7 +692,7 @@ function renderParcela(data){
         $('cli-conyuge-nombre').value=venta.nombre_conyugue||'';
         $('cli-conyuge-rut').value=venta.rut_conyugue||'';
         $('cli-conyuge-email').value=venta.email_conyugue||'';
-        $('cli-conyuge-tel').value=venta.telefono_conyugue||'';
+        $('cli-conyuge-tel').value=venta.telefono_conyugue||'';if(venta.telefono_conyugue){autoFmtTel($('cli-conyuge-tel'));}
         $('venta-fecha').value=venta.fecha_venta?venta.fecha_venta.split('T')[0]:'';
         $('venta-promesa').checked=venta.firmo_promesa;
         $('venta-compraventa').checked=venta.firmo_compraventa;
@@ -878,7 +889,7 @@ async function buscarCliente(){
 
 function cargarCliente(c){
     $('venta-cliente-id').value=c.id;$('cli-nombre').value=c.nombre_completo;$('cli-rut').value=c.rut;
-    $('cli-telefono').value=c.telefono||'';$('cli-email').value=c.email||'';$('cli-direccion').value=c.direccion||'';
+    $('cli-telefono').value=c.telefono||'';if(c.telefono)autoFmtTel($('cli-telefono'));$('cli-email').value=c.email||'';$('cli-direccion').value=c.direccion||'';
     $('cli-estado-civil').value=c.estado_civil;toggleConyuge(c.estado_civil);
     $('cli-conyuge-nombre').value=c.nombre_conyugue||'';$('cli-conyuge-rut').value=c.rut_conyugue||'';
     showToast(`Cliente "${c.nombre_completo}" cargado.`,'info');

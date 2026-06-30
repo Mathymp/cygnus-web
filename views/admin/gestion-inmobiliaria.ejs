@@ -175,7 +175,12 @@
                         <div class="im-form-row" style="align-items:end;">
                             <div class="im-input-group">
                                 <label>Número de Parcela <span style="color:#ef4444;">*</span></label>
-                                <input type="number" id="ind-numero" class="styled-input" min="1" placeholder="Ej: 5" required>
+                                <input type="text" id="ind-numero" class="styled-input" placeholder="Ej: 5 ó 1-A" required
+                                    maxlength="20" oninput="this.value=this.value.toUpperCase()">
+                                <small style="color:#94a3b8;font-size:.72rem;">Puede ser numérico (5) o alfanumérico (1-A)</small>
+                                <div id="ind-numero-warn" style="display:none;color:#f59e0b;font-size:.75rem;margin-top:2px;">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> <span></span>
+                                </div>
                             </div>
                             <div class="im-input-group">
                                 <label>N° Rol Parcela <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
@@ -568,12 +573,25 @@
         document.getElementById('form-add-individual').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = e.submitter || e.target.querySelector('[type="submit"]');
+            const numStr = document.getElementById('ind-numero').value.trim().toUpperCase();
+            if (!numStr) { showToast('Ingresa un número de parcela.', 'error'); return; }
+
+            // Verificar duplicado en las parcelas ya cargadas del proyecto
+            const existentes = document.querySelectorAll('#parcelas-grid-modal .im-parcela-num');
+            const duplicado = Array.from(existentes).some(el => el.textContent.trim().toUpperCase() === numStr);
+            if (duplicado) {
+                const w = document.getElementById('ind-numero-warn');
+                if (w) { w.style.display='flex'; w.style.alignItems='center'; w.style.gap='4px'; w.querySelector('span').textContent=`La parcela "${numStr}" ya existe en este proyecto.`; }
+                showToast(`La parcela "${numStr}" ya existe en este proyecto.`, 'warning'); return;
+            }
+            document.getElementById('ind-numero-warn').style.display = 'none';
+
             if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...'; }
             try {
                 const precioRaw = document.getElementById('ind-precio').value.replace(/\./g, '');
                 const body = {
                     proyecto_id: currentProyectoId,
-                    numero_parcela: parseInt(document.getElementById('ind-numero').value, 10),
+                    numero_parcela: numStr,
                     numero_rol_parcela: document.getElementById('ind-rol').value.trim() || null,
                     metraje: document.getElementById('ind-metraje').value || null,
                     precio_actual: precioRaw || null
@@ -581,7 +599,8 @@
                 const res = await fetch('/api/im/parcelas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
                 if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.message || `Error ${res.status}`); }
                 document.getElementById('form-add-individual').reset();
-                showToast(`Parcela N° ${body.numero_parcela} creada.`, 'success');
+                document.getElementById('ind-numero-warn').style.display = 'none';
+                showToast(`Parcela "${numStr}" creada.`, 'success');
                 await loadParcelasModal(currentProyectoId);
                 loadProyectos();
             } catch (err) {

@@ -117,7 +117,8 @@ exports.getParcelas = async (req, res) => {
             `SELECT p.*,
                 (SELECT precio FROM im_historial_precios WHERE parcela_id = p.id ORDER BY fecha_registro DESC LIMIT 1) as ultimo_precio,
                 (SELECT c.nombre_completo FROM im_ventas_lotes v JOIN im_clientes c ON v.cliente_id = c.id WHERE v.parcela_id = p.id ORDER BY v.creado_at DESC LIMIT 1) as cliente_nombre
-             FROM im_parcelas p WHERE p.proyecto_id = $1 ORDER BY p.numero_parcela ASC`,
+             FROM im_parcelas p WHERE p.proyecto_id = $1
+             ORDER BY LENGTH(p.numero_parcela::TEXT) ASC, p.numero_parcela ASC`,
             [proyectoId]
         );
         res.json(result.rows);
@@ -182,10 +183,21 @@ exports.createParcela = async (req, res) => {
     if (!isAdmin(req)) return res.status(403).json({ message: 'Solo administradores pueden crear parcelas.' });
     try {
         const { proyecto_id, numero_parcela, numero_rol_parcela, metraje, precio_actual } = req.body;
+        const numStr = String(numero_parcela || '').trim().toUpperCase();
+        if (!numStr) return res.status(400).json({ message: 'El número de parcela es obligatorio.' });
+
+        // Verificar duplicado dentro del mismo proyecto (case-insensitive)
+        const dup = await pool.query(
+            `SELECT id FROM im_parcelas WHERE proyecto_id=$1 AND UPPER(TRIM(numero_parcela::TEXT))=$2`,
+            [proyecto_id, numStr]
+        );
+        if (dup.rows.length > 0)
+            return res.status(409).json({ message: `Ya existe una parcela con el número "${numStr}" en este proyecto.` });
+
         const result = await pool.query(
             `INSERT INTO im_parcelas (proyecto_id, numero_parcela, numero_rol_parcela, metraje, precio_actual)
              VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [proyecto_id, numero_parcela, numero_rol_parcela || null, metraje || null, precio_actual || null]
+            [proyecto_id, numStr, numero_rol_parcela || null, metraje || null, precio_actual || null]
         );
         if (precio_actual) {
             await pool.query(`INSERT INTO im_historial_precios (parcela_id, precio) VALUES ($1, $2)`,
