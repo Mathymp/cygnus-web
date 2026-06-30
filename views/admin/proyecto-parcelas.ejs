@@ -79,10 +79,10 @@
     </style>
 </head>
 <body>
-<%- include('../partials/sidebar-admin') %>
+    <%- include('../partials/sidebar-admin', { page: 'inmobiliaria' }) %>
 
 <div class="main-content">
-    <%- include('../partials/topbar') %>
+    <%- include('../partials/alerts') %>
 
     <!-- Toast -->
     <div id="im-toast" class="im-toast"><div id="im-toast-inner"></div></div>
@@ -292,7 +292,7 @@ function renderGrid(parcelas){
     const eMap={disponible:{cl:'disponible',ic:'bi-circle',t:'Disponible'},reservado:{cl:'reservado',ic:'bi-clock-history',t:'Reservado'},vendido:{cl:'vendido',ic:'bi-bag-check-fill',t:'Vendido'}};
     $('pp-content').innerHTML=`<div class="parc-grid">${parcelas.map(p=>{
         const e=eMap[p.estado_venta]||eMap.disponible;
-        return `<a class="parc-card ${e.cl}" href="/admin/inmobiliaria/parcelas/${p.id}">
+        return `<a class="parc-card ${e.cl}" href="/admin/inmobiliaria/parcela/${p.id}">
             <div class="parc-num">N° ${escH(String(p.numero_parcela))}</div>
             <div class="parc-rol">${p.numero_rol_parcela?`Rol: ${escH(p.numero_rol_parcela)}`:'Sin rol asignado'}</div>
             <span class="parc-status ${e.cl}"><i class="bi ${e.ic}"></i> ${e.t}</span>
@@ -322,7 +322,7 @@ function renderList(parcelas){
             <tbody>
             ${parcelas.map(p=>{
                 const e=eMap[p.estado_venta]||eMap.disponible;
-                return `<tr onclick="window.location='/admin/inmobiliaria/parcelas/${p.id}'">
+                return `<tr onclick="window.location='/admin/inmobiliaria/parcela/${p.id}'">
                     <td class="num-col">N° ${escH(String(p.numero_parcela))}</td>
                     <td>${p.numero_rol_parcela?escH(p.numero_rol_parcela):'<span style="color:#94a3b8;">—</span>'}</td>
                     <td><span style="display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:700;color:${e.c};"><i class="bi ${e.ic}"></i>${e.t}</span></td>
