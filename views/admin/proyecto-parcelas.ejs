@@ -777,16 +777,29 @@ async function loadProjDocs(){
             return `<div class="im-doc-item" id="projdoc-${doc.id}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;transition:all .15s;">
                 <i class="bi ${ext2icon(ext)}" style="font-size:1.4rem;color:#2563eb;flex-shrink:0;"></i>
                 <div style="flex:1;min-width:0;">
+                    <!-- Nombre (modo lectura) -->
                     <div class="doc-name-display" id="pdname-${doc.id}" style="font-weight:700;color:#0f172a;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escH(doc.nombre_personalizado)}">${escH(doc.nombre_personalizado)}</div>
-                    <input class="doc-name-edit" id="pdedit-${doc.id}" value="${escH(doc.nombre_personalizado)}" style="display:none;width:100%;border:1px solid #2563eb;border-radius:6px;padding:4px 8px;font-size:.83rem;font-family:inherit;"
-                        onkeydown="if(event.key==='Enter')saveProjRename(${doc.id});if(event.key==='Escape')cancelProjRename(${doc.id});">
-                    <div style="font-size:.72rem;color:#94a3b8;margin-top:2px;">${fecha}</div>
+                    <!-- Input + botones (modo edición) -->
+                    <div id="pdedit-wrap-${doc.id}" style="display:none;align-items:center;gap:6px;">
+                        <input id="pdedit-${doc.id}" value="${escH(doc.nombre_personalizado)}"
+                            style="flex:1;border:1.5px solid #2563eb;border-radius:7px;padding:5px 10px;font-size:.84rem;font-family:inherit;outline:none;background:#fff;color:#0f172a;"
+                            onkeydown="if(event.key==='Enter')saveProjRename(${doc.id});if(event.key==='Escape')cancelProjRename(${doc.id});">
+                        <button onclick="saveProjRename(${doc.id})" title="Guardar"
+                            style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;">
+                            <i class="bi bi-check-lg"></i> Guardar
+                        </button>
+                        <button onclick="cancelProjRename(${doc.id})" title="Cancelar"
+                            style="background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;border-radius:7px;padding:5px 10px;font-size:.8rem;font-weight:600;cursor:pointer;flex-shrink:0;">
+                            Cancelar
+                        </button>
+                    </div>
+                    <div style="font-size:.72rem;color:#94a3b8;margin-top:2px;" id="pddate-${doc.id}">${fecha}</div>
                 </div>
-                <div style="display:flex;gap:4px;flex-shrink:0;">
+                <!-- Botones acción (modo lectura) -->
+                <div id="pdbtns-${doc.id}" style="display:flex;gap:4px;flex-shrink:0;">
                     ${canPreview(ext)?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="openProjPreview('${escH(doc.url_storage)}','${escH(doc.nombre_personalizado)}','${ext}')" title="Vista previa"><i class="bi bi-eye"></i></button>`:''}
                     <a href="${escH(doc.url_storage)}" download="${escH(doc.nombre_personalizado)}.${ext}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Descargar"><i class="bi bi-download"></i></a>
                     <button class="im-btn im-btn-sm im-btn-ghost" onclick="startProjRename(${doc.id})" title="Renombrar"><i class="bi bi-pencil"></i></button>
-                    <button id="psave-${doc.id}" class="im-btn im-btn-sm" style="display:none;" onclick="saveProjRename(${doc.id})"><i class="bi bi-check-lg"></i></button>
                     ${IS_ADMIN||PUEDE_CREAR?`<button class="im-btn im-btn-sm im-btn-danger" onclick="openProjDel(${doc.id},'${escH(doc.nombre_personalizado)}')" title="Eliminar"><i class="bi bi-trash3"></i></button>`:''}
                 </div>
             </div>`;
@@ -877,20 +890,31 @@ async function handleProjFiles(files){
 
 // ── Rename ──────────────────────────────
 function startProjRename(id){
-    const dn = $(`pdname-${id}`), ed = $(`pdedit-${id}`), sb = $(`psave-${id}`);
-    if(dn) dn.style.display = 'none';
-    if(ed){ ed.style.display = 'block'; ed.focus(); ed.select(); }
-    if(sb) sb.style.display = 'flex';
+    const dn   = $(`pdname-${id}`);
+    const wrap = $(`pdedit-wrap-${id}`);
+    const btns = $(`pdbtns-${id}`);
+    const ed   = $(`pdedit-${id}`);
+    const date = $(`pddate-${id}`);
+    if(dn)   dn.style.display   = 'none';
+    if(btns) btns.style.display = 'none';
+    if(date) date.style.display = 'none';
+    if(wrap){ wrap.style.display = 'flex'; }
+    if(ed){  ed.focus(); ed.select(); }
 }
 function cancelProjRename(id){
-    const dn = $(`pdname-${id}`), ed = $(`pdedit-${id}`), sb = $(`psave-${id}`);
-    if(dn) dn.style.display = 'block';
-    if(ed) ed.style.display = 'none';
-    if(sb) sb.style.display = 'none';
+    const dn   = $(`pdname-${id}`);
+    const wrap = $(`pdedit-wrap-${id}`);
+    const btns = $(`pdbtns-${id}`);
+    const date = $(`pddate-${id}`);
+    if(wrap) wrap.style.display = 'none';
+    if(dn)   dn.style.display   = 'block';
+    if(btns) btns.style.display = 'flex';
+    if(date) date.style.display = 'block';
 }
 async function saveProjRename(id){
     const ed = $(`pdedit-${id}`); if(!ed) return;
-    const n = ed.value.trim(); if(!n){ showToast('El nombre no puede estar vacío.','error'); return; }
+    const n = ed.value.trim();
+    if(!n){ showToast('El nombre no puede estar vacío.','error'); return; }
     try{
         const res = await fetch(`/api/im/documentos/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre_personalizado:n})});
         if(!res.ok) throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
