@@ -7,9 +7,14 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
+const SUPABASE_ADMIN_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+    || process.env.SUPABASE_SERVICE_KEY
+    || process.env.SUPABASE_KEY;
+
 const supabaseAdmin = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
+    SUPABASE_ADMIN_KEY,
+    { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
 const BUCKET = 'cygnus-documentos';
@@ -26,42 +31,56 @@ async function insertarAuditoria(pool, { entidadId, accion, descripcion, req }) 
     } catch (_) {}
 }
 
+exports.testStorage = async (req, res) => {
+    try {
+        const { data: buckets, error } = await supabaseAdmin.storage.listBuckets();
+        if (error) return res.json({ ok: false, error: error.message, key_type: SUPABASE_ADMIN_KEY?.length > 100 ? 'service_role (largo)' : 'anon/short' });
+        const bucket = (buckets || []).find(b => b.id === BUCKET);
+        res.json({ ok: true, bucket_found: !!bucket, bucket_name: BUCKET, key_type: SUPABASE_ADMIN_KEY?.length > 100 ? 'service_role (largo)' : 'anon o corta' });
+    } catch (e) {
+        res.json({ ok: false, error: e.message });
+    }
+};
+
 exports.uploadDocumento = async (req, res) => {
     try {
-        if (!req.file) return res.status(400).json({ message: 'No se recibió archivo.' });
+        if (!req.file) return res.status(400).json({ message: 'No se recibió archivo. Verifica que seleccionaste un archivo válido.' });
 
         const { nombre_personalizado, tipo_asociacion, asociacion_id } = req.body;
         if (!tipo_asociacion || !asociacion_id)
-            return res.status(400).json({ message: 'Faltan campos: tipo_asociacion, asociacion_id.' });
+            return res.status(400).json({ message: 'Faltan campos obligatorios: tipo_asociacion y asociacion_id.' });
 
         const tiposValidos = ['proyecto', 'parcela', 'persona', 'venta'];
         if (!tiposValidos.includes(tipo_asociacion))
-            return res.status(400).json({ message: `tipo_asociacion debe ser: ${tiposValidos.join(', ')}` });
+            return res.status(400).json({ message: `tipo_asociacion inválido. Debe ser: ${tiposValidos.join(', ')}` });
 
         const nombreFinal = (nombre_personalizado && nombre_personalizado.trim())
             ? nombre_personalizado.trim()
             : req.file.originalname.replace(/\.[^/.]+$/, '');
 
-        const ext = path.extname(req.file.originalname).toLowerCase();
+        const ext = path.extname(req.file.originalname).toLowerCase() || '.bin';
         const timestamp = Date.now();
-        const filePath = `${tipo_asociacion}/${asociacion_id}/${timestamp}${ext}`;
+        const safeId = String(asociacion_id).replace(/[^a-zA-Z0-9_-]/g, '_');
+        const filePath = `${tipo_asociacion}/${safeId}/${timestamp}${ext}`;
 
         const { error: uploadError } = await supabaseAdmin.storage
             .from(BUCKET)
-            .upload(filePath, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
+            .upload(filePath, req.file.buffer, { contentType: req.file.mimetype || 'application/octet-stream', upsert: false });
 
         if (uploadError) {
-            console.error('Error Supabase Storage:', uploadError);
-            return res.status(500).json({ message: 'Error al subir al Storage.', detail: uploadError.message });
+            console.error('[Storage Upload Error]', uploadError);
+            return res.status(500).json({
+                message: `Error al subir archivo al Storage: ${uploadError.message}`,
+                hint: uploadError.statusCode === 403 ? 'Verifica que SUPABASE_SERVICE_ROLE_KEY esté configurado en Render.' : undefined
+            });
         }
 
-        // URL pública si el bucket es público, o firmada si es privado
         let url_storage = filePath;
         try {
-            const { data: signedData } = await supabaseAdmin.storage
-                .from(BUCKET)
-                .createSignedUrl(filePath, 60 * 60 * 24 * 365);
-            if (signedData) url_storage = signedData.signedUrl;
+            const { data: signedData, error: signErr } = await supabaseAdmin.storage
+                .from(BUCKET).createSignedUrl(filePath, 60 * 60 * 24 * 365);
+            if (signedData?.signedUrl) url_storage = signedData.signedUrl;
+            else if (signErr) console.warn('[Sign URL warn]', signErr.message);
         } catch (_) {}
 
         const dbResult = await pool.query(
@@ -71,7 +90,7 @@ exports.uploadDocumento = async (req, res) => {
         );
 
         await insertarAuditoria(pool, {
-            entidadId: asociacion_id,
+            entidadId: String(asociacion_id),
             accion: 'SUBIR_DOCUMENTO',
             descripcion: `"${nombreFinal}" subido (${tipo_asociacion}).`,
             req
@@ -79,8 +98,8 @@ exports.uploadDocumento = async (req, res) => {
 
         res.status(201).json(dbResult.rows[0]);
     } catch (e) {
-        console.error('Error uploadDocumento:', e);
-        res.status(500).json({ error: e.message });
+        console.error('[Upload Documento Error]', e);
+        res.status(500).json({ message: e.message || 'Error interno al guardar el documento.' });
     }
 };
 

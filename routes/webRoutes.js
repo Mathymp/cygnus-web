@@ -361,6 +361,7 @@ router.put('/api/im/cuotas/:id',                requireAuth, inmobiliariaControl
 router.post('/api/im/cuotas/:id/comprobante',   requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteCuota);
 
 // API – Documentos (Supabase Storage)
+router.get('/api/im/documentos/test-storage', requireAuth, documentosController.testStorage);
 router.get('/api/im/documentos',          requireAuth, documentosController.getDocumentos);
 router.post('/api/im/documentos',         requireAuth, uploadDocMemory.single('archivo'), documentosController.uploadDocumento);
 router.patch('/api/im/documentos/:id',    requireAuth, documentosController.renameDocumento);

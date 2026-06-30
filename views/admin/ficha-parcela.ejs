@@ -1222,18 +1222,25 @@ function initDM(tipo,asociacionId){
 const ext2icon=ext=>['pdf'].includes(ext)?'bi-file-earmark-pdf':['jpg','jpeg','png','webp','gif'].includes(ext)?'bi-file-earmark-image':['doc','docx'].includes(ext)?'bi-file-earmark-word':'bi-file-earmark';
 
 async function handleFileSelect(tipo,asociacionId,files){
-    const qEl=$(`dq-${tipo}`);
-    const inp=$(`file-input-${tipo}`);if(inp)inp.value='';
-    const tipoApi=tipo==='lote'?'parcela':tipo==='venta'?'venta':tipo==='persona'?'persona':'proyecto';
-    let ok=0,fail=0;
+    // Convertir FileList a Array ANTES de cualquier otra operacion para evitar
+    // que inp.value='' invalide la referencia en algunos navegadores
+    const fileArray=Array.from(files||[]);
+    if(!fileArray.length)return;
 
-    for(const f of Array.from(files)){
+    const inp=$(`file-input-${tipo}`);
+    if(inp) setTimeout(()=>{ try{inp.value='';}catch(_){} },100);
+
+    const qEl=$(`dq-${tipo}`);
+    const tipoApi=tipo==='lote'?'parcela':tipo==='venta'?'venta':tipo==='persona'?'persona':'proyecto';
+    let ok=0,failMsgs=[];
+
+    for(const f of fileArray){
         const uid='u'+Date.now()+Math.random().toString(36).slice(2,7);
         const ext=(f.name||'').split('.').pop().toLowerCase();
         const sizeMB=(f.size/1024/1024).toFixed(1);
         const nombre=(f.name||'archivo').replace(/\.[^/.]+$/,'').replace(/[_-]/g,' ');
 
-        // Crear fila de progreso con referencias directas a subelementos
+        // Crear fila de progreso con referencias directas
         const row=document.createElement('div');
         row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;margin-bottom:6px;transition:all .3s;';
 
@@ -1261,24 +1268,37 @@ async function handleFileSelect(tipo,asociacionId,files){
         iconEl.className=`bi ${ext2icon(ext)}`;
         iconEl.style.cssText='font-size:1.3rem;color:#2563eb;flex-shrink:0;';
 
+        // Boton de cerrar (solo para errores, inicialmente oculto)
+        const closeBtn=document.createElement('button');
+        closeBtn.textContent='×';
+        closeBtn.style.cssText='border:none;background:none;font-size:1.1rem;color:#94a3b8;cursor:pointer;padding:0 2px;display:none;flex-shrink:0;';
+        closeBtn.onclick=()=>{ try{row.remove();}catch(_){} };
+
         row.appendChild(iconEl);
         row.appendChild(info);
+        row.appendChild(closeBtn);
         if(qEl)qEl.appendChild(row);
 
         pbarEl.style.width='25%';
 
+        let uploadOk=false;
         try{
             const fd=new FormData();
             fd.append('archivo',f,f.name);
             fd.append('nombre_personalizado',nombre);
             fd.append('tipo_asociacion',tipoApi);
-            fd.append('asociacion_id',asociacionId);
+            fd.append('asociacion_id',String(asociacionId));
             pbarEl.style.width='60%';
+
             const res=await fetch('/api/im/documentos',{method:'POST',body:fd});
+            let body={};
+            try{ body=await res.clone().json(); }catch(_){}
+
             if(!res.ok){
-                const err=await res.json().catch(()=>({}));
-                throw new Error(err.message||`Error ${res.status}`);
+                const msg=body.message||body.error||`Error del servidor (HTTP ${res.status})`;
+                throw new Error(msg);
             }
+            // Éxito
             pbarEl.style.width='100%';
             pbarEl.style.background='#16a34a';
             row.style.borderColor='#86efac';
@@ -1287,21 +1307,29 @@ async function handleFileSelect(tipo,asociacionId,files){
             statusEl.textContent=`${sizeMB} MB · ¡Subido!`;
             statusEl.style.color='#16a34a';
             ok++;
+            uploadOk=true;
+            setTimeout(()=>{ try{row.remove();}catch(_){} },3500);
         }catch(err){
+            // Error: mostrar y NO auto-eliminar — el usuario puede cerrar con ×
             pbarEl.style.width='100%';
             pbarEl.style.background='#ef4444';
             row.style.borderColor='#fca5a5';
             row.style.background='#fff5f5';
             iconEl.style.color='#ef4444';
-            statusEl.textContent=`Error: ${err.message}`;
             statusEl.style.color='#ef4444';
-            fail++;
+            statusEl.style.fontWeight='600';
+            statusEl.textContent=`⚠ ${err.message}`;
+            closeBtn.style.display='block';
+            failMsgs.push(`"${nombre}": ${err.message}`);
+            console.error('[Doc Upload Error]',err.message,'tipo:',tipoApi,'id:',asociacionId);
         }
-        setTimeout(()=>{ try{row.remove();}catch(_){} },3500);
     }
 
     if(ok>0) showToast(`${ok} documento${ok>1?'s':''} subido${ok>1?'s':''} correctamente.`,'success');
-    if(fail>0) showToast(`${fail} archivo${fail>1?'s':''} no se pudo${fail>1?'ron':''} subir.`,'error');
+    if(failMsgs.length>0){
+        // Mostrar el primer error con detalle real
+        showToast(`Error al subir: ${failMsgs[0]}`,'error');
+    }
     await loadDocs(tipoApi,asociacionId);
 }
 
