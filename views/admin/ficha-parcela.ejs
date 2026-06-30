@@ -1165,7 +1165,6 @@ async function resciliarContrato(){
 
 // ──────────────── DOCUMENT MANAGER ────────────────
 const dmState={};
-const fileQueues={};
 
 function initDM(tipo,asociacionId){
     const container=$(`dm-${tipo}`);if(!container)return;
@@ -1174,7 +1173,7 @@ function initDM(tipo,asociacionId){
     container.innerHTML=`
         <div class="step-box" style="margin-bottom:14px;">
             <p class="step-title"><i class="bi bi-cloud-upload"></i> Subir Documentos</p>
-            <p style="font-size:.8rem;color:#64748b;margin:0 0 10px;">Selecciona uno o varios archivos. Edita el nombre antes de subir.</p>
+            <p style="font-size:.8rem;color:#64748b;margin:0 0 10px;">Selecciona archivos — se suben automáticamente al instante.</p>
             <div class="im-upload-zone" id="dz-${tipo}">
                 <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar" id="file-input-${tipo}"
                     onchange="handleFileSelect('${tipo}','${asociacionId}',this.files)">
@@ -1182,11 +1181,7 @@ function initDM(tipo,asociacionId){
                 <p class="im-upload-text">Arrastra archivos aquí o <strong>haz clic</strong></p>
                 <p class="im-upload-hint">PDF, imágenes, Word, Excel · múltiples archivos · máx. 100 MB c/u</p>
             </div>
-            <div id="dq-${tipo}" class="dm-queue"></div>
-            <div id="dq-actions-${tipo}" style="display:none;margin-top:10px;gap:8px;flex-wrap:wrap;">
-                <button class="im-btn im-btn-success" onclick="uploadAllFiles('${tipo}','${asociacionId}')"><i class="bi bi-upload"></i> Subir Todos</button>
-                <button class="im-btn im-btn-ghost" onclick="clearQueue('${tipo}')"><i class="bi bi-x"></i> Limpiar</button>
-            </div>
+            <div id="dq-${tipo}"></div>
         </div>
         <div>
             <p class="step-title"><i class="bi bi-folder2-open"></i> Documentos Subidos</p>
@@ -1195,59 +1190,61 @@ function initDM(tipo,asociacionId){
     loadDocs(tipo==='lote'?'parcela':tipo==='venta'?'venta':tipo,asociacionId);
 }
 
-function handleFileSelect(tipo,asociacionId,files){
-    if(!fileQueues[tipo])fileQueues[tipo]=[];
-    Array.from(files).forEach(f=>{
-        const nombre=f.name.replace(/\.[^/.]+$/,'').replace(/_/g,' ').replace(/-/g,' ');
-        fileQueues[tipo].push({file:f,nombre,id:Date.now()+Math.random()});
-    });
-    renderQueue(tipo,asociacionId);
-    const inp=$(`file-input-${tipo}`);if(inp)inp.value='';
-}
+const ext2icon=ext=>['pdf'].includes(ext)?'bi-file-earmark-pdf':['jpg','jpeg','png','webp','gif'].includes(ext)?'bi-file-earmark-image':['doc','docx'].includes(ext)?'bi-file-earmark-word':'bi-file-earmark';
 
-function renderQueue(tipo,asociacionId){
-    const q=fileQueues[tipo]||[];const qEl=$(`dq-${tipo}`);const actEl=$(`dq-actions-${tipo}`);
-    if(!qEl)return;
-    if(q.length===0){qEl.innerHTML='';if(actEl)actEl.style.display='none';return;}
-    if(actEl)actEl.style.display='flex';
-    const ext2icon=ext=>['pdf'].includes(ext)?'bi-file-earmark-pdf':['jpg','jpeg','png','webp','gif'].includes(ext)?'bi-file-earmark-image':['doc','docx'].includes(ext)?'bi-file-earmark-word':'bi-file-earmark';
-    qEl.innerHTML=q.map((item,idx)=>{const ext=item.file.name.split('.').pop().toLowerCase();const size=(item.file.size/1024/1024).toFixed(1);
-        return `<div class="dm-queue-item" id="qitem-${tipo}-${idx}">
+async function handleFileSelect(tipo,asociacionId,files){
+    const qEl=$(`dq-${tipo}`);
+    const inp=$(`file-input-${tipo}`);if(inp)inp.value='';
+    const tipoApi=tipo==='lote'?'parcela':tipo==='venta'?'venta':tipo==='persona'?'persona':'proyecto';
+    let ok=0,fail=0;
+
+    for(const f of Array.from(files)){
+        const uid='f'+Date.now()+Math.random().toString(36).slice(2);
+        const ext=f.name.split('.').pop().toLowerCase();
+        const size=(f.file?f.file.size:f.size)/1024/1024;
+        const nombre=f.name.replace(/\.[^/.]+$/,'').replace(/[_-]/g,' ');
+
+        // Agregar fila de progreso
+        const row=document.createElement('div');
+        row.id=`urow-${uid}`;
+        row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;';
+        row.innerHTML=`
             <i class="bi ${ext2icon(ext)}" style="font-size:1.3rem;color:#2563eb;flex-shrink:0;"></i>
             <div style="flex:1;min-width:0;">
-                <input type="text" value="${escH(item.nombre)}" placeholder="Nombre del documento" oninput="fileQueues['${tipo}'][${idx}].nombre=this.value">
-                <div class="dm-progress" id="prog-${tipo}-${idx}"><div class="dm-progress-bar" style="width:0%" id="progbar-${tipo}-${idx}"></div></div>
-            </div>
-            <span style="font-size:.72rem;color:#94a3b8;flex-shrink:0;">${size}MB</span>
-            <button class="im-btn im-btn-sm im-btn-danger" onclick="removeFromQueue('${tipo}',${idx})"><i class="bi bi-x"></i></button>
-        </div>`;}).join('');
-}
+                <div style="font-size:.82rem;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escH(nombre)}</div>
+                <div style="font-size:.72rem;color:#94a3b8;">${size.toFixed(1)} MB · Subiendo...</div>
+                <div style="height:4px;background:#e2e8f0;border-radius:2px;margin-top:4px;overflow:hidden;">
+                    <div id="pbar-${uid}" style="height:100%;width:0%;background:#2563eb;border-radius:2px;transition:width .3s;"></div>
+                </div>
+            </div>`;
+        if(qEl)qEl.appendChild(row);
+        const pbar=$(`pbar-${uid}`);if(pbar)pbar.style.width='25%';
 
-function removeFromQueue(tipo,idx){if(fileQueues[tipo]){fileQueues[tipo].splice(idx,1);renderQueue(tipo);}}
-function clearQueue(tipo){fileQueues[tipo]=[];renderQueue(tipo);}
-
-async function uploadAllFiles(tipo,asociacionId){
-    const q=fileQueues[tipo]||[];if(q.length===0)return;
-    let ok=0,fail=0;
-    for(let idx=0;idx<q.length;idx++){
-        const item=q[idx];const progbar=$(`progbar-${tipo}-${idx}`);
-        if(progbar)progbar.style.width='30%';
         try{
             const fd=new FormData();
-            fd.append('archivo',item.file,item.file.name);
-            fd.append('nombre_personalizado',item.nombre||item.file.name);
-            const tipoApi=tipo==='lote'?'parcela':tipo==='venta'?'venta':tipo==='persona'?'persona':'proyecto';
+            fd.append('archivo',f,f.name);
+            fd.append('nombre_personalizado',nombre);
             fd.append('tipo_asociacion',tipoApi);
             fd.append('asociacion_id',asociacionId);
+            if(pbar)pbar.style.width='60%';
             const res=await fetch('/api/im/documentos',{method:'POST',body:fd});
             if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
-            if(progbar)progbar.style.width='100%';ok++;
-        }catch(e){if(progbar){progbar.parentElement.style.background='#fee2e2';progbar.style.background='#ef4444';progbar.style.width='100%';}fail++;}
+            if(pbar){pbar.style.width='100%';pbar.style.background='#16a34a';}
+            row.style.borderColor='#86efac';row.style.background='#f0fdf4';
+            row.querySelector('div>div:nth-child(2)').textContent=`${size.toFixed(1)} MB · ¡Subido!`;
+            ok++;
+        }catch(e){
+            if(pbar){pbar.style.width='100%';pbar.style.background='#ef4444';}
+            row.style.borderColor='#fca5a5';row.style.background='#fff5f5';
+            row.querySelector('div>div:nth-child(2)').textContent=`Error: ${e.message}`;
+            fail++;
+        }
+        setTimeout(()=>row.remove(),3000);
     }
-    fileQueues[tipo]=[];setTimeout(()=>renderQueue(tipo),800);
-    if(ok>0)showToast(`${ok} documento${ok>1?'s':''} subido${ok>1?'s':''}.`,'success');
-    if(fail>0)showToast(`${fail} archivo${fail>1?'s':''} fallaron.`,'error');
-    loadDocs(tipo==='lote'?'parcela':tipo,asociacionId);
+
+    if(ok>0){showToast(`${ok} documento${ok>1?'s':''} subido${ok>1?'s':''}  correctamente.`,'success');}
+    if(fail>0){showToast(`${fail} archivo${fail>1?'s':''} no se pudo${fail>1?'ron':''} subir.`,'error');}
+    loadDocs(tipoApi,asociacionId);
 }
 
 async function loadDocs(tipo_asociacion,asociacionId){
