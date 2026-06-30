@@ -332,6 +332,7 @@ router.delete('/api/im/documentos/:id',   requireAuth, documentosController.dele
 router.get('/api/im/auditoria', requireAuth, inmobiliariaController.getAuditoria);
 
 // API – Accesos (admin gestiona qué usuarios ven el módulo)
+router.get('/api/im/usuarios',             requireAuth, inmobiliariaController.getUsuarios);
 router.get('/api/im/accesos',              requireAuth, inmobiliariaController.getAccesos);
 router.post('/api/im/accesos',             requireAuth, inmobiliariaController.setAcceso);
 router.delete('/api/im/accesos/:userId',   requireAuth, inmobiliariaController.deleteAcceso);

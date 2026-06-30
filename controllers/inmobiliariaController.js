@@ -133,7 +133,8 @@ exports.getParcelaById = async (req, res) => {
             pool.query(`SELECT precio, fecha_registro FROM im_historial_precios WHERE parcela_id=$1 ORDER BY fecha_registro ASC`, [id]),
             pool.query(
                 `SELECT v.*, c.nombre_completo, c.rut, c.email, c.telefono, c.estado_civil,
-                         c.nombre_conyugue, c.rut_conyugue, c.direccion, c.id as cliente_id
+                         c.nombre_conyugue, c.rut_conyugue, c.direccion, c.id as cliente_id,
+                         v.agente_id, v.agente_nombre
                  FROM im_ventas_lotes v JOIN im_clientes c ON v.cliente_id = c.id
                  WHERE v.parcela_id=$1 ORDER BY v.creado_at DESC LIMIT 1`, [id]
             )
@@ -369,7 +370,8 @@ exports.createVenta = async (req, res) => {
             parcela_id, cliente_id, firmo_promesa, firmo_compraventa,
             forma_pago, fecha_venta, precio_lista, precio_acordado, notas,
             tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota,
-            condiciones_compra, fechas_cuotas
+            condiciones_compra, fechas_cuotas,
+            agente_id, agente_nombre
         } = req.body;
         if (!parcela_id || !cliente_id) return res.status(400).json({ message: 'Parcela y cliente son obligatorios.' });
 
@@ -381,12 +383,17 @@ exports.createVenta = async (req, res) => {
             await client.query(`DELETE FROM im_ventas_lotes WHERE parcela_id=$1`, [parcela_id]);
         }
 
+        // Agente: usar el que viene en el body (admin puede elegir otro) o el usuario actual
+        const agenteId   = agente_id   || req.session.user.id;
+        const agenteNombre = agente_nombre || req.session.user.name;
+
         const result = await client.query(
             `INSERT INTO im_ventas_lotes (
                 parcela_id, cliente_id, firmo_promesa, firmo_compraventa, forma_pago,
                 fecha_venta, precio_lista, precio_acordado, notas,
-                tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota, condiciones_compra
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+                tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota, condiciones_compra,
+                agente_id, agente_nombre
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
             [
                 parcela_id, cliente_id,
                 firmo_promesa || false, firmo_compraventa || false,
@@ -398,7 +405,8 @@ exports.createVenta = async (req, res) => {
                 cleanNum(monto_pie), numero_credito || null,
                 parseInt(numero_cuotas,10) || 0,
                 cleanNum(monto_cuota),
-                condiciones_compra || null
+                condiciones_compra || null,
+                agenteId, agenteNombre
             ]
         );
         const venta = result.rows[0];
@@ -420,7 +428,7 @@ exports.createVenta = async (req, res) => {
 
         await auditLog(client, { tabla: 'im_ventas_lotes', entidadId: venta.id,
             accion: 'CREAR',
-            descripcion: `Venta ${tipo_pago||'contado'}. Estado: ${nuevoEstado}. Precio: ${precio_acordado ? '$' + Number(cleanNum(precio_acordado)).toLocaleString('es-CL') : 'sin precio'}.`, req });
+            descripcion: `Venta ${tipo_pago||'contado'} por ${agenteNombre}. Estado: ${nuevoEstado}. Precio: ${precio_acordado ? '$' + Number(cleanNum(precio_acordado)).toLocaleString('es-CL') : 'sin precio'}.`, req });
 
         await client.query('COMMIT');
         res.status(201).json(venta);
@@ -595,6 +603,16 @@ exports.deleteAcceso = async (req, res) => {
     try {
         await pool.query('DELETE FROM im_accesos WHERE user_id=$1', [req.params.userId]);
         res.sendStatus(204);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+// Lista de usuarios/agentes para selector en venta
+exports.getUsuarios = async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, name, email, role FROM users WHERE role IN ('admin','corredor') ORDER BY name ASC`
+        );
+        res.json(result.rows);
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
