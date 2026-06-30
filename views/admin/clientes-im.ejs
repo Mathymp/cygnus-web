@@ -106,6 +106,14 @@
                             <option value="Conviviente Civil">Conviviente Civil</option>
                         </select>
                     </div>
+                    <div class="cli-form-field" id="nc-regimen-box" style="display:none;">
+                        <label class="field-lbl">Régimen Matrimonial</label>
+                        <select id="nc-regimen" class="si">
+                            <option value="Sociedad Conyugal">Sociedad Conyugal</option>
+                            <option value="Separación de Bienes">Separación de Bienes</option>
+                            <option value="Participación en los Gananciales">Participación en los Gananciales</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Cónyuge / Conviviente -->
@@ -256,7 +264,10 @@ function openNuevo(){
     setTimeout(()=>$('nc-nombre').focus(),150);
 }
 function closeNuevo(){$('modal-nuevo-cliente').classList.remove('show');}
-function toggleNcConyuge(val){$('nc-conyuge-box').style.display=(val==='Casado/a'||val==='Conviviente Civil')?'grid':'none';$('nc-conyuge-box').style.display=(val==='Casado/a'||val==='Conviviente Civil')?'block':'none';}
+function toggleNcConyuge(val){
+    $('nc-conyuge-box').style.display=(val==='Casado/a'||val==='Conviviente Civil')?'block':'none';
+    const rb=$('nc-regimen-box');if(rb)rb.style.display=(val==='Casado/a')?'flex':'none';
+}
 
 async function crearCliente(){
     const nombre=$('nc-nombre').value.trim();
@@ -266,12 +277,14 @@ async function crearCliente(){
     const btn=document.querySelector('#modal-nuevo-cliente .cm-footer button:last-child');
     btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...';
     try{
+        const ncCivil=$('nc-civil').value;
         const body={
             nombre_completo:nombre, rut,
             email:$('nc-email').value||null,
             telefono:$('nc-tel').value||null,
             direccion:$('nc-direccion').value||null,
-            estado_civil:$('nc-civil').value,
+            estado_civil:ncCivil,
+            regimen_matrimonial:(ncCivil==='Casado/a'&&$('nc-regimen'))?$('nc-regimen').value:null,
             nombre_conyugue:$('nc-con-nombre').value||null,
             rut_conyugue:$('nc-con-rut').value||null,
             email_conyugue:$('nc-con-email').value||null,
@@ -393,8 +406,14 @@ function renderExpand(id,c){
                         ${['Soltero/a','Casado/a','Divorciado/a','Viudo/a','Conviviente Civil'].map(op=>`<option value="${op}" ${c.estado_civil===op?'selected':''}>${op}</option>`).join('')}
                     </select>
                 </div>
-                <div class="cli-form-field" style="align-self:flex-end;">
-                    <button type="submit" class="im-btn im-btn-success" style="width:100%;"><i class="bi bi-save"></i> Guardar Cambios</button>
+                <div class="cli-form-field" id="ec-regimen-box-${id}" style="display:${c.estado_civil==='Casado/a'?'flex':'none'};">
+                    <label class="field-lbl">Régimen Matrimonial</label>
+                    <select id="ec-regimen-${id}" class="si">
+                        ${['Sociedad Conyugal','Separación de Bienes','Participación en los Gananciales'].map(op=>`<option value="${op}" ${c.regimen_matrimonial===op?'selected':''}>${op}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="cli-form-field full" style="margin-top:4px;">
+                    <button type="submit" class="im-btn im-btn-success"><i class="bi bi-save"></i> Guardar Cambios</button>
                 </div>
             </div>
 
@@ -472,6 +491,8 @@ function renderExpand(id,c){
 function toggleConyugeExpand(id,val){
     const el=$(`ec-conyuge-${id}`);
     if(el)el.style.display=(val==='Casado/a'||val==='Conviviente Civil')?'block':'none';
+    const rb=$(`ec-regimen-box-${id}`);
+    if(rb)rb.style.display=(val==='Casado/a')?'flex':'none';
 }
 
 async function saveCliente(event,clienteId){
@@ -482,13 +503,15 @@ async function saveCliente(event,clienteId){
         const id=clienteId;
         const rut=$(`ec-rut-${id}`).value;
         if(!validarRut(rut)){showToast('RUT inválido (Módulo 11).','error','RUT inválido');return;}
+        const ecCivil=$(`ec-civil-${id}`).value;
         const body={
             nombre_completo:$(`ec-nombre-${id}`).value,
             rut,
             email:$(`ec-email-${id}`).value||null,
             telefono:$(`ec-tel-${id}`).value||null,
             direccion:$(`ec-dir-${id}`).value||null,
-            estado_civil:$(`ec-civil-${id}`).value,
+            estado_civil:ecCivil,
+            regimen_matrimonial:(ecCivil==='Casado/a'&&$(`ec-regimen-${id}`))?$(`ec-regimen-${id}`).value:null,
             nombre_conyugue:$(`ec-con-nombre-${id}`).value||null,
             rut_conyugue:$(`ec-con-rut-${id}`).value||null,
             email_conyugue:$(`ec-con-email-${id}`).value||null,

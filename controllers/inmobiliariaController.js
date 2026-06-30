@@ -133,7 +133,8 @@ exports.getParcelaById = async (req, res) => {
             pool.query(`SELECT precio, fecha_registro FROM im_historial_precios WHERE parcela_id=$1 ORDER BY fecha_registro ASC`, [id]),
             pool.query(
                 `SELECT v.*, c.nombre_completo, c.rut, c.email, c.telefono, c.estado_civil,
-                         c.nombre_conyugue, c.rut_conyugue, c.email_conyugue, c.telefono_conyugue,
+                         c.regimen_matrimonial, c.nombre_conyugue, c.rut_conyugue,
+                         c.email_conyugue, c.telefono_conyugue,
                          c.direccion, c.id as cliente_id, v.agente_id, v.agente_nombre
                  FROM im_ventas_lotes v JOIN im_clientes c ON v.cliente_id = c.id
                  WHERE v.parcela_id=$1 ORDER BY v.creado_at DESC LIMIT 1`, [id]
@@ -309,15 +310,16 @@ exports.buscarClientePorRut = async (req, res) => {
 
 exports.createCliente = async (req, res) => {
     try {
-        const { nombre_completo, rut, direccion, estado_civil,
+        const { nombre_completo, rut, direccion, estado_civil, regimen_matrimonial,
                 nombre_conyugue, rut_conyugue, email_conyugue, telefono_conyugue,
                 email, telefono } = req.body;
         if (!nombre_completo || !rut) return res.status(400).json({ message: 'Nombre y RUT son obligatorios.' });
         const result = await pool.query(
-            `INSERT INTO im_clientes (nombre_completo, rut, direccion, estado_civil,
+            `INSERT INTO im_clientes (nombre_completo, rut, direccion, estado_civil, regimen_matrimonial,
              nombre_conyugue, rut_conyugue, email_conyugue, telefono_conyugue, email, telefono)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
             [nombre_completo, rut, direccion || null, estado_civil || 'Soltero/a',
+             regimen_matrimonial || null,
              nombre_conyugue || null, rut_conyugue || null,
              email_conyugue || null, telefono_conyugue || null,
              email || null, telefono || null]
@@ -332,14 +334,15 @@ exports.createCliente = async (req, res) => {
 exports.updateCliente = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nombre_completo, rut, direccion, estado_civil,
+        const { nombre_completo, rut, direccion, estado_civil, regimen_matrimonial,
                 nombre_conyugue, rut_conyugue, email_conyugue, telefono_conyugue,
                 email, telefono } = req.body;
         const result = await pool.query(
             `UPDATE im_clientes SET nombre_completo=$1, rut=$2, direccion=$3, estado_civil=$4,
-             nombre_conyugue=$5, rut_conyugue=$6, email_conyugue=$7, telefono_conyugue=$8,
-             email=$9, telefono=$10 WHERE id=$11 RETURNING *`,
+             regimen_matrimonial=$5, nombre_conyugue=$6, rut_conyugue=$7,
+             email_conyugue=$8, telefono_conyugue=$9, email=$10, telefono=$11 WHERE id=$12 RETURNING *`,
             [nombre_completo, rut, direccion || null, estado_civil || 'Soltero/a',
+             regimen_matrimonial || null,
              nombre_conyugue || null, rut_conyugue || null,
              email_conyugue || null, telefono_conyugue || null,
              email || null, telefono || null, id]

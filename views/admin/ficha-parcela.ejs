@@ -228,13 +228,25 @@
                                     </div>
                                     <div class="im-input-group"><label>Correo Electrónico</label><input type="email" id="cli-email" class="styled-input" placeholder="correo@ejemplo.cl"></div>
                                     <div class="im-input-group"><label>Dirección</label><textarea id="cli-direccion" class="styled-input" rows="2" placeholder="Calle, número, ciudad, región" style="resize:vertical;"></textarea></div>
-                                    <div class="im-input-group">
-                                        <label>Estado Civil</label>
-                                        <select id="cli-estado-civil" class="styled-input" onchange="toggleConyuge(this.value)">
-                                            <option value="Soltero/a">Soltero/a</option><option value="Casado/a">Casado/a</option>
-                                            <option value="Divorciado/a">Divorciado/a</option><option value="Viudo/a">Viudo/a</option>
-                                            <option value="Conviviente Civil">Conviviente Civil</option>
-                                        </select>
+                                    <div class="im-form-row">
+                                        <div class="im-input-group">
+                                            <label>Estado Civil</label>
+                                            <select id="cli-estado-civil" class="styled-input" onchange="toggleConyuge(this.value)">
+                                                <option value="Soltero/a">Soltero/a</option>
+                                                <option value="Casado/a">Casado/a</option>
+                                                <option value="Divorciado/a">Divorciado/a</option>
+                                                <option value="Viudo/a">Viudo/a</option>
+                                                <option value="Conviviente Civil">Conviviente Civil</option>
+                                            </select>
+                                        </div>
+                                        <div class="im-input-group" id="box-regimen" style="display:none;">
+                                            <label>Régimen Matrimonial</label>
+                                            <select id="cli-regimen" class="styled-input">
+                                                <option value="Sociedad Conyugal">Sociedad Conyugal</option>
+                                                <option value="Separación de Bienes">Separación de Bienes</option>
+                                                <option value="Participación en los Gananciales">Participación en los Gananciales</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div id="section-conyuge" style="display:none;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin-top:8px;">
                                         <p style="font-size:.78rem;font-weight:700;color:#7c3aed;margin:0 0 10px;"><i class="bi bi-people-fill"></i> Cónyuge / Conviviente Civil</p>
@@ -446,7 +458,10 @@ function validarRut(rut){
     let s=0,m=2;for(let i=body.length-1;i>=0;i--){s+=parseInt(body[i],10)*m;m=m>=7?2:m+1;}
     const r=11-(s%11);const dc=r===11?'0':r===10?'K':String(r);return dv===dc;
 }
-function toggleConyuge(val){$('section-conyuge').style.display=(val==='Casado/a'||val==='Conviviente Civil')?'block':'none';}
+function toggleConyuge(val){
+    $('section-conyuge').style.display=(val==='Casado/a'||val==='Conviviente Civil')?'block':'none';
+    const rb=$('box-regimen');if(rb)rb.style.display=(val==='Casado/a')?'flex':'none';
+}
 
 function switchTab(name,btn){
     document.querySelectorAll('.im-tab-btn').forEach(b=>b.classList.remove('active'));
@@ -583,7 +598,7 @@ function renderParcela(data){
                 ${[
                     ['Nombre',venta.nombre_completo],['RUT',venta.rut],
                     ['Email',venta.email||'—'],['Teléfono',venta.telefono||'—'],
-                    ['Estado Civil',venta.estado_civil],
+                    ['Estado Civil',venta.estado_civil+(venta.regimen_matrimonial?` — ${venta.regimen_matrimonial}`:'')],
                     venta.nombre_conyugue?['Cónyuge',`${venta.nombre_conyugue} · ${venta.rut_conyugue||'S/R'}${venta.email_conyugue?' · '+venta.email_conyugue:''}${venta.telefono_conyugue?' · '+venta.telefono_conyugue:''}`]:null,
                     ['Agente',venta.agente_nombre||'—'],
                     ['Modalidad',tipoPago==='contado'?'💵 Al Contado':'🏦 Crédito / Cuotas'],
@@ -615,6 +630,7 @@ function renderParcela(data){
         $('cli-direccion').value=venta.direccion||'';
         $('cli-estado-civil').value=venta.estado_civil;
         toggleConyuge(venta.estado_civil);
+        if(venta.regimen_matrimonial&&$('cli-regimen'))$('cli-regimen').value=venta.regimen_matrimonial;
         $('cli-conyuge-nombre').value=venta.nombre_conyugue||'';
         $('cli-conyuge-rut').value=venta.rut_conyugue||'';
         $('cli-conyuge-email').value=venta.email_conyugue||'';
@@ -775,7 +791,8 @@ $('form-venta').addEventListener('submit',async(e)=>{
     try{
         if(!validarRut($('cli-rut').value)){showToast('RUT del comprador inválido (Módulo 11).','error','RUT inválido');return;}
         let clienteId=$('venta-cliente-id').value;
-            const clienteBody={nombre_completo:$('cli-nombre').value,rut:$('cli-rut').value,email:$('cli-email').value||null,telefono:$('cli-telefono').value||null,direccion:$('cli-direccion').value||null,estado_civil:$('cli-estado-civil').value,nombre_conyugue:$('cli-conyuge-nombre').value||null,rut_conyugue:$('cli-conyuge-rut').value||null,email_conyugue:$('cli-conyuge-email').value||null,telefono_conyugue:$('cli-conyuge-tel').value||null};
+            const estadoCivil=$('cli-estado-civil').value;
+            const clienteBody={nombre_completo:$('cli-nombre').value,rut:$('cli-rut').value,email:$('cli-email').value||null,telefono:$('cli-telefono').value||null,direccion:$('cli-direccion').value||null,estado_civil:estadoCivil,regimen_matrimonial:(estadoCivil==='Casado/a'&&$('cli-regimen'))?$('cli-regimen').value:null,nombre_conyugue:$('cli-conyuge-nombre').value||null,rut_conyugue:$('cli-conyuge-rut').value||null,email_conyugue:$('cli-conyuge-email').value||null,telefono_conyugue:$('cli-conyuge-tel').value||null};
         if(clienteId){
             const r=await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(clienteBody)});
             if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.message||`Error ${r.status}`);}
