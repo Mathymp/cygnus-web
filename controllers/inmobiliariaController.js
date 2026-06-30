@@ -7,6 +7,19 @@ const pool = new Pool({
 
 const isAdmin = (req) => req.session.user && req.session.user.role === 'admin';
 
+// Autorizado = admin O tiene acceso al módulo inmobiliario
+async function isAuthorized(req) {
+    if (isAdmin(req)) return true;
+    if (!req.session || !req.session.user) return false;
+    try {
+        const { rows } = await pool.query(
+            `SELECT id FROM im_accesos WHERE user_id=$1 AND puede_ver=true`,
+            [req.session.user.id]
+        );
+        return rows.length > 0;
+    } catch { return false; }
+}
+
 async function auditLog(client, { tabla, entidadId, accion, descripcion, req }) {
     const userId   = req.session.user ? req.session.user.id   : null;
     const userName = req.session.user ? req.session.user.name : 'Sistema';
@@ -31,7 +44,7 @@ exports.getProyectos = async (req, res) => {
 };
 
 exports.createProyecto = async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ message: 'Solo administradores pueden crear proyectos.' });
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -64,7 +77,7 @@ exports.createProyecto = async (req, res) => {
 };
 
 exports.updateProyecto = async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ message: 'Solo administradores pueden editar proyectos.' });
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -180,7 +193,7 @@ exports.getParcelaById = async (req, res) => {
 };
 
 exports.createParcela = async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ message: 'Solo administradores pueden crear parcelas.' });
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     try {
         const { proyecto_id, numero_parcela, numero_rol_parcela, metraje, precio_actual } = req.body;
         const numStr = String(numero_parcela || '').trim().toUpperCase();
@@ -216,7 +229,7 @@ exports.createParcela = async (req, res) => {
 };
 
 exports.createParcelasBulk = async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ message: 'Solo administradores.' });
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -487,7 +500,7 @@ exports.createVenta = async (req, res) => {
 };
 
 exports.deleteVenta = async (req, res) => {
-    if (!isAdmin(req)) return res.status(403).json({ message: 'Solo administradores.' });
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');

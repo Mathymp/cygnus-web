@@ -266,19 +266,22 @@ router.get('/admin/inmobiliaria', requireAuth, async (req, res) => {
 router.get('/admin/inmobiliaria/proyectos/:id', requireAuth, async (req, res) => {
     const isAdmin = req.session.user.role === 'admin';
     let tieneAcceso = isAdmin;
+    let puedeCrear  = isAdmin;
     if (!isAdmin) {
         try {
             const { rows } = await pool.query(
-                `SELECT puede_ver FROM im_accesos WHERE user_id=$1`, [req.session.user.id]
+                `SELECT puede_ver, puede_crear FROM im_accesos WHERE user_id=$1`, [req.session.user.id]
             );
             tieneAcceso = rows.length > 0 && rows[0].puede_ver;
+            puedeCrear  = rows.length > 0 && rows[0].puede_ver; // acceso = puede operar todo
         } catch (_) { tieneAcceso = false; }
     }
     if (!tieneAcceso) return res.redirect('/dashboard');
     res.render('admin/proyecto-parcelas', {
         user: req.session.user,
         page: 'inmobiliaria',
-        proyectoId: req.params.id
+        proyectoId: req.params.id,
+        puedeCrear
     });
 });
 

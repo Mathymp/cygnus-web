@@ -622,7 +622,7 @@ function renderParcela(data){
     const eMap={disponible:{cl:'disponible',ic:'bi-circle-fill',t:'Disponible'},reservado:{cl:'reservado',ic:'bi-clock-history',t:'Reservado'},vendido:{cl:'vendido',ic:'bi-bag-check-fill',t:'Vendido'}};
     const e=eMap[p.estado_venta]||eMap.disponible;
     $('parcela-estado-badge').innerHTML=`<span class="im-status-badge ${e.cl}"><i class="bi ${e.ic}"></i> ${e.t}</span>`;
-    $('header-actions').innerHTML=(IS_ADMIN&&venta)
+    $('header-actions').innerHTML=((IS_ADMIN||PUEDE_CREAR)&&venta)
         ?`<button class="im-btn im-btn-warning" onclick="openResciliarModal()" style="background:#f59e0b;color:#fff;border-color:#f59e0b;">
             <i class="bi bi-file-earmark-x"></i> Resciliar Contrato</button>`:'';
 
@@ -1127,7 +1127,7 @@ async function loadDocs(tipo_asociacion,asociacionId){
                     <a href="${escH(doc.url_storage)}" download="${escH(doc.nombre_personalizado)}.${ext}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Descargar"><i class="bi bi-download"></i></a>
                     <button class="im-btn im-btn-sm im-btn-ghost" onclick="startRename(${doc.id})" title="Renombrar"><i class="bi bi-pencil"></i></button>
                     <button class="im-btn im-btn-sm" id="save-rename-${doc.id}" style="display:none;" onclick="saveRename(${doc.id},'${tipo_asociacion}','${asociacionId}')"><i class="bi bi-check-lg"></i></button>
-                    ${IS_ADMIN?`<button class="im-btn im-btn-sm im-btn-danger" onclick="deleteDoc(${doc.id},'${tipo_asociacion}','${asociacionId}')" title="Eliminar"><i class="bi bi-trash3"></i></button>`:''}
+                    ${(IS_ADMIN||PUEDE_CREAR)?`<button class="im-btn im-btn-sm im-btn-danger" onclick="deleteDoc(${doc.id},'${tipo_asociacion}','${asociacionId}')" title="Eliminar"><i class="bi bi-trash3"></i></button>`:''}
                 </div>
             </div>`;
         }).join('');

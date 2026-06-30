@@ -379,14 +379,14 @@
                         <span class="im-card-badge ${badgeClass}">
                             <i class="bi bi-circle-fill" style="font-size:0.45rem;"></i> ${p.estado}
                         </span>
-                        ${IS_ADMIN ? `
+                        ${(IS_ADMIN||PUEDE_CREAR) ? `
                         <div style="display:flex; gap:5px; flex-shrink:0;">
                             <button class="im-btn im-btn-sm im-btn-ghost" onclick='openModalEdit(${JSON.stringify(p)})' title="Editar proyecto">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="im-btn im-btn-sm im-btn-danger" onclick="prepareDelete('${p.id}','${escapeHtml(p.nombre)}')" title="Eliminar">
+                            ${IS_ADMIN ? `<button class="im-btn im-btn-sm im-btn-danger" onclick="prepareDelete('${p.id}','${escapeHtml(p.nombre)}')" title="Eliminar">
                                 <i class="bi bi-trash3"></i>
-                            </button>
+                            </button>` : ''}
                         </div>` : ''}
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -729,7 +729,7 @@
                             <a href="${escapeHtml(doc.url_storage)}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Ver">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            ${IS_ADMIN ? `<button class="im-btn im-btn-sm im-btn-danger" onclick="eliminarDoc(${doc.id}, '${tipo}', '${asociacionId}')"><i class="bi bi-trash3"></i></button>` : ''}
+                            ${(IS_ADMIN||PUEDE_CREAR) ? `<button class="im-btn im-btn-sm im-btn-danger" onclick="eliminarDoc(${doc.id}, '${tipo}', '${asociacionId}')"><i class="bi bi-trash3"></i></button>` : ''}
                         </div>
                     </div>`;
                 }).join('');

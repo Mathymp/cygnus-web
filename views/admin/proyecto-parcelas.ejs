@@ -174,8 +174,9 @@
 </div>
 
 <script>
-const PROYECTO_ID = '<%= proyectoId %>';
-const IS_ADMIN    = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
+const PROYECTO_ID  = '<%= proyectoId %>';
+const IS_ADMIN     = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
+const PUEDE_CREAR  = '<%= typeof puedeCrear !== "undefined" && puedeCrear ? "true" : "false" %>' === 'true';
 
 let allParcelas   = [];
 let filtroEstado  = 'todos';
@@ -214,7 +215,7 @@ async function init(){
         if(proj) renderProyecto(proj);
         renderStats();
         applyFilters();
-        if(IS_ADMIN) $('add-panel').style.display='block';
+        if(IS_ADMIN||PUEDE_CREAR) $('add-panel').style.display='block';
 
     }catch(e){
         $('pp-content').innerHTML=`
