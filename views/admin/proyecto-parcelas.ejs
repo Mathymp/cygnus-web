@@ -132,8 +132,21 @@
         <div class="stat-card vend"><div class="stat-val" id="s-vend">—</div><div class="stat-lbl">Vendidas</div></div>
     </div>
 
-    <!-- Toolbar -->
-    <div class="pp-toolbar">
+    <!-- Pestañas principales -->
+    <div style="background:#fff;border-bottom:2px solid #e2e8f0;padding:0 28px;display:flex;align-items:center;gap:0;">
+        <button id="tab-btn-parcelas" onclick="setTab('parcelas')"
+            style="padding:13px 18px;border:none;background:none;font-size:.85rem;font-weight:700;color:#2563eb;border-bottom:2px solid #2563eb;margin-bottom:-2px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;">
+            <i class="bi bi-grid-3x3-gap-fill"></i> Parcelas
+        </button>
+        <button id="tab-btn-documentos" onclick="setTab('documentos')"
+            style="padding:13px 18px;border:none;background:none;font-size:.85rem;font-weight:700;color:#64748b;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;">
+            <i class="bi bi-folder2-open"></i> Documentos del Proyecto
+            <span id="docs-tab-badge" style="display:none;background:#2563eb;color:#fff;border-radius:20px;padding:1px 8px;font-size:.7rem;font-weight:700;"></span>
+        </button>
+    </div>
+
+    <!-- Toolbar Parcelas -->
+    <div class="pp-toolbar" id="toolbar-parcelas">
         <div class="pp-search">
             <i class="bi bi-search"></i>
             <input type="text" id="search-input" placeholder="Buscar por N°, rol, comprador..." oninput="applyFilters()">
@@ -170,84 +183,83 @@
         </div>
     </div>
 
-    <!-- Body -->
-    <div class="pp-body">
-        <div id="pp-content">
-            <div class="pp-empty"><i class="bi bi-hourglass-split"></i><p>Cargando parcelas...</p></div>
-        </div>
-
-        <!-- Panel agregar (admin only) -->
-        <div class="add-panel" id="add-panel" style="display:none;">
-            <div class="add-panel-header" onclick="toggleAddPanel()">
-                <h4><i class="bi bi-plus-circle" style="color:#2563eb;"></i> Agregar Nueva Parcela</h4>
-                <i class="bi bi-chevron-down" id="add-chevron"></i>
+    <!-- ─── TAB: PARCELAS ─── -->
+    <div id="tab-parcelas">
+        <!-- Body -->
+        <div class="pp-body">
+            <div id="pp-content">
+                <div class="pp-empty"><i class="bi bi-hourglass-split"></i><p>Cargando parcelas...</p></div>
             </div>
-            <div class="add-panel-body" id="add-panel-body">
-                <form id="form-add" onsubmit="crearParcela(event)">
-                    <div class="add-form-row">
-                        <div>
-                            <label>N° Parcela <span style="color:#ef4444;">*</span></label>
-                            <input type="text" id="ap-numero" placeholder="Ej: 5 ó 1-A" maxlength="20" oninput="this.value=this.value.toUpperCase()" required>
-                            <div id="ap-dup-warn" style="display:none;color:#f59e0b;font-size:.73rem;margin-top:3px;"><i class="bi bi-exclamation-triangle-fill"></i> <span></span></div>
+
+            <!-- Panel agregar (admin only) -->
+            <div class="add-panel" id="add-panel" style="display:none;">
+                <div class="add-panel-header" onclick="toggleAddPanel()">
+                    <h4><i class="bi bi-plus-circle" style="color:#2563eb;"></i> Agregar Nueva Parcela</h4>
+                    <i class="bi bi-chevron-down" id="add-chevron"></i>
+                </div>
+                <div class="add-panel-body" id="add-panel-body">
+                    <form id="form-add" onsubmit="crearParcela(event)">
+                        <div class="add-form-row">
+                            <div>
+                                <label>N° Parcela <span style="color:#ef4444;">*</span></label>
+                                <input type="text" id="ap-numero" placeholder="Ej: 5 ó 1-A" maxlength="20" oninput="this.value=this.value.toUpperCase()" required>
+                                <div id="ap-dup-warn" style="display:none;color:#f59e0b;font-size:.73rem;margin-top:3px;"><i class="bi bi-exclamation-triangle-fill"></i> <span></span></div>
+                            </div>
+                            <div>
+                                <label>N° Rol Parcela <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                                <input type="text" id="ap-rol" placeholder="Ej: 123-45">
+                            </div>
+                            <div>
+                                <label>Metraje (m²) <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                                <input type="number" id="ap-metraje" placeholder="Ej: 5000" min="0">
+                            </div>
+                            <div>
+                                <label>Precio Lista (CLP) <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                                <input type="text" id="ap-precio" placeholder="Ej: 15.000.000" oninput="fmtPrecio(this)">
+                            </div>
                         </div>
-                        <div>
-                            <label>N° Rol Parcela <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                            <input type="text" id="ap-rol" placeholder="Ej: 123-45">
-                        </div>
-                        <div>
-                            <label>Metraje (m²) <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                            <input type="number" id="ap-metraje" placeholder="Ej: 5000" min="0">
-                        </div>
-                        <div>
-                            <label>Precio Lista (CLP) <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                            <input type="text" id="ap-precio" placeholder="Ej: 15.000.000" oninput="fmtPrecio(this)">
-                        </div>
-                    </div>
-                    <button type="submit" class="im-btn im-btn-success" id="btn-add">
-                        <i class="bi bi-plus-circle"></i> Agregar Parcela
-                    </button>
-                </form>
+                        <button type="submit" class="im-btn im-btn-success" id="btn-add">
+                            <i class="bi bi-plus-circle"></i> Agregar Parcela
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- ─── DOCUMENTOS DEL PROYECTO ─── -->
-    <div style="border-top:2px solid #e2e8f0;background:#fff;">
-        <div id="docs-toggle-header" onclick="toggleDocsPanel()"
-            style="padding:14px 28px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;transition:background .15s;"
-            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
-            <div style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border-radius:8px;padding:6px 9px;color:#fff;flex-shrink:0;">
-                <i class="bi bi-folder2-open" style="font-size:1rem;"></i>
-            </div>
-            <div style="flex:1;">
-                <p style="margin:0;font-weight:800;color:#0f172a;font-size:.93rem;">Documentos del Proyecto</p>
-                <p style="margin:0;font-size:.75rem;color:#64748b;">Escrituras, certificados, planos y demás archivos vinculados a este proyecto</p>
-            </div>
-            <span id="docs-count-badge" style="background:#eff6ff;color:#1d4ed8;border-radius:20px;padding:3px 11px;font-size:.75rem;font-weight:700;display:none;"></span>
-            <i class="bi bi-chevron-down" id="docs-toggle-icon" style="color:#94a3b8;transition:transform .2s;font-size:.9rem;"></i>
-        </div>
+    <!-- ─── TAB: DOCUMENTOS DEL PROYECTO ─── -->
+    <div id="tab-documentos" style="display:none;">
+        <div style="padding:24px 28px;">
 
-        <div id="docs-panel" style="display:none;border-top:1px solid #f1f5f9;">
-            <div style="padding:20px 28px;">
-
-                <!-- Upload zone -->
-                <div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:12px;padding:18px;text-align:center;position:relative;transition:all .2s;margin-bottom:18px;" id="proj-dz"
-                    onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff'"
-                    onmouseout="this.style.borderColor='#e2e8f0';this.style.background='#f8fafc'">
-                    <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
-                        style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;"
-                        onchange="handleProjFiles(this.files)">
-                    <i class="bi bi-cloud-arrow-up" style="font-size:2rem;color:#2563eb;"></i>
-                    <p style="margin:6px 0 2px;font-weight:700;color:#0f172a;font-size:.9rem;">Arrastra archivos aquí o <strong>haz clic</strong></p>
-                    <p style="margin:0;font-size:.75rem;color:#94a3b8;">PDF, imágenes, Word, Excel · hasta 100 MB c/u</p>
+            <!-- Intro -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                <div style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border-radius:10px;padding:10px 13px;color:#fff;flex-shrink:0;">
+                    <i class="bi bi-folder2-open" style="font-size:1.3rem;"></i>
                 </div>
-                <!-- Progreso de subida -->
-                <div id="proj-upload-queue" style="margin-bottom:10px;"></div>
-
-                <!-- Lista de documentos -->
-                <div id="proj-doc-list">
-                    <div style="text-align:center;padding:20px;color:#94a3b8;"><i class="bi bi-hourglass-split"></i> Cargando documentos...</div>
+                <div>
+                    <p style="margin:0;font-weight:800;color:#0f172a;font-size:1rem;">Documentos del Proyecto</p>
+                    <p style="margin:0;font-size:.78rem;color:#64748b;">Escrituras, certificados, planos y archivos vinculados a este proyecto. Visibles también desde cada lote.</p>
                 </div>
+            </div>
+
+            <!-- Upload zone -->
+            <div style="background:#f8fafc;border:2px dashed #cbd5e1;border-radius:14px;padding:22px;text-align:center;position:relative;transition:all .2s;margin-bottom:20px;"
+                onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff'"
+                onmouseout="this.style.borderColor='#cbd5e1';this.style.background='#f8fafc'">
+                <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
+                    style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;"
+                    onchange="handleProjFiles(this.files)">
+                <i class="bi bi-cloud-arrow-up" style="font-size:2.2rem;color:#2563eb;"></i>
+                <p style="margin:8px 0 2px;font-weight:700;color:#0f172a;font-size:.95rem;">Arrastra archivos aquí o <strong>haz clic para seleccionar</strong></p>
+                <p style="margin:0;font-size:.78rem;color:#94a3b8;">PDF, imágenes, Word, Excel, ZIP · hasta 100 MB por archivo</p>
+            </div>
+
+            <!-- Progreso de subida -->
+            <div id="proj-upload-queue" style="margin-bottom:12px;"></div>
+
+            <!-- Lista de documentos -->
+            <div id="proj-doc-list">
+                <div style="text-align:center;padding:28px;color:#94a3b8;"><i class="bi bi-hourglass-split" style="font-size:1.5rem;"></i><p style="margin:8px 0 0;">Cargando documentos...</p></div>
             </div>
         </div>
     </div>
@@ -645,18 +657,49 @@ function descargarCSV(){
 }
 
 // ─────────────────────────────────────────────
+//  SISTEMA DE PESTAÑAS
+// ─────────────────────────────────────────────
+let activeTab = 'parcelas';
+let docsLoaded = false;
+
+function setTab(tab){
+    activeTab = tab;
+
+    // Pestaña Parcelas
+    const btnP = $('tab-btn-parcelas');
+    const tabP = $('tab-parcelas');
+    const tlbP = $('toolbar-parcelas');
+    const repP = $('reporte-panel');
+
+    // Pestaña Documentos
+    const btnD = $('tab-btn-documentos');
+    const tabD = $('tab-documentos');
+
+    if(tab === 'parcelas'){
+        btnP.style.color        = '#2563eb';
+        btnP.style.borderBottom = '2px solid #2563eb';
+        btnD.style.color        = '#64748b';
+        btnD.style.borderBottom = '2px solid transparent';
+        tabP.style.display      = 'block';
+        tabD.style.display      = 'none';
+        if(tlbP) tlbP.style.display = 'flex';
+        if(repP) repP.style.display = 'none';
+    } else {
+        btnD.style.color        = '#2563eb';
+        btnD.style.borderBottom = '2px solid #2563eb';
+        btnP.style.color        = '#64748b';
+        btnP.style.borderBottom = '2px solid transparent';
+        tabD.style.display      = 'block';
+        tabP.style.display      = 'none';
+        if(tlbP) tlbP.style.display = 'none';
+        if(repP) repP.style.display = 'none';
+        if(!docsLoaded){ docsLoaded = true; loadProjDocs(); }
+    }
+}
+
+// ─────────────────────────────────────────────
 //  DOCUMENTOS DEL PROYECTO
 // ─────────────────────────────────────────────
-let docsPanelOpen = false;
-
-function toggleDocsPanel(){
-    docsPanelOpen = !docsPanelOpen;
-    const panel = $('docs-panel');
-    const icon  = $('docs-toggle-icon');
-    panel.style.display = docsPanelOpen ? 'block' : 'none';
-    icon.style.transform = docsPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-    if(docsPanelOpen) loadProjDocs();
-}
 
 function ext2icon(ext){
     if(['pdf'].includes(ext)) return 'bi-file-earmark-pdf';
@@ -675,10 +718,12 @@ async function loadProjDocs(){
         if(!res.ok) throw new Error(`HTTP ${res.status}`);
         const docs = await res.json();
 
-        // Actualizar badge
-        const badge = $('docs-count-badge');
-        badge.textContent = docs.length + ' doc' + (docs.length!==1?'s':'');
-        badge.style.display = 'inline-block';
+        // Actualizar badge en la pestaña
+        const badge = $('docs-tab-badge');
+        if(badge){
+            badge.textContent = docs.length;
+            badge.style.display = docs.length > 0 ? 'inline-block' : 'none';
+        }
 
         if(docs.length === 0){
             list.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;"><i class="bi bi-folder2-open" style="font-size:2rem;"></i><p style="margin:8px 0 0;font-size:.85rem;">Sin documentos aún. Sube el primero arriba.</p></div>';
@@ -846,9 +891,23 @@ function openProjPreview(url, nombre, ext){
 }
 function closeProjPreview(){ $('proj-preview-overlay').style.display = 'none'; }
 $('proj-preview-overlay') && ($('proj-preview-overlay').onclick = function(e){ if(e.target===this) closeProjPreview(); });
-$('proj-del-overlay') && ($('proj-del-overlay').onclick = function(e){ if(e.target===this) closeProjDel(); });
+$('proj-del-overlay')     && ($('proj-del-overlay').onclick     = function(e){ if(e.target===this) closeProjDel(); });
 
-document.addEventListener('DOMContentLoaded',init);
+// Precargar conteo de docs para mostrar el badge en la pestaña sin entrar a ella
+async function prefetchDocCount(){
+    try{
+        const res = await fetch(`/api/im/documentos?tipo_asociacion=proyecto&asociacion_id=${PROYECTO_ID}`);
+        if(!res.ok) return;
+        const docs = await res.json();
+        const badge = $('docs-tab-badge');
+        if(badge && docs.length > 0){
+            badge.textContent    = docs.length;
+            badge.style.display  = 'inline-block';
+        }
+    }catch(_){}
+}
+
+document.addEventListener('DOMContentLoaded', () => { init(); prefetchDocCount(); });
 </script>
 </body>
 </html>
