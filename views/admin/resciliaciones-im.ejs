@@ -8,10 +8,25 @@
         .resc-header{padding:22px 28px 14px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
         .resc-toolbar{padding:12px 28px;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#fff;}
         .resc-body{padding:20px 28px;}
-        .summary-cards{display:flex;gap:12px;flex-wrap:wrap;padding:12px 28px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
-        .summary-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 18px;display:flex;flex-direction:column;align-items:center;min-width:120px;}
-        .summary-card .val{font-size:1.3rem;font-weight:800;}
-        .summary-card .lbl{font-size:.72rem;color:#64748b;margin-top:2px;text-align:center;}
+        .summary-cards{display:flex;gap:12px;flex-wrap:wrap;padding:14px 28px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
+        .summary-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 18px;display:flex;flex-direction:column;align-items:center;min-width:130px;flex:1;}
+        .summary-card .val{font-size:1.35rem;font-weight:800;line-height:1.1;}
+        .summary-card .lbl{font-size:.7rem;color:#64748b;margin-top:3px;text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+        .summary-card .sub{font-size:.68rem;color:#94a3b8;margin-top:2px;text-align:center;}
+        /* Barra progreso por fila */
+        .dev-bar-wrap{height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-top:4px;width:100%;min-width:80px;}
+        .dev-bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+        /* Panel resumen por proyecto */
+        .proj-summary-panel{padding:10px 28px 0;border-bottom:1px solid #e2e8f0;}
+        .proj-summary-toggle{font-size:.8rem;font-weight:700;color:#2563eb;cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:8px 0;user-select:none;}
+        .proj-group-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;}
+        .proj-group-name{font-weight:800;color:#0f172a;font-size:.85rem;min-width:160px;flex:1;}
+        .proj-stat{text-align:center;min-width:80px;}
+        .proj-stat .sv{font-size:1rem;font-weight:800;}
+        .proj-stat .sl{font-size:.68rem;color:#64748b;text-transform:uppercase;font-weight:600;letter-spacing:.3px;}
+        .proj-dev-bar{height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;min-width:120px;flex:1;max-width:200px;margin-top:2px;}
+        .proj-dev-fill{height:100%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:4px;transition:width .5s;}
+        .badge-venc-mini{background:#fee2e2;color:#991b1b;border-radius:12px;padding:2px 7px;font-size:.67rem;font-weight:700;display:inline-flex;align-items:center;gap:3px;}
         .filter-chip{padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:600;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;color:#64748b;transition:all .15s;}
         .filter-chip.active{background:#2563eb;color:#fff;border-color:#2563eb;}
         .search-box{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:0 12px;flex:1;max-width:320px;}
@@ -85,11 +100,50 @@
 
         <!-- SUMMARY CARDS -->
         <div class="summary-cards" id="summary-cards">
-            <div class="summary-card"><span class="val" id="sc-total">—</span><span class="lbl">Total</span></div>
-            <div class="summary-card" style="border-color:#fde68a;"><span class="val" style="color:#d97706;" id="sc-proceso">—</span><span class="lbl">En Proceso</span></div>
-            <div class="summary-card" style="border-color:#86efac;"><span class="val" style="color:#16a34a;" id="sc-comp">—</span><span class="lbl">Completadas</span></div>
-            <div class="summary-card" style="border-color:#fca5a5;"><span class="val" style="color:#dc2626;" id="sc-pend">—</span><span class="lbl">Cuotas Dev. Pendientes</span></div>
-            <div class="summary-card" style="border-color:#bfdbfe;"><span class="val" style="color:#1d4ed8;font-size:1rem;" id="sc-monto">—</span><span class="lbl">Monto a Devolver</span></div>
+            <div class="summary-card">
+                <span class="val" id="sc-total">—</span>
+                <span class="lbl">Total Resciliaciones</span>
+            </div>
+            <div class="summary-card" style="border-color:#fde68a;">
+                <span class="val" style="color:#d97706;" id="sc-proceso">—</span>
+                <span class="lbl">En Proceso</span>
+            </div>
+            <div class="summary-card" style="border-color:#86efac;">
+                <span class="val" style="color:#16a34a;" id="sc-comp">—</span>
+                <span class="lbl">Completadas</span>
+            </div>
+            <div class="summary-card" style="border-color:#fca5a5;">
+                <span class="val" style="color:#dc2626;" id="sc-venc">—</span>
+                <span class="lbl">Cuotas Vencidas</span>
+                <span class="sub">sin pagar y pasada fecha</span>
+            </div>
+            <div class="summary-card" style="border-color:#fca5a5;">
+                <span class="val" style="color:#ef4444;font-size:1rem;" id="sc-pend-monto">—</span>
+                <span class="lbl">Saldo Pendiente</span>
+                <span class="sub" id="sc-pend-cuotas">0 cuotas</span>
+            </div>
+            <div class="summary-card" style="border-color:#86efac;">
+                <span class="val" style="color:#16a34a;font-size:1rem;" id="sc-pagado">—</span>
+                <span class="lbl">Ya Devuelto</span>
+                <span class="sub" id="sc-pagado-cuotas">0 cuotas</span>
+            </div>
+            <div class="summary-card" style="border-color:#bfdbfe;flex:2;min-width:200px;">
+                <span class="val" style="color:#1d4ed8;font-size:1rem;" id="sc-total-dev">—</span>
+                <span class="lbl">Total a Devolver</span>
+                <div class="dev-bar-wrap" style="margin-top:8px;">
+                    <div class="dev-bar-fill" id="sc-bar-fill" style="background:linear-gradient(90deg,#16a34a,#22c55e);width:0%;"></div>
+                </div>
+                <span class="sub" id="sc-bar-pct">0% completado</span>
+            </div>
+        </div>
+
+        <!-- RESUMEN POR PROYECTO -->
+        <div class="proj-summary-panel" id="proj-summary-wrap">
+            <div class="proj-summary-toggle" onclick="toggleProjSummary()">
+                <i class="bi bi-bar-chart-line" id="proj-sum-icon"></i>
+                <span id="proj-sum-label">Ver resumen por proyecto</span>
+            </div>
+            <div id="proj-summary-body" style="display:none;padding-bottom:12px;"></div>
         </div>
 
         <!-- TOOLBAR -->
@@ -128,7 +182,7 @@
                         <th>Proyecto / Parcela</th>
                         <th>Cliente</th>
                         <th>Fecha</th>
-                        <th>Devolución</th>
+                        <th>Progreso Devolución</th>
                         <th>Cuotas Dev.</th>
                         <th>Estado</th>
                         <th>Documento</th>
@@ -284,13 +338,69 @@ async function loadResc(){
 }
 
 function updateSummary(){
-    $id('sc-total').textContent=allResc.length;
-    $id('sc-proceso').textContent=allResc.filter(r=>r.estado!=='completada').length;
-    $id('sc-comp').textContent=allResc.filter(r=>r.estado==='completada').length;
-    const totalPend=allResc.reduce((s,r)=>s+Number(r.cuotas_dev_pendientes||0),0);
-    const totalMonto=allResc.reduce((s,r)=>s+Number(r.monto_dev_pendiente||0),0);
-    $id('sc-pend').textContent=totalPend;
-    $id('sc-monto').textContent=totalMonto>0?'$'+totalMonto.toLocaleString('es-CL'):'$0';
+    $id('sc-total').textContent    = allResc.length;
+    $id('sc-proceso').textContent  = allResc.filter(r=>r.estado!=='completada').length;
+    $id('sc-comp').textContent     = allResc.filter(r=>r.estado==='completada').length;
+
+    const totalVenc   = allResc.reduce((s,r)=>s+Number(r.cuotas_dev_vencidas||0),0);
+    const totalPend   = allResc.reduce((s,r)=>s+Number(r.cuotas_dev_pendientes||0),0);
+    const totalPagCq  = allResc.reduce((s,r)=>s+Number(r.total_cuotas_dev||0)-Number(r.cuotas_dev_pendientes||0),0);
+    const montoPend   = allResc.reduce((s,r)=>s+Number(r.monto_dev_pendiente||0),0);
+    const montoPagado = allResc.reduce((s,r)=>s+Number(r.monto_dev_pagado||0),0);
+    const montoTotal  = montoPend + montoPagado;
+    const pct         = montoTotal>0 ? Math.round((montoPagado/montoTotal)*100) : 0;
+
+    $id('sc-venc').textContent         = totalVenc;
+    $id('sc-pend-monto').textContent   = '$'+montoPend.toLocaleString('es-CL');
+    $id('sc-pend-cuotas').textContent  = totalPend+' cuota'+(totalPend!==1?'s':'')+' pendiente'+(totalPend!==1?'s':'');
+    $id('sc-pagado').textContent       = '$'+montoPagado.toLocaleString('es-CL');
+    $id('sc-pagado-cuotas').textContent= totalPagCq+' cuota'+(totalPagCq!==1?'s':'')+' pagada'+(totalPagCq!==1?'s':'');
+    $id('sc-total-dev').textContent    = '$'+montoTotal.toLocaleString('es-CL');
+    $id('sc-bar-fill').style.width     = pct+'%';
+    $id('sc-bar-pct').textContent      = pct+'% completado';
+
+    renderProjSummary();
+}
+
+let _projSummaryOpen = false;
+function toggleProjSummary(){
+    _projSummaryOpen = !_projSummaryOpen;
+    $id('proj-summary-body').style.display = _projSummaryOpen ? 'block' : 'none';
+    $id('proj-sum-label').textContent      = _projSummaryOpen ? 'Ocultar resumen por proyecto' : 'Ver resumen por proyecto';
+    $id('proj-sum-icon').className         = _projSummaryOpen ? 'bi bi-chevron-up' : 'bi bi-bar-chart-line';
+}
+
+function renderProjSummary(){
+    // Agrupar por proyecto
+    const map={};
+    allResc.forEach(r=>{
+        const k=r.proyecto_id;
+        if(!map[k]){ map[k]={nombre:r.proyecto_nombre,resc:0,pagado:0,pendiente:0,vencidas:0,cuotasPend:0,cuotasPag:0}; }
+        map[k].resc++;
+        map[k].pagado    += Number(r.monto_dev_pagado||0);
+        map[k].pendiente += Number(r.monto_dev_pendiente||0);
+        map[k].vencidas  += Number(r.cuotas_dev_vencidas||0);
+        map[k].cuotasPend+= Number(r.cuotas_dev_pendientes||0);
+        map[k].cuotasPag += Number(r.total_cuotas_dev||0)-Number(r.cuotas_dev_pendientes||0);
+    });
+    const body=$id('proj-summary-body'); if(!body) return;
+    const entries=Object.values(map);
+    if(!entries.length){ body.innerHTML='<p style="font-size:.8rem;color:#94a3b8;padding:8px 0;">Sin datos.</p>'; return; }
+    body.innerHTML = entries.map(p=>{
+        const total=p.pagado+p.pendiente;
+        const pct=total>0?Math.round((p.pagado/total)*100):0;
+        return `<div class="proj-group-card">
+            <div class="proj-group-name"><i class="bi bi-folder2" style="color:#2563eb;margin-right:6px;"></i>${escH(p.nombre)}</div>
+            <div class="proj-stat"><div class="sv">${p.resc}</div><div class="sl">Resciliac.</div></div>
+            <div class="proj-stat"><div class="sv" style="color:#16a34a;">$${p.pagado.toLocaleString('es-CL')}</div><div class="sl">Devuelto</div></div>
+            <div class="proj-stat"><div class="sv" style="color:#ef4444;">$${p.pendiente.toLocaleString('es-CL')}</div><div class="sl">Pendiente</div>
+                ${p.vencidas>0?`<span class="badge-venc-mini"><i class="bi bi-exclamation-triangle-fill"></i>${p.vencidas} venc.</span>`:''}</div>
+            <div style="flex:1;min-width:120px;">
+                <div style="font-size:.7rem;color:#64748b;font-weight:600;margin-bottom:3px;">${pct}% devuelto · ${p.cuotasPag}/${p.cuotasPag+p.cuotasPend} cuotas</div>
+                <div class="proj-dev-bar"><div class="proj-dev-fill" style="width:${pct}%;"></div></div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function setFilter(est,btn){
@@ -332,19 +442,36 @@ function rowHTML(r){
         ?`<span class="badge-completada"><i class="bi bi-check-circle-fill"></i> Completada</span>`
         :`<span class="badge-proceso"><i class="bi bi-hourglass-split"></i> En Proceso</span>`;
 
-    const pendNum=Number(r.cuotas_dev_pendientes||0);
-    const totalCDev=Number(r.total_cuotas_dev||0);
-    const devBadge=r.tipo_devolucion==='completa'
-        ?`<span style="font-size:.78rem;color:#64748b;">Completa</span>`
-        :r.tipo_devolucion==='cuotas'
-        ?`<span style="font-size:.78rem;">${totalCDev} cuota${totalCDev!==1?'s':''}</span>`
-        :r.tipo_devolucion==='pie_mas_cuotas'
-        ?`<span style="font-size:.78rem;">Pie + ${totalCDev} cuota${totalCDev!==1?'s':''}</span>`
-        :`<span style="font-size:.78rem;color:#94a3b8;">Sin definir</span>`;
+    const pendNum  = Number(r.cuotas_dev_pendientes||0);
+    const totalCDev= Number(r.total_cuotas_dev||0);
+    const pagNum   = totalCDev - pendNum;
+    const vencNum  = Number(r.cuotas_dev_vencidas||0);
+    const montoPend= Number(r.monto_dev_pendiente||0);
+    const montoPag = Number(r.monto_dev_pagado||0);
+    const montoTot = montoPend + montoPag;
+    const pct      = montoTot>0 ? Math.round((montoPag/montoTot)*100) : 0;
 
-    const cuotasBadge=totalCDev>0
-        ?`<span class="${pendNum>0?'badge-pendiente':'badge-pagada'}">${totalCDev-pendNum}/${totalCDev} pagadas</span>`
-        :`<span style="font-size:.78rem;color:#94a3b8;">—</span>`;
+    // Columna progreso devolución
+    const devBadge = montoTot>0
+        ? `<div style="min-width:130px;">
+            <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:3px;">
+                <span style="color:#16a34a;font-weight:700;">$${montoPag.toLocaleString('es-CL')} devuelto</span>
+                <span style="color:#94a3b8;">${pct}%</span>
+            </div>
+            <div class="dev-bar-wrap"><div class="dev-bar-fill" style="width:${pct}%;background:${pct===100?'#16a34a':'#2563eb'};"></div></div>
+            <div style="font-size:.7rem;color:#ef4444;margin-top:2px;">$${montoPend.toLocaleString('es-CL')} pendiente</div>
+          </div>`
+        : r.tipo_devolucion==='completa'
+            ? `<span style="font-size:.76rem;color:#64748b;font-style:italic;">Pago único</span>`
+            : `<span style="font-size:.76rem;color:#94a3b8;">Sin plan definido</span>`;
+
+    // Columna cuotas
+    const cuotasBadge = totalCDev>0
+        ? `<div style="white-space:nowrap;">
+            <span class="${pendNum>0?'badge-pendiente':'badge-pagada'}" style="font-size:.72rem;">${pagNum}/${totalCDev} pag.</span>
+            ${vencNum>0?`<br><span class="badge-vencida" style="font-size:.68rem;margin-top:3px;display:inline-flex;align-items:center;gap:3px;"><i class="bi bi-exclamation-triangle-fill"></i>${vencNum} venc.</span>`:''}
+          </div>`
+        : `<span style="font-size:.78rem;color:#94a3b8;">—</span>`;
 
     const docIcon=r.documento_url
         ?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="event.stopPropagation();previewDoc('${escH(r.documento_url)}','Documento Resciliación')" title="Ver">
@@ -412,8 +539,46 @@ async function renderDetail(rescId, container){
         if(!res.ok)throw new Error('Error al cargar detalle');
         const {resciliacion:r, cuotas} = await res.json();
 
-        const tipoDev=r.tipo_devolucion||'';
+        const tipoDev    = r.tipo_devolucion||'';
+        const cuotasPag  = cuotas.filter(c=>c.pagado).length;
+        const cuotasVenc = cuotas.filter(c=>!c.pagado&&c.fecha_vencimiento&&new Date(c.fecha_vencimiento)<new Date()).length;
+        const montoPagadoDet = cuotas.filter(c=>c.pagado).reduce((s,c)=>s+Number(c.monto||0),0);
+        const montoPendDet   = cuotas.filter(c=>!c.pagado).reduce((s,c)=>s+Number(c.monto||0),0);
+        const montoTotDet    = montoPagadoDet + montoPendDet;
+        const pctDet         = montoTotDet>0 ? Math.round((montoPagadoDet/montoTotDet)*100) : 0;
+
         container.innerHTML=`
+        <!-- BARRA FINANCIERA RESUMEN -->
+        ${montoTotDet>0||r.monto_total_devolucion?`
+        <div style="background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:12px;padding:16px 20px;margin-bottom:14px;color:#fff;">
+            <div style="font-size:.7rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px;">
+                <i class="bi bi-arrow-return-left" style="color:#fca5a5;"></i> Resumen Financiero de Devolución
+            </div>
+            <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+                <div style="text-align:center;">
+                    <div style="font-size:1.25rem;font-weight:800;color:#4ade80;">$${montoPagadoDet.toLocaleString('es-CL')}</div>
+                    <div style="font-size:.68rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Ya devuelto</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:1.25rem;font-weight:800;color:#fca5a5;">$${montoPendDet.toLocaleString('es-CL')}</div>
+                    <div style="font-size:.68rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Pendiente</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-size:1.25rem;font-weight:800;color:#e2e8f0;">$${(r.monto_total_devolucion||montoTotDet).toLocaleString('es-CL')}</div>
+                    <div style="font-size:.68rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Total acordado</div>
+                </div>
+                <div style="flex:1;min-width:140px;">
+                    <div style="display:flex;justify-content:space-between;font-size:.72rem;color:#94a3b8;margin-bottom:5px;">
+                        <span>${cuotasPag}/${cuotas.length} cuotas pagadas</span><span>${pctDet}%</span>
+                    </div>
+                    <div style="height:8px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden;">
+                        <div style="height:100%;width:${pctDet}%;background:linear-gradient(90deg,#22c55e,#4ade80);border-radius:4px;transition:width .5s;"></div>
+                    </div>
+                    ${cuotasVenc>0?`<div style="margin-top:5px;font-size:.72rem;color:#fca5a5;font-weight:700;"><i class="bi bi-exclamation-triangle-fill"></i> ${cuotasVenc} cuota${cuotasVenc!==1?'s':''} vencida${cuotasVenc!==1?'s':''} sin pagar</div>`:''}
+                </div>
+            </div>
+        </div>`:''}
+
         <div class="detail-grid">
             <!-- CLIENTE -->
             <div class="detail-card">
@@ -611,11 +776,32 @@ function previewCuotasDevHTML(cuotas,rescId){
 
 function renderCuotasDev(cuotas,rescId){
     if(!cuotas||cuotas.length===0) return `<p style="font-size:.8rem;color:#94a3b8;margin:8px 0;">No hay cuotas de devolución definidas aún.</p>`;
+
+    const pagadas  = cuotas.filter(c=>c.pagado).length;
+    const vencidas = cuotas.filter(c=>!c.pagado&&c.fecha_vencimiento&&new Date(c.fecha_vencimiento)<new Date()).length;
+    const pendientes= cuotas.length - pagadas;
+    const montoPag = cuotas.filter(c=>c.pagado).reduce((s,c)=>s+Number(c.monto||0),0);
+    const montoPend= cuotas.filter(c=>!c.pagado).reduce((s,c)=>s+Number(c.monto||0),0);
+
+    const resumenHeader=`
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;align-items:center;">
+            <div style="font-size:.72rem;font-weight:600;">
+                <span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i> ${pagadas} pagada${pagadas!==1?'s':''}</span>
+                &nbsp;·&nbsp;
+                <span style="color:#f59e0b;"><i class="bi bi-clock"></i> ${pendientes} pendiente${pendientes!==1?'s':''}</span>
+                ${vencidas>0?`&nbsp;·&nbsp;<span style="color:#dc2626;font-weight:800;"><i class="bi bi-exclamation-triangle-fill"></i> ${vencidas} vencida${vencidas!==1?'s':''}</span>`:''}
+            </div>
+            <div style="margin-left:auto;font-size:.72rem;text-align:right;">
+                <div style="color:#16a34a;font-weight:700;">$${montoPag.toLocaleString('es-CL')} devuelto</div>
+                <div style="color:#ef4444;">$${montoPend.toLocaleString('es-CL')} pendiente</div>
+            </div>
+        </div>`;
+
     const html=cuotas.map(c=>{
         const venc=isOverdue({pagado:c.pagado,fecha_vencimiento:c.fecha_vencimiento});
         const cls=c.pagado?'pagada-mini':venc?'vencida-mini':'';
         const badge=c.pagado
-            ?`<span class="badge-pagada"><i class="bi bi-check-circle-fill"></i> Pagada</span>`
+            ?`<span class="badge-pagada"><i class="bi bi-check-circle-fill"></i> Pagada ${c.fecha_pago?'· '+fmtFecha(c.fecha_pago):''}</span>`
             :venc?`<span class="badge-vencida"><i class="bi bi-exclamation-triangle-fill"></i> Vencida</span>`
             :`<span class="badge-pendiente"><i class="bi bi-clock"></i> Pendiente</span>`;
         const compIcon=c.comprobante_url
@@ -624,18 +810,22 @@ function renderCuotasDev(cuotas,rescId){
             :'';
         const pagarBtn=!c.pagado
             ?`<button class="im-btn im-btn-sm im-btn-primary" style="background:#16a34a;border:none;" onclick="abrirPagarDev(${c.id})">
-                <i class="bi bi-check-circle"></i> Pagada</button>`
-            :`<span style="font-size:.75rem;color:#16a34a;">${fmtFecha(c.fecha_pago)}</span>`;
+                <i class="bi bi-check-circle"></i> Marcar Pagada</button>`
+            :'';
         return `<div class="mini-cuota-dev ${cls}">
-            <span style="font-weight:700;min-width:24px;">N°${c.numero_cuota}</span>
-            <span style="flex:1;font-weight:600;">${fmtCLP(c.monto)}</span>
-            <span style="font-size:.75rem;color:#64748b;white-space:nowrap;">${fmtFecha(c.fecha_vencimiento)}</span>
-            ${badge}
+            <span style="font-weight:800;min-width:30px;color:#0f172a;">N°${c.numero_cuota}</span>
+            <span style="font-weight:700;min-width:100px;">${fmtCLP(c.monto)}</span>
+            <span style="font-size:.74rem;color:#64748b;white-space:nowrap;min-width:80px;">Vence: ${fmtFecha(c.fecha_vencimiento)}</span>
+            <div style="flex:1;">${badge}</div>
             ${compIcon}
             ${pagarBtn}
         </div>`;
     }).join('');
-    return `<div style="margin-top:8px;"><p style="font-size:.75rem;font-weight:700;color:#475569;margin:0 0 6px;text-transform:uppercase;letter-spacing:.3px;">Cuotas de Devolución</p>${html}</div>`;
+    return `<div style="margin-top:8px;">
+        <p style="font-size:.75rem;font-weight:800;color:#475569;margin:0 0 8px;text-transform:uppercase;letter-spacing:.3px;"><i class="bi bi-list-check" style="color:#2563eb;"></i> Cuotas de Devolución</p>
+        ${resumenHeader}
+        ${html}
+    </div>`;
 }
 
 async function guardarDevPlan(rescId){

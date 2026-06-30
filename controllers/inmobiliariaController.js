@@ -892,7 +892,12 @@ exports.getAllResciliaciones = async (req, res) => {
                 (SELECT COUNT(*) FROM im_cuotas_devolucion cd
                  WHERE cd.resciliacion_id = r.id) AS total_cuotas_dev,
                 (SELECT COALESCE(SUM(cd.monto),0) FROM im_cuotas_devolucion cd
-                 WHERE cd.resciliacion_id = r.id AND cd.pagado = false) AS monto_dev_pendiente
+                 WHERE cd.resciliacion_id = r.id AND cd.pagado = false) AS monto_dev_pendiente,
+                (SELECT COALESCE(SUM(cd.monto),0) FROM im_cuotas_devolucion cd
+                 WHERE cd.resciliacion_id = r.id AND cd.pagado = true) AS monto_dev_pagado,
+                (SELECT COUNT(*) FROM im_cuotas_devolucion cd
+                 WHERE cd.resciliacion_id = r.id AND cd.pagado = false
+                 AND cd.fecha_vencimiento IS NOT NULL AND cd.fecha_vencimiento < CURRENT_DATE) AS cuotas_dev_vencidas
             FROM im_resciliaciones r
             JOIN im_ventas_lotes  v  ON r.venta_id   = v.id
             JOIN im_clientes       c  ON v.cliente_id = c.id
