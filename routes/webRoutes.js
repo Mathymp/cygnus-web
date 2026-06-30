@@ -128,10 +128,10 @@ router.get('/logout', authController.logout);
 // ==========================================
 //              ÁREA PRIVADA (ADMIN)
 // ==========================================
-router.get('/dashboard', requireAuth, dashboardController.getDashboard);
+router.get('/dashboard', requireAuth, setImAcceso, dashboardController.getDashboard);
 
 // --- INVENTARIO DE PROPIEDADES ---
-router.get('/admin/propiedades', requireAuth, inventoryController.getInventory);
+router.get('/admin/propiedades', requireAuth, setImAcceso, inventoryController.getInventory);
 
 // --- PUBLICAR PROPIEDAD ---
 router.get('/admin/publicar', requireAuth, propertiesController.renderPublish);
