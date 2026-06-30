@@ -95,14 +95,16 @@
         .im-toast{position:fixed;bottom:24px;right:24px;z-index:9999;opacity:0;transform:translateX(30px);pointer-events:none;transition:all .3s;max-width:360px;}
     </style>
 </head>
-<body>
-    <%- include('../partials/sidebar-admin', { page: 'inmobiliaria' }) %>
-
-<div class="main-content">
+<body class="dashboard-body">
     <%- include('../partials/alerts') %>
 
     <!-- Toast -->
     <div id="im-toast" class="im-toast"><div id="im-toast-inner"></div></div>
+
+    <div class="app-layout">
+    <%- include('../partials/sidebar-admin', { page: 'inmobiliaria' }) %>
+    <main class="main-content">
+    <div class="dashboard-scroll" style="padding:0;">
 
     <!-- Header -->
     <div class="pp-header">
@@ -208,7 +210,10 @@
             </div>
         </div>
     </div>
-</div>
+
+    </div><!-- /dashboard-scroll -->
+    </main>
+    </div><!-- /app-layout -->
 
 <script>
 const PROYECTO_ID  = '<%= proyectoId %>';

@@ -160,7 +160,7 @@ exports.getParcelaById = async (req, res) => {
 
         const venta = ventaRes.rows[0] || null;
         let cuotas = [];
-        if (venta && venta.tipo_pago === 'credito') {
+        if (venta) {
             const cuotasRes = await pool.query(
                 `SELECT * FROM im_cuotas WHERE venta_id=$1 ORDER BY numero_cuota ASC`, [venta.id]
             );
@@ -632,10 +632,22 @@ exports.uploadComprobanteCuota = async (req, res) => {
 
         const result = await pool.query(
             `UPDATE im_cuotas SET comprobante_url=$1, storage_path=$2, pagado=true, fecha_pago=COALESCE(fecha_pago, CURRENT_DATE)
-             WHERE id=$3 RETURNING *`, [url, storagePath, id]
+             WHERE id=$3 RETURNING *, venta_id`, [url, storagePath, id]
         );
         if (result.rows.length === 0) return res.status(404).json({ message: 'Cuota no encontrada.' });
-        res.json(result.rows[0]);
+        const cuota = result.rows[0];
+
+        // Registrar comprobante en im_documentos vinculado a la venta
+        const cuotaNum = cuota.numero_cuota || id;
+        const nombreDoc = `Comprobante Cuota N° ${cuotaNum}`;
+        const userId = req.session.user ? req.session.user.id : null;
+        await pool.query(
+            `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
+             VALUES ($1, $2, 'venta', $3, $4, $5)`,
+            [nombreDoc, url, cuota.venta_id, userId, storagePath]
+        ).catch(() => {}); // no bloquear si falla
+
+        res.json(cuota);
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
@@ -669,6 +681,15 @@ exports.uploadComprobanteVenta = async (req, res) => {
             [url, storagePath, id]
         );
         if (result.rows.length === 0) return res.status(404).json({ message: 'Venta no encontrada.' });
+
+        // Registrar en im_documentos vinculado a la venta
+        const userId = req.session.user ? req.session.user.id : null;
+        await pool.query(
+            `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
+             VALUES ($1, $2, 'venta', $3, $4, $5)`,
+            ['Comprobante de Pago', url, id, userId, storagePath]
+        ).catch(() => {});
+
         res.json(result.rows[0]);
     } catch (e) { res.status(500).json({ error: e.message }); }
 };

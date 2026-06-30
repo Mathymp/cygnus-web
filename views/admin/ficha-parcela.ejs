@@ -813,36 +813,82 @@ function renderCuotasPanel(venta,cuotas){
     const totalPagado=cuotas.filter(c=>c.pagado).reduce((s,c)=>s+(parseFloat(c.monto)||0),0);
     const totalPendiente=cuotas.filter(c=>!c.pagado).reduce((s,c)=>s+(parseFloat(c.monto)||0),0);
 
+    // Obtener info del cliente desde la venta actual
+    const clienteNombre = venta.nombre_completo || '—';
+    const clienteTel    = venta.telefono || '';
+    const clienteEmail  = venta.email   || '';
+
     $('section-cuotas-venta').style.display='block';
+
+    // Encabezado: quién debe pagar y resumen
     $('cuotas-resumen').innerHTML=`
+        <div style="width:100%;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:8px;">
+                <i class="bi bi-person-fill" style="color:#16a34a;"></i>
+                <div>
+                    <div style="font-weight:700;font-size:.88rem;color:#0f172a;">${escH(clienteNombre)}</div>
+                    ${clienteTel?`<div style="font-size:.75rem;color:#64748b;"><i class="bi bi-telephone"></i> ${escH(clienteTel)}</div>`:''}
+                    ${clienteEmail?`<div style="font-size:.75rem;color:#64748b;"><i class="bi bi-envelope"></i> ${escH(clienteEmail)}</div>`:''}
+                </div>
+            </div>
+        </div>
         <div><span style="font-size:.72rem;color:#64748b;display:block;">Cuotas pagadas</span><strong style="color:#166534;">${pagadas} / ${cuotas.length}</strong></div>
         <div><span style="font-size:.72rem;color:#64748b;display:block;">Total pagado</span><strong style="color:#10b981;">$${fmt(totalPagado)}</strong></div>
-        <div><span style="font-size:.72rem;color:#64748b;display:block;">Saldo pendiente</span><strong style="color:#f59e0b;">$${fmt(totalPendiente)}</strong></div>
-        ${venta.numero_credito?`<div><span style="font-size:.72rem;color:#64748b;display:block;">N° Crédito</span><strong>${escH(venta.numero_credito)}</strong></div>`:''}`;
+        <div><span style="font-size:.72rem;color:#64748b;display:block;">Saldo pendiente</span><strong style="color:${totalPendiente>0?'#f59e0b':'#16a34a'};">$${fmt(totalPendiente)}</strong></div>
+        ${venta.numero_credito?`<div><span style="font-size:.72rem;color:#64748b;display:block;">N° Crédito</span><strong>${escH(venta.numero_credito)}</strong></div>`:''}
+        ${venta.monto_pie?`<div><span style="font-size:.72rem;color:#64748b;display:block;">Pie pagado</span><strong>$${fmt(venta.monto_pie)}</strong></div>`:''}`;
 
     const hoy=new Date().toISOString().split('T')[0];
-    $('cuotas-list').innerHTML=cuotas.map(c=>{
-        const vencida=!c.pagado&&c.fecha_vencimiento&&c.fecha_vencimiento<hoy;
-        const cl=c.pagado?'pagada':vencida?'vencida':'';
-        const fechaVenc=c.fecha_vencimiento?new Date(c.fecha_vencimiento+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';
-        const fechaPago=c.fecha_pago?new Date(c.fecha_pago+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';
-        const badge=c.pagado?`<span class="cuota-badge-pagada"><i class="bi bi-check-circle-fill"></i> Pagada</span>`:vencida?`<span class="cuota-badge-vencida"><i class="bi bi-exclamation-triangle-fill"></i> Vencida</span>`:`<span class="cuota-badge-pendiente"><i class="bi bi-clock"></i> Pendiente</span>`;
-        return `<div class="cuota-row ${cl}">
-            <div class="cuota-num">${c.numero_cuota}</div>
-            <div>
-                <div class="cuota-monto">${c.monto?'$'+fmt(c.monto):'—'}</div>
-                <div class="cuota-fecha">Vence: ${fechaVenc}${c.pagado&&c.fecha_pago?' · Pagada: '+fechaPago:''}</div>
-                ${c.notas?`<div style="font-size:.72rem;color:#64748b;font-style:italic;">${escH(c.notas)}</div>`:''}
-            </div>
-            ${badge}
-            <div>
-                ${c.comprobante_url?`<a href="${escH(c.comprobante_url)}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Ver comprobante"><i class="bi bi-eye"></i></a>`:''}
-            </div>
-            <div style="display:flex;gap:4px;">
-                <button class="im-btn im-btn-sm im-btn-ghost" onclick="openCuotaModal(${JSON.stringify(c).replace(/"/g,'&quot;')})" title="Editar cuota"><i class="bi bi-pencil"></i></button>
-            </div>
-        </div>`;
-    }).join('');
+
+    if(cuotas.length===0){
+        $('cuotas-list').innerHTML=`<div style="text-align:center;padding:20px;color:#94a3b8;font-size:.85rem;"><i class="bi bi-inbox" style="font-size:1.5rem;display:block;margin-bottom:6px;"></i>No hay cuotas registradas.</div>`;
+        return;
+    }
+
+    $('cuotas-list').innerHTML=`
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+        <thead>
+            <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+                <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;white-space:nowrap;">#</th>
+                <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Monto</th>
+                <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;white-space:nowrap;">Fecha Venc.</th>
+                <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;white-space:nowrap;">Fecha Pago</th>
+                <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Estado</th>
+                <th style="padding:8px 10px;text-align:left;font-weight:700;color:#64748b;">Notas</th>
+                <th style="padding:8px 10px;"></th>
+            </tr>
+        </thead>
+        <tbody>
+        ${cuotas.map(c=>{
+            const vencida=!c.pagado&&c.fecha_vencimiento&&c.fecha_vencimiento<hoy;
+            const rowBg=c.pagado?'#f0fdf4':vencida?'#fff5f5':'#fff';
+            const fechaVenc=c.fecha_vencimiento?new Date(c.fecha_vencimiento+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';
+            const fechaPago=c.fecha_pago?new Date(c.fecha_pago+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';
+            const badge=c.pagado
+                ?`<span style="background:#dcfce7;color:#166534;border-radius:20px;padding:2px 10px;font-weight:700;white-space:nowrap;"><i class="bi bi-check-circle-fill"></i> Pagada</span>`
+                :vencida
+                    ?`<span style="background:#fee2e2;color:#991b1b;border-radius:20px;padding:2px 10px;font-weight:700;white-space:nowrap;"><i class="bi bi-exclamation-triangle-fill"></i> Vencida</span>`
+                    :`<span style="background:#fef3c7;color:#92400e;border-radius:20px;padding:2px 10px;font-weight:700;white-space:nowrap;"><i class="bi bi-clock"></i> Pendiente</span>`;
+            const cData=JSON.stringify(c).replace(/"/g,'&quot;');
+            return `<tr style="border-bottom:1px solid #f1f5f9;background:${rowBg};">
+                <td style="padding:8px 10px;font-weight:700;color:#334155;">Cuota ${c.numero_cuota}</td>
+                <td style="padding:8px 10px;font-weight:700;color:#0f172a;">${c.monto?'$'+fmt(c.monto):'—'}</td>
+                <td style="padding:8px 10px;color:#475569;white-space:nowrap;">${fechaVenc}</td>
+                <td style="padding:8px 10px;color:#475569;white-space:nowrap;">${c.pagado?fechaPago:'—'}</td>
+                <td style="padding:8px 10px;">${badge}</td>
+                <td style="padding:8px 10px;color:#64748b;font-style:italic;max-width:160px;word-break:break-word;">${c.notas?escH(c.notas):'—'}</td>
+                <td style="padding:8px 10px;white-space:nowrap;display:flex;gap:4px;align-items:center;">
+                    ${c.comprobante_url?`<a href="${escH(c.comprobante_url)}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Ver comprobante"><i class="bi bi-eye"></i></a>`:''}
+                    <button class="im-btn im-btn-sm ${c.pagado?'im-btn-ghost':'im-btn-success'}" onclick="openCuotaModal(${cData})" title="${c.pagado?'Editar':'Marcar como pagada'}">
+                        <i class="bi bi-${c.pagado?'pencil':'check-lg'}"></i> ${c.pagado?'Editar':'Pagar'}
+                    </button>
+                </td>
+            </tr>`;
+        }).join('')}
+        </tbody>
+    </table>
+    </div>`;
 }
 
 // ──────────────── MODAL CUOTA ────────────────
