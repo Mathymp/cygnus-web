@@ -596,7 +596,8 @@ async function loadAgentes(){
         if(!res.ok)return;
         usuariosList=await res.json();
         const sel=$('venta-agente-id');
-        sel.innerHTML=usuariosList.map(u=>`<option value="${u.id}" data-nombre="${escH(u.name)}">${escH(u.name)} (${u.role==='admin'?'Admin':'Corredor'})</option>`).join('');
+        sel.innerHTML=`<option value="" data-nombre="">— Sin asignar / No se sabe —</option>`
+            +usuariosList.map(u=>`<option value="${u.id}" data-nombre="${escH(u.name)}">${escH(u.name)} (${u.role==='admin'?'Admin':'Corredor'})</option>`).join('');
         // Default: current user
         sel.value=CURRENT_USER_ID;
         $('venta-agente-nombre').value=CURRENT_USER_NAME;
@@ -1021,8 +1022,8 @@ $('form-venta').addEventListener('submit',async(e)=>{
             monto_cuota:cleanNum($('venta-monto-cuota').value),
             fechas_cuotas:pagoTipoActual==='credito'?fechasCuotasGeneradas:[],
             forma_pago:pagoTipoActual==='contado'?'Contado':'Crédito',
-            agente_id:   agenteSelId  || CURRENT_USER_ID,
-            agente_nombre: agenteSelNom || CURRENT_USER_NAME
+            agente_id:   agenteSelId  || null,
+            agente_nombre: agenteSelNom || null
         };
         const vRes=await fetch('/api/im/ventas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ventaBody)});
         if(!vRes.ok){const err=await vRes.json().catch(()=>({}));throw new Error(err.message||`Error ${vRes.status}`);}
