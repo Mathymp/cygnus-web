@@ -270,7 +270,7 @@ router.get('/admin/inmobiliaria/proyectos/:id', requireAuth, async (req, res) =>
     if (!isAdmin) {
         try {
             const { rows } = await pool.query(
-                `SELECT puede_ver, puede_crear FROM im_accesos WHERE user_id=$1`, [req.session.user.id]
+                `SELECT puede_crear FROM im_accesos WHERE user_id=$1`, [req.session.user.id]
             );
             tieneAcceso = rows.length > 0;
             puedeCrear  = rows.length > 0; // tener acceso = puede operar todo
