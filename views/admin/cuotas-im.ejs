@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/inmobiliaria.css">
+    <style>
+        .cuotas-header{padding:24px 28px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+        .cuotas-toolbar{padding:14px 28px;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#fff;}
+        .cuotas-body{padding:20px 28px;}
+        .cuota-estado-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700;white-space:nowrap;}
+        .badge-pagada{background:#dcfce7;color:#166534;}
+        .badge-pendiente{background:#fef3c7;color:#92400e;}
+        .badge-vencida{background:#fee2e2;color:#991b1b;}
+        .cuotas-table{width:100%;border-collapse:collapse;font-size:.83rem;}
+        .cuotas-table th{padding:10px 12px;text-align:left;font-weight:700;color:#475569;font-size:.75rem;text-transform:uppercase;letter-spacing:.3px;background:#f8fafc;border-bottom:2px solid #e2e8f0;white-space:nowrap;}
+        .cuotas-table td{padding:11px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top;}
+        .cuotas-table tr:hover td{background:#f8fafc;}
+        .cuotas-table tr.row-pagada td{background:#f0fdf4;}
+        .cuotas-table tr.row-vencida td{background:#fff5f5;}
+        .client-name{font-weight:700;color:#0f172a;}
+        .client-sub{font-size:.75rem;color:#64748b;margin-top:1px;}
+        .parc-tag{font-size:.75rem;background:#eff6ff;color:#1d4ed8;border-radius:6px;padding:2px 8px;font-weight:600;}
+        .proj-tag{font-size:.75rem;background:#f0fdf4;color:#166534;border-radius:6px;padding:2px 8px;font-weight:600;}
+        .monto-cell{font-weight:700;color:#0f172a;font-size:.9rem;}
+        .fecha-cell{color:#475569;white-space:nowrap;}
+        .empty-state{text-align:center;padding:60px 20px;color:#94a3b8;}
+        .filter-chip{padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:600;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;color:#64748b;transition:all .15s;}
+        .filter-chip.active{background:#2563eb;color:#fff;border-color:#2563eb;}
+        .search-box{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:0 12px;flex:1;max-width:320px;}
+        .search-box input{border:none;background:transparent;padding:8px 0;font-size:.85rem;font-family:inherit;color:#0f172a;outline:none;width:100%;}
+        .summary-cards{display:flex;gap:12px;flex-wrap:wrap;padding:12px 28px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
+        .summary-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 18px;display:flex;flex-direction:column;align-items:center;}
+        .summary-card .val{font-size:1.3rem;font-weight:800;}
+        .summary-card .lbl{font-size:.72rem;color:#64748b;margin-top:2px;}
+        /* Modal pago cuota */
+        .cq-modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:8000;display:none;align-items:center;justify-content:center;padding:20px;}
+        .cq-modal-overlay.open{display:flex;}
+        .cq-modal-box{background:#fff;border-radius:16px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;}
+        .cq-modal-header{padding:18px 22px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;}
+        .cq-modal-body{padding:20px 22px;}
+    </style>
+</head>
+<body class="dashboard-body">
+    <%- include('../partials/alerts') %>
+
+    <div id="im-toast" style="position:fixed;top:20px;right:20px;z-index:9999;pointer-events:none;opacity:0;transform:translateX(30px);transition:all .3s;">
+        <div id="im-toast-inner" style="padding:14px 18px;border-radius:12px;min-width:260px;max-width:420px;box-shadow:0 8px 30px rgba(0,0,0,.15);display:flex;align-items:flex-start;gap:10px;"></div>
+    </div>
+
+    <!-- Modal pagar cuota -->
+    <div id="modal-pago" class="cq-modal-overlay">
+        <div class="cq-modal-box">
+            <div class="cq-modal-header">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <p style="font-size:.72rem;opacity:.8;margin:0;">Registrar Pago</p>
+                        <p id="modal-title" style="font-weight:800;font-size:1rem;margin:2px 0 0;"></p>
+                    </div>
+                    <button onclick="closeModal()" style="background:rgba(255,255,255,.2);border:none;border-radius:8px;color:#fff;padding:6px 10px;cursor:pointer;font-size:.85rem;"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
+            <div class="cq-modal-body">
+                <input type="hidden" id="modal-cuota-id">
+                <div class="im-input-group" style="margin-bottom:12px;">
+                    <label>Fecha de Pago</label>
+                    <input type="date" id="modal-fecha-pago" class="styled-input">
+                </div>
+                <div class="im-input-group" style="margin-bottom:12px;">
+                    <label>Comprobante de Pago <span style="color:#94a3b8;font-size:.75rem;">(foto transferencia, vale vista, etc.)</span></label>
+                    <input type="file" id="modal-file" class="styled-input" accept="image/*,application/pdf" style="padding:8px;">
+                    <p style="font-size:.75rem;color:#64748b;margin:4px 0 0;"><i class="bi bi-info-circle"></i> El comprobante se guardará automáticamente en "Docs Venta" de la parcela.</p>
+                </div>
+                <div class="im-input-group" style="margin-bottom:16px;">
+                    <label>Notas <span style="color:#94a3b8;font-size:.75rem;">(opcional)</span></label>
+                    <textarea id="modal-notas" class="styled-input" rows="2" placeholder="Observaciones del pago..."></textarea>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="closeModal()" class="im-btn im-btn-ghost" style="flex:1;">Cancelar</button>
+                    <button onclick="guardarPago()" class="im-btn im-btn-success" style="flex:2;" id="btn-guardar-pago">
+                        <i class="bi bi-check-circle"></i> Marcar como Pagada
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin', { page: 'cuotas-im' }) %>
+        <main class="main-content">
+        <div class="dashboard-scroll" style="padding:0;">
+
+            <!-- Header -->
+            <div class="cuotas-header">
+                <div style="background:linear-gradient(135deg,#1d4ed8,#2563eb);border-radius:10px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi bi-calendar-check-fill" style="font-size:1.2rem;color:#fff;"></i>
+                </div>
+                <div>
+                    <h1 style="font-size:1.25rem;font-weight:800;color:#0f172a;margin:0;">Pago de Cuotas</h1>
+                    <p style="font-size:.82rem;color:#64748b;margin:2px 0 0;">Todas las cuotas de todos los proyectos — filtra, marca como pagada y sube comprobantes</p>
+                </div>
+            </div>
+
+            <!-- Summary cards -->
+            <div class="summary-cards" id="summary-cards">
+                <div class="summary-card"><span class="val" id="sc-total" style="color:#0f172a;">—</span><span class="lbl">Total Cuotas</span></div>
+                <div class="summary-card"><span class="val" id="sc-pendientes" style="color:#d97706;">—</span><span class="lbl">Pendientes</span></div>
+                <div class="summary-card"><span class="val" id="sc-vencidas" style="color:#dc2626;">—</span><span class="lbl">Vencidas</span></div>
+                <div class="summary-card"><span class="val" id="sc-pagadas" style="color:#16a34a;">—</span><span class="lbl">Pagadas</span></div>
+                <div class="summary-card"><span class="val" id="sc-saldo" style="color:#1d4ed8;font-size:1rem;">—</span><span class="lbl">Saldo Pendiente Total</span></div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="cuotas-toolbar">
+                <div class="search-box">
+                    <i class="bi bi-search" style="color:#94a3b8;"></i>
+                    <input type="text" id="search-input" placeholder="Buscar cliente, parcela, proyecto..." oninput="applyFilters()">
+                </div>
+                <button class="filter-chip active" data-f="todos" onclick="setFiltro('todos',this)">Todos</button>
+                <button class="filter-chip" data-f="pendiente" onclick="setFiltro('pendiente',this)"><i class="bi bi-clock"></i> Pendientes</button>
+                <button class="filter-chip" data-f="vencida" onclick="setFiltro('vencida',this)"><i class="bi bi-exclamation-triangle"></i> Vencidas</button>
+                <button class="filter-chip" data-f="pagada" onclick="setFiltro('pagada',this)"><i class="bi bi-check-circle"></i> Pagadas</button>
+                <select id="filter-proyecto" class="styled-input" style="max-width:200px;padding:7px 12px;font-size:.82rem;" onchange="applyFilters()">
+                    <option value="">Todos los proyectos</option>
+                </select>
+                <span id="count-label" style="margin-left:auto;font-size:.78rem;color:#94a3b8;"></span>
+            </div>
+
+            <!-- Table -->
+            <div class="cuotas-body">
+                <div id="cuotas-container" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto;">
+                    <div class="empty-state"><i class="bi bi-hourglass-split" style="font-size:2rem;display:block;margin-bottom:8px;"></i><p>Cargando cuotas...</p></div>
+                </div>
+            </div>
+
+        </div>
+        </main>
+    </div>
+
+<script>
+let allCuotas = [];
+let filtroEstado = 'todos';
+let filtroProyecto = '';
+
+function $(id){ return document.getElementById(id); }
+function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt(n){ return Math.floor(parseFloat(n)||0).toLocaleString('es-CL'); }
+
+function showToast(msg,type='success',title=''){
+    const t=$('im-toast'),i=$('im-toast-inner');
+    const cfg={success:{bg:'#dcfce7',c:'#166534',b:'#86efac',ic:'bi-check-circle-fill',d:'Éxito'},error:{bg:'#fee2e2',c:'#991b1b',b:'#fca5a5',ic:'bi-exclamation-triangle-fill',d:'Error'},warning:{bg:'#fef3c7',c:'#92400e',b:'#fde68a',ic:'bi-exclamation-circle-fill',d:'Atención'},info:{bg:'#eff6ff',c:'#1e40af',b:'#bfdbfe',ic:'bi-info-circle-fill',d:'Info'}};
+    const s=cfg[type]||cfg.info;
+    i.style.cssText=`background:${s.bg};color:${s.c};border:1.5px solid ${s.b};padding:14px 18px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.12);display:flex;align-items:flex-start;gap:10px;`;
+    i.innerHTML=`<i class="bi ${s.ic}" style="font-size:1.1rem;flex-shrink:0;margin-top:1px;"></i><div><div style="font-weight:700;font-size:.88rem;">${title||s.d}</div><div style="font-size:.82rem;margin-top:2px;opacity:.9;">${escH(msg)}</div></div>`;
+    t.style.opacity='1';t.style.transform='translateX(0)';t.style.pointerEvents='auto';
+    clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(30px)';t.style.pointerEvents='none';},5000);
+}
+
+async function init(){
+    try{
+        const res = await fetch('/api/im/cuotas');
+        if(!res.ok) throw new Error(`Error al cargar cuotas (HTTP ${res.status})`);
+        allCuotas = await res.json();
+        buildProyectoFilter();
+        renderSummary(allCuotas);
+        applyFilters();
+    } catch(e){
+        $('cuotas-container').innerHTML=`<div class="empty-state"><i class="bi bi-exclamation-triangle-fill" style="font-size:2rem;color:#ef4444;display:block;margin-bottom:8px;"></i><p style="color:#991b1b;font-weight:700;">${escH(e.message)}</p><button class="im-btn im-btn-primary" onclick="init()" style="margin-top:12px;"><i class="bi bi-arrow-clockwise"></i> Reintentar</button></div>`;
+    }
+}
+
+function buildProyectoFilter(){
+    const proyectos=[...new Map(allCuotas.map(c=>[c.proyecto_id,c.proyecto_nombre])).entries()];
+    const sel=$('filter-proyecto');
+    proyectos.forEach(([id,nombre])=>{
+        const opt=document.createElement('option');
+        opt.value=id; opt.textContent=nombre;
+        sel.appendChild(opt);
+    });
+}
+
+function renderSummary(cuotas){
+    const hoy=new Date().toISOString().split('T')[0];
+    const pend=cuotas.filter(c=>!c.pagado).length;
+    const venc=cuotas.filter(c=>!c.pagado&&c.fecha_vencimiento&&c.fecha_vencimiento<hoy).length;
+    const pag=cuotas.filter(c=>c.pagado).length;
+    const saldo=cuotas.filter(c=>!c.pagado).reduce((s,c)=>s+(parseFloat(c.monto)||0),0);
+    $('sc-total').textContent=cuotas.length;
+    $('sc-pendientes').textContent=pend;
+    $('sc-vencidas').textContent=venc;
+    $('sc-pagadas').textContent=pag;
+    $('sc-saldo').textContent='$'+fmt(saldo);
+}
+
+function setFiltro(f,btn){
+    filtroEstado=f;
+    document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+    if(btn)btn.classList.add('active');
+    applyFilters();
+}
+
+function applyFilters(){
+    const q=$('search-input').value.trim().toLowerCase();
+    filtroProyecto=$('filter-proyecto').value;
+    const hoy=new Date().toISOString().split('T')[0];
+
+    let filtered=allCuotas.filter(c=>{
+        // Estado
+        const esVencida=!c.pagado&&c.fecha_vencimiento&&c.fecha_vencimiento<hoy;
+        if(filtroEstado==='pendiente'&&(c.pagado||esVencida))return false;
+        if(filtroEstado==='vencida'&&!esVencida)return false;
+        if(filtroEstado==='pagada'&&!c.pagado)return false;
+        // Proyecto
+        if(filtroProyecto&&c.proyecto_id!==filtroProyecto)return false;
+        // Búsqueda
+        if(q){
+            const hay=(c.cliente_nombre||'').toLowerCase().includes(q)
+                ||(c.numero_parcela||'').toLowerCase().includes(q)
+                ||(c.proyecto_nombre||'').toLowerCase().includes(q)
+                ||(c.cliente_rut||'').toLowerCase().includes(q)
+                ||(c.cliente_telefono||'').toLowerCase().includes(q);
+            if(!hay)return false;
+        }
+        return true;
+    });
+
+    $('count-label').textContent=`${filtered.length} cuota${filtered.length!==1?'s':''}`;
+    renderTable(filtered);
+}
+
+function renderTable(cuotas){
+    const cont=$('cuotas-container');
+    if(cuotas.length===0){
+        cont.innerHTML=`<div class="empty-state"><i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i><p>No hay cuotas que coincidan con el filtro.</p></div>`;
+        return;
+    }
+    const hoy=new Date().toISOString().split('T')[0];
+    cont.innerHTML=`<table class="cuotas-table">
+        <thead><tr>
+            <th>#</th><th>Cliente</th><th>Contacto</th><th>Parcela</th><th>Proyecto</th>
+            <th>Monto</th><th>Vencimiento</th><th>Fecha Pago</th><th>Estado</th><th></th>
+        </tr></thead>
+        <tbody>
+        ${cuotas.map(c=>{
+            const esVencida=!c.pagado&&c.fecha_vencimiento&&c.fecha_vencimiento<hoy;
+            const rowCl=c.pagado?'row-pagada':esVencida?'row-vencida':'';
+            const badge=c.pagado
+                ?`<span class="cuota-estado-badge badge-pagada"><i class="bi bi-check-circle-fill"></i> Pagada</span>`
+                :esVencida
+                    ?`<span class="cuota-estado-badge badge-vencida"><i class="bi bi-exclamation-triangle-fill"></i> Vencida</span>`
+                    :`<span class="cuota-estado-badge badge-pendiente"><i class="bi bi-clock"></i> Pendiente</span>`;
+            const fVenc=c.fecha_vencimiento?new Date(c.fecha_vencimiento+'T12:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';
+            const fPago=c.fecha_pago?new Date(c.fecha_pago+'T12:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';
+            const cData=JSON.stringify(c).replace(/"/g,'&quot;');
+            return `<tr class="${rowCl}">
+                <td style="font-weight:700;color:#334155;white-space:nowrap;">Cuota ${c.numero_cuota}</td>
+                <td><div class="client-name">${escH(c.cliente_nombre||'—')}</div><div class="client-sub">${escH(c.cliente_rut||'')}</div></td>
+                <td><div class="client-sub" style="font-size:.8rem;">${c.cliente_telefono?`<i class="bi bi-telephone"></i> ${escH(c.cliente_telefono)}<br>`:''}${c.cliente_email?`<i class="bi bi-envelope"></i> ${escH(c.cliente_email)}`:''}</div></td>
+                <td><span class="parc-tag">N° ${escH(String(c.numero_parcela))}</span></td>
+                <td><a href="/admin/inmobiliaria/proyectos/${escH(c.proyecto_id)}" style="text-decoration:none;"><span class="proj-tag">${escH(c.proyecto_nombre||'—')}</span></a></td>
+                <td class="monto-cell">${c.monto?'$'+fmt(c.monto):'—'}</td>
+                <td class="fecha-cell" style="color:${esVencida?'#dc2626':'inherit'};font-weight:${esVencida?'700':'400'};">${fVenc}</td>
+                <td class="fecha-cell">${c.pagado?fPago:'—'}</td>
+                <td>${badge}</td>
+                <td style="white-space:nowrap;">
+                    <a href="/admin/inmobiliaria/parcela/${escH(c.parcela_id)}" class="im-btn im-btn-sm im-btn-ghost" title="Ver parcela"><i class="bi bi-arrow-up-right"></i></a>
+                    ${c.comprobante_url?`<a href="${escH(c.comprobante_url)}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Ver comprobante"><i class="bi bi-eye"></i></a>`:''}
+                    ${!c.pagado?`<button class="im-btn im-btn-sm im-btn-success" onclick='openPago(${cData})' title="Registrar pago"><i class="bi bi-check-lg"></i> Pagar</button>`:''}
+                </td>
+            </tr>`;
+        }).join('')}
+        </tbody>
+    </table>`;
+}
+
+// ── Modal pago ──────────────────────────────────────
+function openPago(c){
+    $('modal-cuota-id').value=c.id;
+    $('modal-title').textContent=`Cuota ${c.numero_cuota} — ${c.cliente_nombre||''}`;
+    $('modal-fecha-pago').value=new Date().toISOString().split('T')[0];
+    $('modal-file').value='';
+    $('modal-notas').value=c.notas||'';
+    $('modal-pago').classList.add('open');
+}
+function closeModal(){ $('modal-pago').classList.remove('open'); }
+
+async function guardarPago(){
+    const id=$('modal-cuota-id').value;
+    const btn=$('btn-guardar-pago');
+    btn.disabled=true; btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...';
+    try{
+        const body={pagado:true,fecha_pago:$('modal-fecha-pago').value||null,notas:$('modal-notas').value||null};
+        const r=await fetch(`/api/im/cuotas/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.message||`Error ${r.status}`);}
+
+        const file=$('modal-file').files[0];
+        if(file){
+            const fd=new FormData(); fd.append('archivo',file,file.name);
+            const r2=await fetch(`/api/im/cuotas/${id}/comprobante`,{method:'POST',body:fd});
+            if(!r2.ok){const e=await r2.json().catch(()=>({}));showToast(e.message||'Error al subir comprobante','warning','Aviso');}
+        }
+
+        closeModal();
+        showToast('Cuota marcada como pagada correctamente.','success');
+        await init();
+    }catch(e){showToast(e.message,'error','Error al guardar');}
+    finally{btn.disabled=false; btn.innerHTML='<i class="bi bi-check-circle"></i> Marcar como Pagada';}
+}
+
+$('modal-pago').addEventListener('click',e=>{if(e.target===$('modal-pago'))closeModal();});
+
+init();
+</script>
+</body>
+</html>

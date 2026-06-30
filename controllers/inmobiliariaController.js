@@ -583,6 +583,37 @@ exports.resciliarVenta = async (req, res) => {
 //  CUOTAS DE PAGO
 // ==========================================
 
+exports.getAllCuotas = async (req, res) => {
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
+    try {
+        const { proyecto_id, estado } = req.query;
+        let where = [];
+        const params = [];
+        if (proyecto_id) { params.push(proyecto_id); where.push(`pr.id = $${params.length}`); }
+        if (estado === 'pendiente') where.push(`q.pagado = false`);
+        else if (estado === 'pagada') where.push(`q.pagado = true`);
+        const whereStr = where.length ? 'WHERE ' + where.join(' AND ') : '';
+        const result = await pool.query(`
+            SELECT
+                q.id, q.numero_cuota, q.monto, q.fecha_vencimiento, q.fecha_pago,
+                q.pagado, q.comprobante_url, q.storage_path, q.notas,
+                v.id as venta_id, v.tipo_pago, v.precio_acordado,
+                c.nombre_completo as cliente_nombre, c.telefono as cliente_telefono,
+                c.email as cliente_email, c.rut as cliente_rut,
+                pa.id as parcela_id, pa.numero_parcela,
+                pr.id as proyecto_id, pr.nombre as proyecto_nombre
+            FROM im_cuotas q
+            JOIN im_ventas_lotes v ON q.venta_id = v.id
+            JOIN im_clientes c ON v.cliente_id = c.id
+            JOIN im_parcelas pa ON v.parcela_id = pa.id
+            JOIN im_proyectos pr ON pa.proyecto_id = pr.id
+            ${whereStr}
+            ORDER BY q.pagado ASC, q.fecha_vencimiento ASC NULLS LAST
+        `, params);
+        res.json(result.rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
 exports.getCuotas = async (req, res) => {
     try {
         const { ventaId } = req.params;

@@ -298,6 +298,19 @@ router.get('/admin/inmobiliaria/clientes', requireAuth, async (req, res) => {
     res.render('admin/clientes-im', { user: req.session.user, page: 'clientes-im' });
 });
 
+router.get('/admin/inmobiliaria/cuotas', requireAuth, async (req, res) => {
+    const isAdmin = req.session.user.role === 'admin';
+    let tieneAcceso = isAdmin;
+    if (!isAdmin) {
+        try {
+            const r = await pool.query('SELECT 1 FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
+            tieneAcceso = r.rows.length > 0;
+        } catch (_) {}
+    }
+    if (!tieneAcceso) return res.redirect('/dashboard');
+    res.render('admin/cuotas-im', { user: req.session.user, page: 'cuotas-im' });
+});
+
 router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, async (req, res) => {
     const isAdmin = req.session.user.role === 'admin';
     let puedeCrear = isAdmin;
@@ -342,6 +355,7 @@ router.post('/api/im/ventas/:id/resciliar',   requireAuth, inmobiliariaControlle
 router.post('/api/im/ventas/:id/comprobante', requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteVenta);
 
 // API – Cuotas de pago
+router.get('/api/im/cuotas',                    requireAuth, inmobiliariaController.getAllCuotas);
 router.get('/api/im/cuotas/:ventaId',           requireAuth, inmobiliariaController.getCuotas);
 router.put('/api/im/cuotas/:id',                requireAuth, inmobiliariaController.updateCuota);
 router.post('/api/im/cuotas/:id/comprobante',   requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteCuota);
