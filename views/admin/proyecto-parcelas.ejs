@@ -296,7 +296,7 @@
                 <span style="font-size:.7rem;color:#94a3b8;">Rueda del mouse · arrastra para mover</span>
             </div>
             <!-- Cuerpo -->
-            <div id="proj-preview-body" style="flex:1;overflow:hidden;position:relative;background:#0f172a;"></div>
+            <div id="proj-preview-body" style="flex:1;overflow:hidden;position:relative;background:#0f172a;min-height:0;"></div>
         </div>
     </div>
 
@@ -944,93 +944,185 @@ async function confirmProjDel(){
     finally{ btn.disabled=false; btn.innerHTML='<i class="bi bi-trash3"></i> Eliminar'; }
 }
 
-// ── Preview con Zoom ──────────────────────────────
-let _pZoom = 1, _pX = 0, _pY = 0, _pDrag = false, _pDragSX = 0, _pDragSY = 0, _pImg = null;
-const ZOOM_MIN = 0.25, ZOOM_MAX = 6;
+// ── Preview con Zoom centrado en cursor ──────────────────────────────
+const ZOOM_MIN = 0.05, ZOOM_MAX = 8;
+let _pState = { zoom:1, offX:0, offY:0, drag:false, lastX:0, lastY:0, img:null, isImg:false };
 
 function openProjPreview(url, nombre, ext){
     $('proj-preview-title').textContent = nombre || 'Vista Previa';
     const body    = $('proj-preview-body');
     const zoomBar = $('proj-zoom-bar');
     const dl      = $('proj-preview-dl');
-    if(dl) dl.href = url;
+    if(dl){ dl.href = url; dl.download = nombre||'archivo'; }
 
-    if(['jpg','jpeg','png','webp','gif'].includes(ext)){
+    _cleanPreviewListeners();
+    _pState = { zoom:1, offX:0, offY:0, drag:false, lastX:0, lastY:0, img:null, isImg:false };
+
+    const isImg = ['jpg','jpeg','png','webp','gif'].includes(ext);
+    _pState.isImg = isImg;
+
+    if(isImg){
         zoomBar.style.display = 'flex';
-        _pZoom = 1; _pX = 0; _pY = 0;
+        body.style.background = '#0f172a';
+        body.style.cursor     = 'grab';
 
-        body.innerHTML = `<div id="proj-img-wrap" style="width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;">
-            <img id="proj-zoom-img" src="${escH(url)}" style="max-width:100%;max-height:100%;object-fit:contain;transform-origin:center center;transform:scale(1) translate(0px,0px);transition:transform .15s;border-radius:0;display:block;pointer-events:none;">
+        // Canvas de posicionamiento absoluto
+        body.innerHTML = `<div id="_pWrap" style="position:absolute;inset:0;overflow:hidden;cursor:grab;">
+            <img id="_pImg" src="${escH(url)}" draggable="false"
+                style="position:absolute;transform-origin:0 0;user-select:none;pointer-events:none;max-width:none;max-height:none;display:block;">
         </div>`;
 
-        _pImg = document.getElementById('proj-zoom-img');
-        const wrap = document.getElementById('proj-img-wrap');
+        _pState.img = document.getElementById('_pImg');
+        const wrap  = document.getElementById('_pWrap');
 
-        // Rueda = zoom
-        wrap.addEventListener('wheel', e => {
+        // Esperar carga para hacer fit automático
+        _pState.img.onload = () => {
+            _projFitZoom();
+            _projApply(true);
+        };
+        // Si ya está cacheada
+        if(_pState.img.complete && _pState.img.naturalWidth) {
+            _projFitZoom(); _projApply(true);
+        }
+
+        // Wheel → zoom centrado en cursor
+        wrap._onWheel = e => {
             e.preventDefault();
-            const delta = e.deltaY < 0 ? 0.15 : -0.15;
-            projZoom(delta);
-        }, { passive: false });
+            const rect  = wrap.getBoundingClientRect();
+            const mx    = e.clientX - rect.left;
+            const my    = e.clientY - rect.top;
+            const factor = e.deltaY < 0 ? 1.12 : 0.9;
+            const newZ  = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _pState.zoom * factor));
+            // Ajustar offset para zoom centrado en el cursor
+            _pState.offX = mx - (mx - _pState.offX) * (newZ / _pState.zoom);
+            _pState.offY = my - (my - _pState.offY) * (newZ / _pState.zoom);
+            _pState.zoom = newZ;
+            _projApply(false);
+        };
+        wrap.addEventListener('wheel', wrap._onWheel, { passive:false });
 
-        // Arrastrar = pan
-        wrap.addEventListener('mousedown', e => {
-            _pDrag = true; _pDragSX = e.clientX - _pX; _pDragSY = e.clientY - _pY;
+        // Mousedown → iniciar pan
+        wrap._onMD = e => {
+            _pState.drag  = true;
+            _pState.lastX = e.clientX;
+            _pState.lastY = e.clientY;
             wrap.style.cursor = 'grabbing';
-        });
-        document.addEventListener('mousemove', _onPanMove);
-        document.addEventListener('mouseup',   _onPanEnd);
+        };
+        wrap.addEventListener('mousedown', wrap._onMD);
 
-        _updateProjZoom();
+        // Mousemove / mouseup globales
+        document._pMM = e => {
+            if(!_pState.drag) return;
+            _pState.offX += e.clientX - _pState.lastX;
+            _pState.offY += e.clientY - _pState.lastY;
+            _pState.lastX = e.clientX;
+            _pState.lastY = e.clientY;
+            _projApply(false);
+        };
+        document._pMU = () => {
+            _pState.drag = false;
+            if(wrap) wrap.style.cursor = 'grab';
+        };
+        document.addEventListener('mousemove', document._pMM);
+        document.addEventListener('mouseup',   document._pMU);
+
+        // Touch: pinch zoom + pan
+        let _lastTouchDist = null, _lastTouchMid = null;
+        wrap._onTouchStart = e => {
+            if(e.touches.length === 2){
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                _lastTouchDist = Math.hypot(dx, dy);
+                _lastTouchMid  = {x:(e.touches[0].clientX+e.touches[1].clientX)/2, y:(e.touches[0].clientY+e.touches[1].clientY)/2};
+            }
+        };
+        wrap._onTouchMove = e => {
+            e.preventDefault();
+            if(e.touches.length === 2 && _lastTouchDist){
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.hypot(dx, dy);
+                const rect = wrap.getBoundingClientRect();
+                const mx   = _lastTouchMid.x - rect.left;
+                const my   = _lastTouchMid.y - rect.top;
+                const factor = dist / _lastTouchDist;
+                const newZ = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _pState.zoom * factor));
+                _pState.offX = mx - (mx - _pState.offX) * (newZ / _pState.zoom);
+                _pState.offY = my - (my - _pState.offY) * (newZ / _pState.zoom);
+                _pState.zoom = newZ;
+                _lastTouchDist = dist;
+                _projApply(false);
+            }
+        };
+        wrap.addEventListener('touchstart', wrap._onTouchStart, {passive:true});
+        wrap.addEventListener('touchmove',  wrap._onTouchMove,  {passive:false});
+
+        _updateZoomUI();
     } else {
         zoomBar.style.display = 'none';
         body.style.background = '#f1f5f9';
-        body.innerHTML = `<iframe src="${escH(url)}" style="width:100%;height:70vh;border:none;background:#f1f5f9;"></iframe>`;
-        body.style.overflow = 'hidden';
+        body.style.cursor     = 'default';
+        body.innerHTML = `<iframe src="${escH(url)}" style="width:100%;height:100%;border:none;background:#f1f5f9;display:block;"></iframe>`;
     }
+
     $('proj-preview-overlay').style.display = 'flex';
 }
 
-function _onPanMove(e){
-    if(!_pDrag || _pZoom <= 1) return;
-    _pX = e.clientX - _pDragSX;
-    _pY = e.clientY - _pDragSY;
-    _applyTransform(false);
+// Fit: centrar imagen ajustando al contenedor con padding
+function _projFitZoom(){
+    const wrap = document.getElementById('_pWrap');
+    const img  = _pState.img;
+    if(!wrap || !img) return;
+    const pad  = 20;
+    const cW   = wrap.clientWidth  - pad*2;
+    const cH   = wrap.clientHeight - pad*2;
+    const iW   = img.naturalWidth;
+    const iH   = img.naturalHeight;
+    if(!iW || !iH) return;
+    _pState.zoom = Math.min(cW/iW, cH/iH, 1); // no agrandar más de 1x al abrir
+    // Centrar
+    _pState.offX = (wrap.clientWidth  - iW * _pState.zoom) / 2;
+    _pState.offY = (wrap.clientHeight - iH * _pState.zoom) / 2;
 }
-function _onPanEnd(){
-    _pDrag = false;
-    const w = document.getElementById('proj-img-wrap');
-    if(w) w.style.cursor = 'grab';
+
+function _projApply(animate){
+    const img = _pState.img; if(!img) return;
+    img.style.transition = animate ? 'transform .2s' : 'none';
+    img.style.transform  = `translate(${_pState.offX}px,${_pState.offY}px) scale(${_pState.zoom})`;
+    _updateZoomUI();
 }
 
 function projZoom(delta){
-    _pZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _pZoom + delta));
-    if(_pZoom <= 1){ _pX = 0; _pY = 0; }
-    _updateProjZoom();
+    const wrap = document.getElementById('_pWrap'); if(!wrap) return;
+    const cX = wrap.clientWidth/2, cY = wrap.clientHeight/2;
+    const newZ = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _pState.zoom + delta));
+    _pState.offX = cX - (cX - _pState.offX) * (newZ / _pState.zoom);
+    _pState.offY = cY - (cY - _pState.offY) * (newZ / _pState.zoom);
+    _pState.zoom = newZ;
+    _projApply(true);
 }
-function projZoomReset(){ _pZoom = 1; _pX = 0; _pY = 0; _updateProjZoom(); }
+function projZoomReset(){ _projFitZoom(); _projApply(true); }
 
-function _applyTransform(animate){
-    if(!_pImg) return;
-    _pImg.style.transition = animate ? 'transform .18s' : 'none';
-    _pImg.style.transform  = `scale(${_pZoom}) translate(${_pX/_pZoom}px,${_pY/_pZoom}px)`;
-}
-function _updateProjZoom(){
-    _applyTransform(true);
-    const pct = Math.round(_pZoom * 100);
+function _updateZoomUI(){
+    const pct = Math.round(_pState.zoom * 100);
     const el  = $('proj-zoom-pct'); if(el) el.textContent = pct + '%';
     const bar = $('proj-zoom-bar-fill');
     if(bar){
-        const frac = (_pZoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN);
-        bar.style.width = Math.round(frac * 100) + '%';
+        const frac = Math.log(_pState.zoom/ZOOM_MIN) / Math.log(ZOOM_MAX/ZOOM_MIN);
+        bar.style.width = Math.max(0, Math.min(100, Math.round(frac*100))) + '%';
     }
 }
 
+function _cleanPreviewListeners(){
+    if(document._pMM) document.removeEventListener('mousemove', document._pMM);
+    if(document._pMU) document.removeEventListener('mouseup',   document._pMU);
+    document._pMM = null; document._pMU = null;
+}
+
 function closeProjPreview(){
+    _cleanPreviewListeners();
+    _pState.drag = false; _pState.img = null;
     $('proj-preview-overlay').style.display = 'none';
-    document.removeEventListener('mousemove', _onPanMove);
-    document.removeEventListener('mouseup',   _onPanEnd);
-    _pDrag = false; _pImg = null;
 }
 $('proj-preview-overlay') && ($('proj-preview-overlay').onclick = function(e){ if(e.target===this) closeProjPreview(); });
 $('proj-del-overlay')     && ($('proj-del-overlay').onclick     = function(e){ if(e.target===this) closeProjDel(); });
