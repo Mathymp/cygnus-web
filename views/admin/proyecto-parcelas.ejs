@@ -274,13 +274,29 @@
     </div>
 
     <!-- Modal preview -->
-    <div id="proj-preview-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#fff;border-radius:16px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.35);overflow:hidden;">
-            <div style="padding:13px 18px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-                <span id="proj-preview-title" style="font-weight:700;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80%;"></span>
-                <button onclick="closeProjPreview()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:1rem;cursor:pointer;line-height:1;border-radius:6px;padding:4px 8px;flex-shrink:0;">✕ Cerrar</button>
+    <div id="proj-preview-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:9000;display:none;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:16px;width:100%;max-width:820px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 28px 70px rgba(0,0,0,.4);overflow:hidden;">
+            <!-- Barra superior -->
+            <div style="padding:11px 16px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                <i class="bi bi-file-earmark-image" style="font-size:1rem;flex-shrink:0;"></i>
+                <span id="proj-preview-title" style="font-weight:700;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"></span>
+                <button onclick="closeProjPreview()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;border-radius:6px;padding:5px 10px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.35)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">✕ Cerrar</button>
             </div>
-            <div style="padding:14px;overflow:auto;flex:1;" id="proj-preview-body"></div>
+            <!-- Controles zoom (solo imágenes) -->
+            <div id="proj-zoom-bar" style="display:none;padding:8px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                <button onclick="projZoom(-0.25)" title="Alejar" style="width:32px;height:32px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#fff'"><i class="bi bi-zoom-out"></i></button>
+                <div style="height:4px;flex:1;background:#e2e8f0;border-radius:2px;overflow:hidden;cursor:pointer;" onclick="projZoomReset()" title="Click para restablecer">
+                    <div id="proj-zoom-bar-fill" style="height:100%;width:50%;background:linear-gradient(90deg,#2563eb,#60a5fa);border-radius:2px;transition:width .2s;"></div>
+                </div>
+                <button onclick="projZoom(0.25)" title="Acercar" style="width:32px;height:32px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#fff'"><i class="bi bi-zoom-in"></i></button>
+                <span id="proj-zoom-pct" style="font-size:.75rem;font-weight:700;color:#475569;min-width:38px;text-align:center;">100%</span>
+                <button onclick="projZoomReset()" title="Tamaño original" style="width:32px;height:32px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:.75rem;font-weight:700;color:#64748b;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#fff'">1:1</button>
+                <div style="width:1px;height:20px;background:#e2e8f0;margin:0 2px;"></div>
+                <a id="proj-preview-dl" href="#" download target="_blank" title="Descargar" style="width:32px;height:32px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:.95rem;color:#475569;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:all .15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#fff'"><i class="bi bi-download"></i></a>
+                <span style="font-size:.7rem;color:#94a3b8;">Rueda del mouse · arrastra para mover</span>
+            </div>
+            <!-- Cuerpo -->
+            <div id="proj-preview-body" style="flex:1;overflow:hidden;position:relative;background:#0f172a;"></div>
         </div>
     </div>
 
@@ -904,18 +920,94 @@ async function confirmProjDel(){
     finally{ btn.disabled=false; btn.innerHTML='<i class="bi bi-trash3"></i> Eliminar'; }
 }
 
-// ── Preview ──────────────────────────────
+// ── Preview con Zoom ──────────────────────────────
+let _pZoom = 1, _pX = 0, _pY = 0, _pDrag = false, _pDragSX = 0, _pDragSY = 0, _pImg = null;
+const ZOOM_MIN = 0.25, ZOOM_MAX = 6;
+
 function openProjPreview(url, nombre, ext){
-    $('proj-preview-title').textContent = nombre||'Vista Previa';
-    const body = $('proj-preview-body');
+    $('proj-preview-title').textContent = nombre || 'Vista Previa';
+    const body    = $('proj-preview-body');
+    const zoomBar = $('proj-zoom-bar');
+    const dl      = $('proj-preview-dl');
+    if(dl) dl.href = url;
+
     if(['jpg','jpeg','png','webp','gif'].includes(ext)){
-        body.innerHTML = `<img src="${escH(url)}" style="max-width:100%;max-height:72vh;width:auto;height:auto;border-radius:8px;display:block;margin:0 auto;object-fit:contain;">`;
+        zoomBar.style.display = 'flex';
+        _pZoom = 1; _pX = 0; _pY = 0;
+
+        body.innerHTML = `<div id="proj-img-wrap" style="width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;">
+            <img id="proj-zoom-img" src="${escH(url)}" style="max-width:100%;max-height:100%;object-fit:contain;transform-origin:center center;transform:scale(1) translate(0px,0px);transition:transform .15s;border-radius:0;display:block;pointer-events:none;">
+        </div>`;
+
+        _pImg = document.getElementById('proj-zoom-img');
+        const wrap = document.getElementById('proj-img-wrap');
+
+        // Rueda = zoom
+        wrap.addEventListener('wheel', e => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.15 : -0.15;
+            projZoom(delta);
+        }, { passive: false });
+
+        // Arrastrar = pan
+        wrap.addEventListener('mousedown', e => {
+            _pDrag = true; _pDragSX = e.clientX - _pX; _pDragSY = e.clientY - _pY;
+            wrap.style.cursor = 'grabbing';
+        });
+        document.addEventListener('mousemove', _onPanMove);
+        document.addEventListener('mouseup',   _onPanEnd);
+
+        _updateProjZoom();
     } else {
-        body.innerHTML = `<iframe src="${escH(url)}" style="width:100%;height:65vh;border:none;border-radius:8px;background:#f1f5f9;"></iframe>`;
+        zoomBar.style.display = 'none';
+        body.style.background = '#f1f5f9';
+        body.innerHTML = `<iframe src="${escH(url)}" style="width:100%;height:70vh;border:none;background:#f1f5f9;"></iframe>`;
+        body.style.overflow = 'hidden';
     }
     $('proj-preview-overlay').style.display = 'flex';
 }
-function closeProjPreview(){ $('proj-preview-overlay').style.display = 'none'; }
+
+function _onPanMove(e){
+    if(!_pDrag || _pZoom <= 1) return;
+    _pX = e.clientX - _pDragSX;
+    _pY = e.clientY - _pDragSY;
+    _applyTransform(false);
+}
+function _onPanEnd(){
+    _pDrag = false;
+    const w = document.getElementById('proj-img-wrap');
+    if(w) w.style.cursor = 'grab';
+}
+
+function projZoom(delta){
+    _pZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _pZoom + delta));
+    if(_pZoom <= 1){ _pX = 0; _pY = 0; }
+    _updateProjZoom();
+}
+function projZoomReset(){ _pZoom = 1; _pX = 0; _pY = 0; _updateProjZoom(); }
+
+function _applyTransform(animate){
+    if(!_pImg) return;
+    _pImg.style.transition = animate ? 'transform .18s' : 'none';
+    _pImg.style.transform  = `scale(${_pZoom}) translate(${_pX/_pZoom}px,${_pY/_pZoom}px)`;
+}
+function _updateProjZoom(){
+    _applyTransform(true);
+    const pct = Math.round(_pZoom * 100);
+    const el  = $('proj-zoom-pct'); if(el) el.textContent = pct + '%';
+    const bar = $('proj-zoom-bar-fill');
+    if(bar){
+        const frac = (_pZoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN);
+        bar.style.width = Math.round(frac * 100) + '%';
+    }
+}
+
+function closeProjPreview(){
+    $('proj-preview-overlay').style.display = 'none';
+    document.removeEventListener('mousemove', _onPanMove);
+    document.removeEventListener('mouseup',   _onPanEnd);
+    _pDrag = false; _pImg = null;
+}
 $('proj-preview-overlay') && ($('proj-preview-overlay').onclick = function(e){ if(e.target===this) closeProjPreview(); });
 $('proj-del-overlay')     && ($('proj-del-overlay').onclick     = function(e){ if(e.target===this) closeProjDel(); });
 
