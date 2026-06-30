@@ -326,14 +326,24 @@ let allResc=[],filtroEstado='all';
 //  Cargar datos
 // ─────────────────────────────────────────────
 async function loadResc(){
+    $id('resc-loading').style.display='block';
+    $id('resc-loading').innerHTML='<i class="bi bi-hourglass-split" style="font-size:2rem;"></i><p style="margin:8px 0 0;font-weight:600;">Cargando resciliaciones...</p>';
     try{
         const res=await fetch('/api/im/resciliaciones');
-        if(!res.ok)throw new Error('Error cargando resciliaciones');
+        if(!res.ok){
+            let errMsg='Error del servidor';
+            try{ const b=await res.json(); errMsg=b.error||b.message||errMsg; }catch(_){}
+            throw new Error(`HTTP ${res.status}: ${errMsg}`);
+        }
         allResc=await res.json();
-        updateSummary();
+        try{ updateSummary(); }catch(e2){ console.error('[updateSummary]',e2); }
         applyFilters();
     }catch(e){
-        $id('resc-loading').innerHTML=`<i class="bi bi-exclamation-triangle" style="font-size:2rem;color:#ef4444;"></i><p style="color:#ef4444;margin:8px 0 0;">${escH(e.message)}</p>`;
+        $id('resc-loading').innerHTML=`
+            <i class="bi bi-exclamation-triangle" style="font-size:2.5rem;color:#ef4444;"></i>
+            <p style="color:#ef4444;margin:10px 0 4px;font-weight:700;">No se pudieron cargar las resciliaciones</p>
+            <p style="color:#94a3b8;font-size:.8rem;max-width:400px;margin:0 auto;">${escH(e.message)}</p>
+            <button class="im-btn im-btn-ghost" style="margin-top:14px;" onclick="loadResc()"><i class="bi bi-arrow-clockwise"></i> Reintentar</button>`;
     }
 }
 
@@ -428,6 +438,18 @@ function renderTable(list){
     $id('resc-loading').style.display='none';
     if(list.length===0){
         $id('resc-table').style.display='none';
+        // Mensaje diferente: sin datos en total vs sin resultados para el filtro
+        const sinDatos=allResc.length===0;
+        $id('resc-empty').innerHTML=sinDatos
+            ?`<i class="bi bi-file-earmark-x" style="font-size:3rem;color:#fca5a5;"></i>
+               <p style="margin:10px 0 4px;font-weight:700;color:#64748b;">Aún no hay resciliaciones registradas</p>
+               <p style="font-size:.8rem;color:#94a3b8;">Cuando rescilies un contrato, aparecerá aquí con toda la información.</p>
+               <button class="im-btn im-btn-primary" style="margin-top:14px;background:#dc2626;border:none;" onclick="openNuevaResc()">
+                   <i class="bi bi-plus-circle"></i> Registrar primera resciliación
+               </button>`
+            :`<i class="bi bi-search" style="font-size:3rem;color:#94a3b8;"></i>
+               <p style="margin:10px 0 4px;font-weight:700;color:#64748b;">Sin resultados para este filtro</p>
+               <p style="font-size:.8rem;color:#94a3b8;">Prueba con otro estado, proyecto o término de búsqueda.</p>`;
         $id('resc-empty').style.display='block';
         return;
     }
