@@ -13,7 +13,7 @@ async function isAuthorized(req) {
     if (!req.session || !req.session.user) return false;
     try {
         const { rows } = await pool.query(
-            `SELECT id FROM im_accesos WHERE user_id=$1 AND puede_ver=true`,
+            `SELECT id FROM im_accesos WHERE user_id=$1`,
             [req.session.user.id]
         );
         return rows.length > 0;
@@ -732,8 +732,8 @@ exports.setAcceso = async (req, res) => {
         const { user_id, puede_crear } = req.body;
         if (!user_id) return res.status(400).json({ message: 'user_id requerido.' });
         const result = await pool.query(
-            `INSERT INTO im_accesos (user_id, puede_crear) VALUES ($1, $2)
-             ON CONFLICT (user_id) DO UPDATE SET puede_crear=$2 RETURNING *`,
+            `INSERT INTO im_accesos (user_id, puede_ver, puede_crear) VALUES ($1, true, $2)
+             ON CONFLICT (user_id) DO UPDATE SET puede_ver=true, puede_crear=$2 RETURNING *`,
             [user_id, puede_crear === true || puede_crear === 'true']
         );
         res.json(result.rows[0]);

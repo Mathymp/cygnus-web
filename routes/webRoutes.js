@@ -272,8 +272,8 @@ router.get('/admin/inmobiliaria/proyectos/:id', requireAuth, async (req, res) =>
             const { rows } = await pool.query(
                 `SELECT puede_ver, puede_crear FROM im_accesos WHERE user_id=$1`, [req.session.user.id]
             );
-            tieneAcceso = rows.length > 0 && rows[0].puede_ver;
-            puedeCrear  = rows.length > 0 && rows[0].puede_ver; // acceso = puede operar todo
+            tieneAcceso = rows.length > 0;
+            puedeCrear  = rows.length > 0; // tener acceso = puede operar todo
         } catch (_) { tieneAcceso = false; }
     }
     if (!tieneAcceso) return res.redirect('/dashboard');
@@ -306,7 +306,7 @@ router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, async (req, re
         try {
             const r = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
             tieneAcceso = r.rows.length > 0;
-            puedeCrear  = r.rows.length > 0 && r.rows[0].puede_crear;
+            puedeCrear  = r.rows.length > 0; // tener acceso = puede operar todo
         } catch (_) {}
     }
     if (!tieneAcceso) return res.redirect('/dashboard');
