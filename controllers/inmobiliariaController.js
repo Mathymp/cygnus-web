@@ -139,7 +139,17 @@ exports.getParcelaById = async (req, res) => {
             )
         ]);
         if (parcelaRes.rows.length === 0) return res.status(404).json({ message: 'Parcela no encontrada.' });
-        res.json({ parcela: parcelaRes.rows[0], historial_precios: historialRes.rows, venta: ventaRes.rows[0] || null });
+
+        const venta = ventaRes.rows[0] || null;
+        let cuotas = [];
+        if (venta && venta.tipo_pago === 'credito') {
+            const cuotasRes = await pool.query(
+                `SELECT * FROM im_cuotas WHERE venta_id=$1 ORDER BY numero_cuota ASC`, [venta.id]
+            );
+            cuotas = cuotasRes.rows;
+        }
+
+        res.json({ parcela: parcelaRes.rows[0], historial_precios: historialRes.rows, venta, cuotas });
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
@@ -249,21 +259,12 @@ exports.getClientes = async (req, res) => {
         const { q, proyecto_id } = req.query;
         let query = `
             SELECT c.*,
-                (SELECT pr.nombre FROM im_ventas_lotes v
-                 JOIN im_parcelas pa ON v.parcela_id = pa.id
-                 JOIN im_proyectos pr ON pa.proyecto_id = pr.id
-                 WHERE v.cliente_id = c.id ORDER BY v.creado_at DESC LIMIT 1) as proyecto_nombre,
-                (SELECT pa.numero_parcela FROM im_ventas_lotes v
-                 JOIN im_parcelas pa ON v.parcela_id = pa.id
-                 WHERE v.cliente_id = c.id ORDER BY v.creado_at DESC LIMIT 1) as parcela_numero,
-                (SELECT pa.id FROM im_ventas_lotes v
-                 JOIN im_parcelas pa ON v.parcela_id = pa.id
-                 WHERE v.cliente_id = c.id ORDER BY v.creado_at DESC LIMIT 1) as parcela_id
+                (SELECT COUNT(*) FROM im_ventas_lotes v WHERE v.cliente_id = c.id) as total_compras
             FROM im_clientes c WHERE 1=1`;
         const params = [];
         if (q) {
             params.push(`%${q}%`);
-            query += ` AND (c.nombre_completo ILIKE $${params.length} OR c.rut ILIKE $${params.length} OR c.email ILIKE $${params.length})`;
+            query += ` AND (c.nombre_completo ILIKE $${params.length} OR c.rut ILIKE $${params.length} OR c.email ILIKE $${params.length} OR c.telefono ILIKE $${params.length})`;
         }
         if (proyecto_id) {
             params.push(proyecto_id);
@@ -274,8 +275,24 @@ exports.getClientes = async (req, res) => {
             )`;
         }
         query += ` ORDER BY c.nombre_completo ASC`;
-        const result = await pool.query(query, params);
-        res.json(result.rows);
+        const clientes = await pool.query(query, params);
+
+        // For each client, get all their parcelas/ventas
+        const result = await Promise.all(clientes.rows.map(async (c) => {
+            const ventas = await pool.query(
+                `SELECT v.id as venta_id, v.tipo_pago, v.precio_acordado, v.fecha_venta,
+                        v.firmo_promesa, v.firmo_compraventa, v.estado_cuotas,
+                        pa.id as parcela_id, pa.numero_parcela, pa.estado_venta,
+                        pr.id as proyecto_id, pr.nombre as proyecto_nombre
+                 FROM im_ventas_lotes v
+                 JOIN im_parcelas pa ON v.parcela_id = pa.id
+                 JOIN im_proyectos pr ON pa.proyecto_id = pr.id
+                 WHERE v.cliente_id=$1 ORDER BY v.creado_at DESC`, [c.id]
+            );
+            return { ...c, ventas: ventas.rows };
+        }));
+
+        res.json(result);
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
@@ -348,31 +365,65 @@ exports.createVenta = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const { parcela_id, cliente_id, firmo_promesa, firmo_compraventa,
-                forma_pago, fecha_venta, precio_lista, precio_acordado, notas } = req.body;
+        const {
+            parcela_id, cliente_id, firmo_promesa, firmo_compraventa,
+            forma_pago, fecha_venta, precio_lista, precio_acordado, notas,
+            tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota,
+            condiciones_compra, fechas_cuotas
+        } = req.body;
         if (!parcela_id || !cliente_id) return res.status(400).json({ message: 'Parcela y cliente son obligatorios.' });
-
-        await client.query(`DELETE FROM im_ventas_lotes WHERE parcela_id=$1`, [parcela_id]);
 
         const cleanNum = (v) => v && String(v).trim() ? parseFloat(String(v).replace(/\./g,'').replace(',','.')) : null;
 
+        // Preserve existing venta id to keep cuotas linked
+        const existingRes = await client.query(`SELECT id FROM im_ventas_lotes WHERE parcela_id=$1`, [parcela_id]);
+        if (existingRes.rows.length > 0) {
+            await client.query(`DELETE FROM im_ventas_lotes WHERE parcela_id=$1`, [parcela_id]);
+        }
+
         const result = await client.query(
-            `INSERT INTO im_ventas_lotes (parcela_id, cliente_id, firmo_promesa, firmo_compraventa, forma_pago, fecha_venta, precio_lista, precio_acordado, notas)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-            [parcela_id, cliente_id, firmo_promesa || false, firmo_compraventa || false,
-             forma_pago || null, fecha_venta || new Date().toISOString().split('T')[0],
-             cleanNum(precio_lista), cleanNum(precio_acordado), notas || null]
+            `INSERT INTO im_ventas_lotes (
+                parcela_id, cliente_id, firmo_promesa, firmo_compraventa, forma_pago,
+                fecha_venta, precio_lista, precio_acordado, notas,
+                tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota, condiciones_compra
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+            [
+                parcela_id, cliente_id,
+                firmo_promesa || false, firmo_compraventa || false,
+                forma_pago || null,
+                fecha_venta || new Date().toISOString().split('T')[0],
+                cleanNum(precio_lista), cleanNum(precio_acordado),
+                notas || null,
+                tipo_pago || 'contado',
+                cleanNum(monto_pie), numero_credito || null,
+                parseInt(numero_cuotas,10) || 0,
+                cleanNum(monto_cuota),
+                condiciones_compra || null
+            ]
         );
+        const venta = result.rows[0];
+
+        // Auto-generate cuotas schedule if provided
+        if (tipo_pago === 'credito' && fechas_cuotas && Array.isArray(fechas_cuotas)) {
+            for (let i = 0; i < fechas_cuotas.length; i++) {
+                const fc = fechas_cuotas[i];
+                await client.query(
+                    `INSERT INTO im_cuotas (venta_id, numero_cuota, monto, fecha_vencimiento)
+                     VALUES ($1, $2, $3, $4)`,
+                    [venta.id, i + 1, cleanNum(fc.monto) || cleanNum(monto_cuota), fc.fecha || null]
+                );
+            }
+        }
 
         const nuevoEstado = firmo_compraventa ? 'vendido' : 'reservado';
         await client.query(`UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`, [nuevoEstado, parcela_id]);
 
-        await auditLog(client, { tabla: 'im_ventas_lotes', entidadId: result.rows[0].id,
+        await auditLog(client, { tabla: 'im_ventas_lotes', entidadId: venta.id,
             accion: 'CREAR',
-            descripcion: `Venta registrada. Estado: ${nuevoEstado}. Precio acordado: ${precio_acordado ? '$' + Number(cleanNum(precio_acordado)).toLocaleString('es-CL') : 'no especificado'}.`, req });
+            descripcion: `Venta ${tipo_pago||'contado'}. Estado: ${nuevoEstado}. Precio: ${precio_acordado ? '$' + Number(cleanNum(precio_acordado)).toLocaleString('es-CL') : 'sin precio'}.`, req });
 
         await client.query('COMMIT');
-        res.status(201).json(result.rows[0]);
+        res.status(201).json(venta);
     } catch (e) {
         await client.query('ROLLBACK');
         res.status(500).json({ error: e.message });
@@ -397,6 +448,114 @@ exports.deleteVenta = async (req, res) => {
         await client.query('ROLLBACK');
         res.status(500).json({ error: e.message });
     } finally { client.release(); }
+};
+
+// ==========================================
+//  CUOTAS DE PAGO
+// ==========================================
+
+exports.getCuotas = async (req, res) => {
+    try {
+        const { ventaId } = req.params;
+        const result = await pool.query(
+            `SELECT * FROM im_cuotas WHERE venta_id=$1 ORDER BY numero_cuota ASC`, [ventaId]
+        );
+        res.json(result.rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.updateCuota = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { id } = req.params;
+        const { pagado, fecha_pago, monto, fecha_vencimiento, notas } = req.body;
+        const cleanNum = (v) => v && String(v).trim() ? parseFloat(String(v).replace(/\./g,'').replace(',','.')) : null;
+        const result = await client.query(
+            `UPDATE im_cuotas SET pagado=$1, fecha_pago=$2, monto=$3, fecha_vencimiento=$4, notas=$5
+             WHERE id=$6 RETURNING *`,
+            [pagado === true || pagado === 'true', fecha_pago || null,
+             cleanNum(monto), fecha_vencimiento || null, notas || null, id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ message: 'Cuota no encontrada.' });
+        const cuota = result.rows[0];
+        await auditLog(client, { tabla: 'im_cuotas', entidadId: cuota.venta_id,
+            accion: pagado ? 'CUOTA_PAGADA' : 'CUOTA_ACTUALIZADA',
+            descripcion: `Cuota N°${cuota.numero_cuota} ${pagado ? 'marcada como pagada' : 'actualizada'}.`, req });
+        await client.query('COMMIT');
+        res.json(cuota);
+    } catch (e) {
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: e.message });
+    } finally { client.release(); }
+};
+
+exports.uploadComprobanteCuota = async (req, res) => {
+    const { createClient } = require('@supabase/supabase-js');
+    const path = require('path');
+    const supabaseAdmin = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
+    );
+    const BUCKET = 'cygnus-documentos';
+
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No se recibió archivo.' });
+        const { id } = req.params;
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        const storagePath = `cuotas/${id}/${Date.now()}${ext}`;
+
+        const { error: uploadErr } = await supabaseAdmin.storage
+            .from(BUCKET).upload(storagePath, req.file.buffer, { contentType: req.file.mimetype });
+        if (uploadErr) throw new Error(uploadErr.message);
+
+        let url = storagePath;
+        try {
+            const { data } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+            if (data) url = data.signedUrl;
+        } catch (_) {}
+
+        const result = await pool.query(
+            `UPDATE im_cuotas SET comprobante_url=$1, storage_path=$2, pagado=true, fecha_pago=COALESCE(fecha_pago, CURRENT_DATE)
+             WHERE id=$3 RETURNING *`, [url, storagePath, id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ message: 'Cuota no encontrada.' });
+        res.json(result.rows[0]);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.uploadComprobanteVenta = async (req, res) => {
+    const { createClient } = require('@supabase/supabase-js');
+    const path = require('path');
+    const supabaseAdmin = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
+    );
+    const BUCKET = 'cygnus-documentos';
+
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No se recibió archivo.' });
+        const { id } = req.params;
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        const storagePath = `ventas/${id}/comprobante${Date.now()}${ext}`;
+
+        const { error: uploadErr } = await supabaseAdmin.storage
+            .from(BUCKET).upload(storagePath, req.file.buffer, { contentType: req.file.mimetype });
+        if (uploadErr) throw new Error(uploadErr.message);
+
+        let url = storagePath;
+        try {
+            const { data } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+            if (data) url = data.signedUrl;
+        } catch (_) {}
+
+        const result = await pool.query(
+            `UPDATE im_ventas_lotes SET comprobante_url=$1, comprobante_path=$2 WHERE id=$3 RETURNING *`,
+            [url, storagePath, id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ message: 'Venta no encontrada.' });
+        res.json(result.rows[0]);
+    } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
 // ==========================================

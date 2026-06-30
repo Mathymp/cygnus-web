@@ -312,9 +312,15 @@ router.post('/api/im/clientes', requireAuth, inmobiliariaController.createClient
 router.put('/api/im/clientes/:id', requireAuth, inmobiliariaController.updateCliente);
 
 // API – Ventas de Lotes
-router.get('/api/im/ventas', requireAuth, inmobiliariaController.getVentas);
+router.get('/api/im/ventas',  requireAuth, inmobiliariaController.getVentas);
 router.post('/api/im/ventas', requireAuth, inmobiliariaController.createVenta);
 router.delete('/api/im/ventas/:id', requireAuth, inmobiliariaController.deleteVenta);
+router.post('/api/im/ventas/:id/comprobante', requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteVenta);
+
+// API – Cuotas de pago
+router.get('/api/im/cuotas/:ventaId',           requireAuth, inmobiliariaController.getCuotas);
+router.put('/api/im/cuotas/:id',                requireAuth, inmobiliariaController.updateCuota);
+router.post('/api/im/cuotas/:id/comprobante',   requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteCuota);
 
 // API – Documentos (Supabase Storage)
 router.get('/api/im/documentos',          requireAuth, documentosController.getDocumentos);

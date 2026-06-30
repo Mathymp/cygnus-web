@@ -212,28 +212,35 @@
             tbody.innerHTML = '<tr><td colspan="6" class="no-results"><i class="bi bi-people"></i><br>No se encontraron clientes con esos filtros.</td></tr>';
             return;
         }
-        tbody.innerHTML = list.map((c,idx)=> `
+        tbody.innerHTML = list.map((c,idx)=> {
+            const ventas = c.ventas || [];
+            const parcelas = ventas.map(v => `<span class="badge-proyecto" style="margin:2px;"><i class="bi bi-geo-alt"></i>${escH(v.proyecto_nombre)} · P${v.parcela_numero}</span>`).join('');
+            return `
             <tr id="row-${c.id}" onclick="toggleExpand('${c.id}', ${idx})" style="cursor:pointer;">
-                <td><strong>${escH(c.nombre_completo)}</strong></td>
-                <td><span style="font-family:monospace; font-size:0.8rem; background:#f1f5f9; padding:2px 7px; border-radius:4px;">${escH(c.rut)}</span></td>
+                <td>
+                    <strong>${escH(c.nombre_completo)}</strong>
+                    ${parseInt(c.total_compras) > 1 ? `<span style="margin-left:6px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:20px;padding:1px 8px;font-size:.7rem;font-weight:700;">${c.total_compras} parcelas</span>` : ''}
+                </td>
+                <td><span style="font-family:monospace;font-size:0.8rem;background:#f1f5f9;padding:2px 7px;border-radius:4px;">${escH(c.rut)}</span></td>
                 <td>
                     ${c.email ? `<div style="font-size:0.8rem;"><i class="bi bi-envelope" style="color:#64748b;"></i> ${escH(c.email)}</div>` : ''}
                     ${c.telefono ? `<div style="font-size:0.8rem;"><i class="bi bi-telephone" style="color:#64748b;"></i> ${escH(c.telefono)}</div>` : ''}
-                    ${!c.email && !c.telefono ? '<span style="color:#94a3b8; font-size:0.8rem;">—</span>' : ''}
+                    ${!c.email && !c.telefono ? '<span style="color:#94a3b8;font-size:0.8rem;">—</span>' : ''}
                 </td>
                 <td>${escH(c.estado_civil)}</td>
                 <td>
-                    ${c.proyecto_nombre ? `<span class="badge-proyecto"><i class="bi bi-geo-alt"></i>${escH(c.proyecto_nombre)} · P${c.parcela_numero||'?'}</span>` : '<span style="color:#94a3b8; font-size:0.8rem;">Sin asignar</span>'}
+                    ${ventas.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:2px;">${parcelas}</div>` : '<span style="color:#94a3b8;font-size:0.8rem;">Sin asignar</span>'}
                 </td>
                 <td style="text-align:center;">
-                    <i class="bi bi-chevron-down" id="chevron-${c.id}" style="color:#94a3b8; transition:transform 0.2s;"></i>
+                    <i class="bi bi-chevron-down" id="chevron-${c.id}" style="color:#94a3b8;transition:transform 0.2s;"></i>
                 </td>
             </tr>
             <tr class="cli-expand" id="expand-${c.id}" style="display:none;">
                 <td colspan="6">
                     <div class="cli-expand-inner" id="expand-inner-${c.id}"></div>
                 </td>
-            </tr>`).join('');
+            </tr>`;
+        }).join('');
     }
 
     function toggleExpand(id, idx) {
@@ -332,14 +339,26 @@
 
             <!-- Info adicional -->
             <div style="display:flex; flex-direction:column; gap:12px;">
-                ${c.proyecto_nombre ? `
+                ${c.ventas && c.ventas.length > 0 ? `
                 <div class="cli-expand-section">
-                    <p class="label"><i class="bi bi-geo-alt-fill"></i> Proyecto Asignado</p>
-                    <div style="font-weight:700; color:#0f172a; margin-bottom:4px;">${escH(c.proyecto_nombre)}</div>
-                    <div style="font-size:0.82rem; color:#64748b;">Parcela N° ${c.parcela_numero||'—'}</div>
-                    ${c.parcela_id ? `<a href="/admin/inmobiliaria/parcela/${c.parcela_id}" class="im-btn im-btn-sm im-btn-ghost" style="margin-top:10px; display:inline-flex;">
-                        <i class="bi bi-arrow-up-right"></i> Ver Parcela
-                    </a>` : ''}
+                    <p class="label"><i class="bi bi-geo-alt-fill"></i> Parcelas Adquiridas (${c.ventas.length})</p>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        ${c.ventas.map(v => {
+                            const tipoBadge = v.tipo_pago === 'credito' ? '<span style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:20px;padding:2px 8px;font-size:.7rem;font-weight:700;">Crédito</span>' : '<span style="background:#f0fdf4;color:#166534;border:1px solid #86efac;border-radius:20px;padding:2px 8px;font-size:.7rem;font-weight:700;">Contado</span>';
+                            return `<div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;">
+                                <div>
+                                    <span style="font-weight:700;color:#0f172a;">${escH(v.proyecto_nombre)}</span>
+                                    <span style="color:#64748b;font-size:.82rem;"> · Parcela N° ${v.parcela_numero}</span>
+                                    <div style="margin-top:4px;display:flex;gap:6px;align-items:center;">
+                                        ${tipoBadge}
+                                        ${v.precio_acordado ? `<span style="font-size:.78rem;color:#475569;">$${Math.floor(parseFloat(v.precio_acordado)).toLocaleString('es-CL')}</span>` : ''}
+                                        ${v.fecha_venta ? `<span style="font-size:.72rem;color:#94a3b8;">${new Date(v.fecha_venta).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'})}</span>` : ''}
+                                    </div>
+                                </div>
+                                <a href="/admin/inmobiliaria/parcela/${v.parcela_id}" class="im-btn im-btn-sm im-btn-ghost"><i class="bi bi-arrow-up-right"></i> Ver</a>
+                            </div>`;
+                        }).join('')}
+                    </div>
                 </div>` : ''}
                 <div class="cli-expand-section">
                     <p class="label"><i class="bi bi-clock-history"></i> Registros de Auditoría</p>
