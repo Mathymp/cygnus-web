@@ -211,6 +211,78 @@
         </div>
     </div>
 
+    <!-- ─── DOCUMENTOS DEL PROYECTO ─── -->
+    <div style="border-top:2px solid #e2e8f0;background:#fff;">
+        <div id="docs-toggle-header" onclick="toggleDocsPanel()"
+            style="padding:14px 28px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;transition:background .15s;"
+            onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#fff'">
+            <div style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border-radius:8px;padding:6px 9px;color:#fff;flex-shrink:0;">
+                <i class="bi bi-folder2-open" style="font-size:1rem;"></i>
+            </div>
+            <div style="flex:1;">
+                <p style="margin:0;font-weight:800;color:#0f172a;font-size:.93rem;">Documentos del Proyecto</p>
+                <p style="margin:0;font-size:.75rem;color:#64748b;">Escrituras, certificados, planos y demás archivos vinculados a este proyecto</p>
+            </div>
+            <span id="docs-count-badge" style="background:#eff6ff;color:#1d4ed8;border-radius:20px;padding:3px 11px;font-size:.75rem;font-weight:700;display:none;"></span>
+            <i class="bi bi-chevron-down" id="docs-toggle-icon" style="color:#94a3b8;transition:transform .2s;font-size:.9rem;"></i>
+        </div>
+
+        <div id="docs-panel" style="display:none;border-top:1px solid #f1f5f9;">
+            <div style="padding:20px 28px;">
+
+                <!-- Upload zone -->
+                <div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:12px;padding:18px;text-align:center;position:relative;transition:all .2s;margin-bottom:18px;" id="proj-dz"
+                    onmouseover="this.style.borderColor='#2563eb';this.style.background='#eff6ff'"
+                    onmouseout="this.style.borderColor='#e2e8f0';this.style.background='#f8fafc'">
+                    <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
+                        style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;"
+                        onchange="handleProjFiles(this.files)">
+                    <i class="bi bi-cloud-arrow-up" style="font-size:2rem;color:#2563eb;"></i>
+                    <p style="margin:6px 0 2px;font-weight:700;color:#0f172a;font-size:.9rem;">Arrastra archivos aquí o <strong>haz clic</strong></p>
+                    <p style="margin:0;font-size:.75rem;color:#94a3b8;">PDF, imágenes, Word, Excel · hasta 100 MB c/u</p>
+                </div>
+                <!-- Progreso de subida -->
+                <div id="proj-upload-queue" style="margin-bottom:10px;"></div>
+
+                <!-- Lista de documentos -->
+                <div id="proj-doc-list">
+                    <div style="text-align:center;padding:20px;color:#94a3b8;"><i class="bi bi-hourglass-split"></i> Cargando documentos...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal preview -->
+    <div id="proj-preview-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#fff;border-radius:16px;width:100%;max-width:700px;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:hidden;">
+            <div style="padding:14px 20px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;display:flex;justify-content:space-between;align-items:center;">
+                <span id="proj-preview-title" style="font-weight:700;font-size:.95rem;"></span>
+                <button onclick="closeProjPreview()" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;line-height:1;">×</button>
+            </div>
+            <div style="padding:14px;" id="proj-preview-body"></div>
+        </div>
+    </div>
+
+    <!-- Modal eliminar doc -->
+    <div id="proj-del-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9001;display:none;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#fff;border-radius:16px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.3);">
+            <div style="padding:14px 20px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;">
+                <p style="margin:0;font-weight:800;font-size:.95rem;"><i class="bi bi-trash3"></i> Eliminar Documento</p>
+            </div>
+            <div style="padding:20px;">
+                <p style="margin:0 0 6px;font-size:.9rem;color:#0f172a;">¿Eliminar <strong id="proj-del-nombre"></strong>?</p>
+                <p style="margin:0 0 18px;font-size:.8rem;color:#64748b;">Esta acción no se puede deshacer.</p>
+                <input type="hidden" id="proj-del-id">
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button onclick="closeProjDel()" class="im-btn im-btn-ghost">Cancelar</button>
+                    <button id="proj-del-btn" onclick="confirmProjDel()" class="im-btn" style="background:#dc2626;color:#fff;border:none;">
+                        <i class="bi bi-trash3"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     </div><!-- /dashboard-scroll -->
     </main>
     </div><!-- /app-layout -->
@@ -571,6 +643,210 @@ function descargarCSV(){
     URL.revokeObjectURL(url);
     showToast(`Archivo descargado: Base_Ventas_${nombreProj}_${fecha}.csv`,'success');
 }
+
+// ─────────────────────────────────────────────
+//  DOCUMENTOS DEL PROYECTO
+// ─────────────────────────────────────────────
+let docsPanelOpen = false;
+
+function toggleDocsPanel(){
+    docsPanelOpen = !docsPanelOpen;
+    const panel = $('docs-panel');
+    const icon  = $('docs-toggle-icon');
+    panel.style.display = docsPanelOpen ? 'block' : 'none';
+    icon.style.transform = docsPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    if(docsPanelOpen) loadProjDocs();
+}
+
+function ext2icon(ext){
+    if(['pdf'].includes(ext)) return 'bi-file-earmark-pdf';
+    if(['jpg','jpeg','png','webp','gif'].includes(ext)) return 'bi-file-earmark-image';
+    if(['doc','docx'].includes(ext)) return 'bi-file-earmark-word';
+    if(['xls','xlsx'].includes(ext)) return 'bi-file-earmark-excel';
+    return 'bi-file-earmark';
+}
+const canPreview = ext => ['pdf','jpg','jpeg','png','webp','gif'].includes(ext);
+
+async function loadProjDocs(){
+    const list = $('proj-doc-list');
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="bi bi-hourglass-split"></i> Cargando...</div>';
+    try{
+        const res = await fetch(`/api/im/documentos?tipo_asociacion=proyecto&asociacion_id=${PROYECTO_ID}`);
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        const docs = await res.json();
+
+        // Actualizar badge
+        const badge = $('docs-count-badge');
+        badge.textContent = docs.length + ' doc' + (docs.length!==1?'s':'');
+        badge.style.display = 'inline-block';
+
+        if(docs.length === 0){
+            list.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;"><i class="bi bi-folder2-open" style="font-size:2rem;"></i><p style="margin:8px 0 0;font-size:.85rem;">Sin documentos aún. Sube el primero arriba.</p></div>';
+            return;
+        }
+        list.innerHTML = docs.map(doc => {
+            const ext = (doc.storage_path||'').split('.').pop().toLowerCase();
+            const fecha = new Date(doc.creado_at).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'});
+            return `<div class="im-doc-item" id="projdoc-${doc.id}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;transition:all .15s;">
+                <i class="bi ${ext2icon(ext)}" style="font-size:1.4rem;color:#2563eb;flex-shrink:0;"></i>
+                <div style="flex:1;min-width:0;">
+                    <div class="doc-name-display" id="pdname-${doc.id}" style="font-weight:700;color:#0f172a;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escH(doc.nombre_personalizado)}">${escH(doc.nombre_personalizado)}</div>
+                    <input class="doc-name-edit" id="pdedit-${doc.id}" value="${escH(doc.nombre_personalizado)}" style="display:none;width:100%;border:1px solid #2563eb;border-radius:6px;padding:4px 8px;font-size:.83rem;font-family:inherit;"
+                        onkeydown="if(event.key==='Enter')saveProjRename(${doc.id});if(event.key==='Escape')cancelProjRename(${doc.id});">
+                    <div style="font-size:.72rem;color:#94a3b8;margin-top:2px;">${fecha}</div>
+                </div>
+                <div style="display:flex;gap:4px;flex-shrink:0;">
+                    ${canPreview(ext)?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="openProjPreview('${escH(doc.url_storage)}','${escH(doc.nombre_personalizado)}','${ext}')" title="Vista previa"><i class="bi bi-eye"></i></button>`:''}
+                    <a href="${escH(doc.url_storage)}" download="${escH(doc.nombre_personalizado)}.${ext}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Descargar"><i class="bi bi-download"></i></a>
+                    <button class="im-btn im-btn-sm im-btn-ghost" onclick="startProjRename(${doc.id})" title="Renombrar"><i class="bi bi-pencil"></i></button>
+                    <button id="psave-${doc.id}" class="im-btn im-btn-sm" style="display:none;" onclick="saveProjRename(${doc.id})"><i class="bi bi-check-lg"></i></button>
+                    ${IS_ADMIN||PUEDE_CREAR?`<button class="im-btn im-btn-sm im-btn-danger" onclick="openProjDel(${doc.id},'${escH(doc.nombre_personalizado)}')" title="Eliminar"><i class="bi bi-trash3"></i></button>`:''}
+                </div>
+            </div>`;
+        }).join('');
+    }catch(e){
+        list.innerHTML = `<div style="color:#ef4444;padding:16px;text-align:center;font-size:.85rem;"><i class="bi bi-exclamation-triangle"></i> ${escH(e.message)}</div>`;
+    }
+}
+
+// ── Upload ──────────────────────────────
+async function handleProjFiles(files){
+    const fileArr = Array.from(files||[]);
+    if(!fileArr.length) return;
+    const queue = $('proj-upload-queue');
+    let ok = 0, failMsgs = [];
+
+    for(const f of fileArr){
+        const uid = 'p'+Date.now()+Math.random().toString(36).slice(2,6);
+        const ext = (f.name||'').split('.').pop().toLowerCase();
+        const sizeMB = (f.size/1024/1024).toFixed(1);
+        const nombre = (f.name||'archivo').replace(/\.[^/.]+$/,'').replace(/[_-]/g,' ');
+
+        // Fila de progreso
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;margin-bottom:6px;transition:all .3s;';
+
+        const statusEl = document.createElement('div');
+        statusEl.style.cssText = 'font-size:.72rem;color:#94a3b8;margin-top:2px;';
+        statusEl.textContent = `${sizeMB} MB · Subiendo...`;
+
+        const pbarEl = document.createElement('div');
+        pbarEl.style.cssText = 'height:100%;width:15%;background:#2563eb;border-radius:2px;transition:width .4s;';
+        const progWrap = document.createElement('div');
+        progWrap.style.cssText = 'height:4px;background:#e2e8f0;border-radius:2px;margin-top:4px;overflow:hidden;';
+        progWrap.appendChild(pbarEl);
+
+        const info = document.createElement('div');
+        info.style.cssText = 'flex:1;min-width:0;';
+        const nameEl = document.createElement('div');
+        nameEl.style.cssText = 'font-size:.82rem;font-weight:600;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        nameEl.textContent = nombre;
+        info.appendChild(nameEl); info.appendChild(statusEl); info.appendChild(progWrap);
+
+        const iconEl = document.createElement('i');
+        iconEl.className = `bi ${ext2icon(ext)}`;
+        iconEl.style.cssText = 'font-size:1.2rem;color:#2563eb;flex-shrink:0;';
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.style.cssText = 'border:none;background:none;font-size:1.1rem;color:#94a3b8;cursor:pointer;padding:0 2px;display:none;flex-shrink:0;';
+        closeBtn.onclick = () => { try{ row.remove(); }catch(_){} };
+
+        row.appendChild(iconEl); row.appendChild(info); row.appendChild(closeBtn);
+        queue.appendChild(row);
+        pbarEl.style.width = '25%';
+
+        try{
+            const fd = new FormData();
+            fd.append('archivo', f, f.name);
+            fd.append('nombre_personalizado', nombre);
+            fd.append('tipo_asociacion', 'proyecto');
+            fd.append('asociacion_id', PROYECTO_ID);
+            pbarEl.style.width = '60%';
+            const res = await fetch('/api/im/documentos', {method:'POST', body:fd});
+            let body = {};
+            try{ body = await res.clone().json(); }catch(_){}
+            if(!res.ok) throw new Error(body.message||body.error||`Error ${res.status}`);
+            pbarEl.style.width = '100%'; pbarEl.style.background = '#16a34a';
+            row.style.borderColor = '#86efac'; row.style.background = '#f0fdf4';
+            iconEl.style.color = '#16a34a';
+            statusEl.textContent = `${sizeMB} MB · ¡Subido!`; statusEl.style.color = '#16a34a';
+            ok++;
+            setTimeout(()=>{ try{ row.remove(); }catch(_){} }, 3500);
+        }catch(err){
+            pbarEl.style.width = '100%'; pbarEl.style.background = '#ef4444';
+            row.style.borderColor = '#fca5a5'; row.style.background = '#fff5f5';
+            iconEl.style.color = '#ef4444';
+            statusEl.textContent = `⚠ ${err.message}`; statusEl.style.color = '#ef4444'; statusEl.style.fontWeight = '600';
+            closeBtn.style.display = 'block';
+            failMsgs.push(`"${nombre}": ${err.message}`);
+            console.error('[Proj Doc Upload]', err.message);
+        }
+    }
+    if(ok > 0) showToast(`${ok} documento${ok>1?'s':''} subido${ok>1?'s':''}.`, 'success');
+    if(failMsgs.length) showToast(`Error: ${failMsgs[0]}`, 'error');
+    await loadProjDocs();
+}
+
+// ── Rename ──────────────────────────────
+function startProjRename(id){
+    const dn = $(`pdname-${id}`), ed = $(`pdedit-${id}`), sb = $(`psave-${id}`);
+    if(dn) dn.style.display = 'none';
+    if(ed){ ed.style.display = 'block'; ed.focus(); ed.select(); }
+    if(sb) sb.style.display = 'flex';
+}
+function cancelProjRename(id){
+    const dn = $(`pdname-${id}`), ed = $(`pdedit-${id}`), sb = $(`psave-${id}`);
+    if(dn) dn.style.display = 'block';
+    if(ed) ed.style.display = 'none';
+    if(sb) sb.style.display = 'none';
+}
+async function saveProjRename(id){
+    const ed = $(`pdedit-${id}`); if(!ed) return;
+    const n = ed.value.trim(); if(!n){ showToast('El nombre no puede estar vacío.','error'); return; }
+    try{
+        const res = await fetch(`/api/im/documentos/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre_personalizado:n})});
+        if(!res.ok) throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
+        showToast('Nombre actualizado.','success');
+        loadProjDocs();
+    }catch(e){ showToast(e.message,'error'); cancelProjRename(id); }
+}
+
+// ── Delete ──────────────────────────────
+function openProjDel(id, nombre){
+    $('proj-del-id').value = id;
+    $('proj-del-nombre').textContent = nombre||'este documento';
+    $('proj-del-overlay').style.display = 'flex';
+}
+function closeProjDel(){ $('proj-del-overlay').style.display = 'none'; }
+async function confirmProjDel(){
+    const btn = $('proj-del-btn');
+    const id  = $('proj-del-id').value;
+    btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Eliminando...';
+    try{
+        const res = await fetch(`/api/im/documentos/${id}`,{method:'DELETE'});
+        if(!res.ok && res.status!==204) throw new Error(`Error ${res.status}`);
+        showToast('Documento eliminado.','success');
+        closeProjDel();
+        loadProjDocs();
+    }catch(e){ showToast(e.message,'error'); }
+    finally{ btn.disabled=false; btn.innerHTML='<i class="bi bi-trash3"></i> Eliminar'; }
+}
+
+// ── Preview ──────────────────────────────
+function openProjPreview(url, nombre, ext){
+    $('proj-preview-title').textContent = nombre||'Vista Previa';
+    const body = $('proj-preview-body');
+    if(['jpg','jpeg','png','webp','gif'].includes(ext)){
+        body.innerHTML = `<img src="${escH(url)}" style="max-width:100%;border-radius:8px;display:block;margin:0 auto;">`;
+    } else {
+        body.innerHTML = `<iframe src="${escH(url)}" style="width:100%;height:520px;border:none;border-radius:8px;background:#f1f5f9;"></iframe>`;
+    }
+    $('proj-preview-overlay').style.display = 'flex';
+}
+function closeProjPreview(){ $('proj-preview-overlay').style.display = 'none'; }
+$('proj-preview-overlay') && ($('proj-preview-overlay').onclick = function(e){ if(e.target===this) closeProjPreview(); });
+$('proj-del-overlay') && ($('proj-del-overlay').onclick = function(e){ if(e.target===this) closeProjDel(); });
 
 document.addEventListener('DOMContentLoaded',init);
 </script>
