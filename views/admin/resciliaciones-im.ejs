@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/inmobiliaria.css">
+    <style>
+        .resc-header{padding:22px 28px 14px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+        .resc-toolbar{padding:12px 28px;border-bottom:1px solid #f1f5f9;display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#fff;}
+        .resc-body{padding:20px 28px;}
+        .summary-cards{display:flex;gap:12px;flex-wrap:wrap;padding:12px 28px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
+        .summary-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 18px;display:flex;flex-direction:column;align-items:center;min-width:120px;}
+        .summary-card .val{font-size:1.3rem;font-weight:800;}
+        .summary-card .lbl{font-size:.72rem;color:#64748b;margin-top:2px;text-align:center;}
+        .filter-chip{padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:600;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;color:#64748b;transition:all .15s;}
+        .filter-chip.active{background:#2563eb;color:#fff;border-color:#2563eb;}
+        .search-box{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:0 12px;flex:1;max-width:320px;}
+        .search-box input{border:none;background:transparent;padding:8px 0;font-size:.85rem;font-family:inherit;color:#0f172a;outline:none;width:100%;}
+        .resc-table{width:100%;border-collapse:collapse;font-size:.83rem;}
+        .resc-table th{padding:10px 14px;text-align:left;font-weight:700;color:#475569;font-size:.74rem;text-transform:uppercase;letter-spacing:.3px;background:#f8fafc;border-bottom:2px solid #e2e8f0;white-space:nowrap;}
+        .resc-table td{padding:11px 14px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+        .resc-main-row{cursor:pointer;transition:background .12s;}
+        .resc-main-row:hover td{background:#fef3f2!important;}
+        .resc-main-row.row-completada td{background:#f0fdf4;}
+        .resc-main-row.row-en-proceso td{background:#fff7ed;}
+        .resc-detail-row td{padding:0!important;border-bottom:2px solid #e2e8f0;}
+        .resc-detail-inner{padding:16px 20px;background:#f8fafc;animation:slideDown .2s ease;}
+        @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+        .detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:14px;}
+        .detail-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:13px 16px;}
+        .detail-card-title{font-size:.7rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px;display:flex;align-items:center;gap:6px;}
+        .detail-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:.8rem;}
+        .detail-row:last-child{border-bottom:none;}
+        .detail-key{color:#64748b;white-space:nowrap;}
+        .detail-val{color:#0f172a;font-weight:600;text-align:right;word-break:break-word;}
+        .badge-completada{background:#dcfce7;color:#166534;border-radius:20px;padding:3px 10px;font-size:.74rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+        .badge-proceso{background:#fef3c7;color:#92400e;border-radius:20px;padding:3px 10px;font-size:.74rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+        .badge-pagada{background:#dcfce7;color:#166534;border-radius:20px;padding:3px 10px;font-size:.74rem;font-weight:700;}
+        .badge-pendiente{background:#fef3c7;color:#92400e;border-radius:20px;padding:3px 10px;font-size:.74rem;font-weight:700;}
+        .badge-vencida{background:#fee2e2;color:#991b1b;border-radius:20px;padding:3px 10px;font-size:.74rem;font-weight:700;}
+        .mini-cuota-dev{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;background:#fff;border:1px solid #e2e8f0;font-size:.79rem;margin-bottom:5px;}
+        .mini-cuota-dev.pagada-mini{background:#f0fdf4;border-color:#86efac;}
+        .mini-cuota-dev.vencida-mini{background:#fff5f5;border-color:#fca5a5;}
+        .comp-thumb{width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid #e2e8f0;cursor:pointer;flex-shrink:0;}
+        .comp-pdf{width:40px;height:40px;border-radius:6px;background:#fee2e2;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;border:1px solid #fecaca;}
+        .dev-type-btn{padding:7px 14px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:.8rem;font-weight:600;cursor:pointer;background:#fff;color:#64748b;transition:all .15s;}
+        .dev-type-btn.active{background:#dc2626;color:#fff;border-color:#dc2626;}
+        /* Modals */
+        .rm-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:8000;display:none;align-items:center;justify-content:center;padding:20px;}
+        .rm-overlay.open{display:flex;}
+        .rm-box{background:#fff;border-radius:16px;width:100%;max-width:540px;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;}
+        .rm-box.wide{max-width:700px;}
+        .rm-header{padding:16px 20px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;display:flex;justify-content:space-between;align-items:center;}
+        .rm-body{padding:20px;}
+        .preview-frame{width:100%;height:500px;border:none;border-radius:8px;background:#f1f5f9;}
+        .dz-mini{border:2px dashed #e2e8f0;border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;background:#f8fafc;}
+        .dz-mini:hover{border-color:#2563eb;background:#eff6ff;}
+        .dz-mini input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+        .dz-mini p{font-size:.78rem;color:#64748b;margin:4px 0 0;}
+    </style>
+</head>
+<body class="dashboard-body">
+    <%- include('../partials/alerts') %>
+
+    <div id="im-toast" style="position:fixed;top:20px;right:20px;z-index:9999;pointer-events:none;opacity:0;transform:translateX(30px);transition:all .3s;"><div id="im-toast-inner" style="background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;font-size:.85rem;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:340px;"></div></div>
+
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin', { page: 'resciliaciones-im' }) %>
+        <main class="main-content">
+        <div class="dashboard-scroll" style="padding:0;">
+
+        <!-- HEADER -->
+        <div class="resc-header">
+            <div style="background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:12px;padding:10px 14px;color:#fff;flex-shrink:0;">
+                <i class="bi bi-file-earmark-x-fill" style="font-size:1.5rem;"></i>
+            </div>
+            <div style="flex:1;">
+                <h1 style="font-size:1.25rem;font-weight:800;color:#0f172a;margin:0;">Resciliaciones</h1>
+                <p style="font-size:.82rem;color:#64748b;margin:2px 0 0;">Gestión de contratos resciliados y devoluciones a clientes</p>
+            </div>
+            <button class="im-btn im-btn-primary" onclick="openNuevaResc()" style="background:#dc2626;border:none;">
+                <i class="bi bi-plus-circle"></i> Nueva Resciliación
+            </button>
+        </div>
+
+        <!-- SUMMARY CARDS -->
+        <div class="summary-cards" id="summary-cards">
+            <div class="summary-card"><span class="val" id="sc-total">—</span><span class="lbl">Total</span></div>
+            <div class="summary-card" style="border-color:#fde68a;"><span class="val" style="color:#d97706;" id="sc-proceso">—</span><span class="lbl">En Proceso</span></div>
+            <div class="summary-card" style="border-color:#86efac;"><span class="val" style="color:#16a34a;" id="sc-comp">—</span><span class="lbl">Completadas</span></div>
+            <div class="summary-card" style="border-color:#fca5a5;"><span class="val" style="color:#dc2626;" id="sc-pend">—</span><span class="lbl">Cuotas Dev. Pendientes</span></div>
+            <div class="summary-card" style="border-color:#bfdbfe;"><span class="val" style="color:#1d4ed8;font-size:1rem;" id="sc-monto">—</span><span class="lbl">Monto a Devolver</span></div>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="resc-toolbar">
+            <div class="search-box">
+                <i class="bi bi-search" style="color:#94a3b8;font-size:.9rem;flex-shrink:0;"></i>
+                <input type="text" id="search-input" placeholder="Buscar cliente, RUT, parcela, proyecto..." oninput="applyFilters()">
+            </div>
+            <select id="filter-proyecto" class="styled-input" style="max-width:200px;padding:8px 12px;" onchange="applyFilters()">
+                <option value="">Todos los proyectos</option>
+                <% proyectos.forEach(p => { %>
+                <option value="<%= p.id %>"><%= p.nombre %></option>
+                <% }); %>
+            </select>
+            <button class="filter-chip active" onclick="setFilter('all',this)">Todas</button>
+            <button class="filter-chip" onclick="setFilter('en_proceso',this)">En Proceso</button>
+            <button class="filter-chip" onclick="setFilter('completada',this)">Completadas</button>
+        </div>
+
+        <!-- TABLE -->
+        <div class="resc-body">
+            <div id="resc-loading" style="text-align:center;padding:40px;color:#94a3b8;">
+                <i class="bi bi-hourglass-split" style="font-size:2rem;"></i>
+                <p style="margin:8px 0 0;font-weight:600;">Cargando resciliaciones...</p>
+            </div>
+            <div id="resc-empty" style="display:none;text-align:center;padding:40px;color:#94a3b8;">
+                <i class="bi bi-file-earmark-x" style="font-size:3rem;color:#fca5a5;"></i>
+                <p style="margin:10px 0 0;font-weight:600;color:#64748b;">No hay resciliaciones registradas</p>
+                <p style="font-size:.8rem;color:#94a3b8;">Cuando se rescilie un contrato, aparecerá aquí.</p>
+            </div>
+            <div style="overflow-x:auto;">
+            <table class="resc-table" id="resc-table" style="display:none;">
+                <thead>
+                    <tr>
+                        <th style="width:32px;"></th>
+                        <th>Proyecto / Parcela</th>
+                        <th>Cliente</th>
+                        <th>Fecha</th>
+                        <th>Devolución</th>
+                        <th>Cuotas Dev.</th>
+                        <th>Estado</th>
+                        <th>Documento</th>
+                    </tr>
+                </thead>
+                <tbody id="resc-tbody"></tbody>
+            </table>
+            </div>
+        </div>
+
+        </div><!-- /dashboard-scroll -->
+        </main>
+    </div>
+
+    <!-- ─── MODAL: PAGAR CUOTA DEVOLUCION ─── -->
+    <div class="rm-overlay" id="modal-pagar-dev">
+        <div class="rm-box">
+            <div class="rm-header">
+                <span style="font-weight:700;font-size:1rem;"><i class="bi bi-cash-coin"></i> Registrar Devolución Cuota</span>
+                <button onclick="closeModal('pagar-dev')" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;">×</button>
+            </div>
+            <div class="rm-body">
+                <input type="hidden" id="pd-cuota-id">
+                <div class="im-form-row" style="margin-bottom:12px;">
+                    <div class="im-input-group">
+                        <label>Fecha de Pago</label>
+                        <input type="date" id="pd-fecha" class="styled-input">
+                    </div>
+                    <div class="im-input-group">
+                        <label>Notas (opcional)</label>
+                        <input type="text" id="pd-notas" class="styled-input" placeholder="Ej: transferencia banco X">
+                    </div>
+                </div>
+                <div class="im-input-group" style="margin-bottom:14px;">
+                    <label><i class="bi bi-paperclip"></i> Comprobante de Pago</label>
+                    <div class="dz-mini">
+                        <input type="file" id="pd-file" accept="image/*,.pdf">
+                        <i class="bi bi-cloud-arrow-up" style="font-size:1.5rem;color:#2563eb;"></i>
+                        <p>Foto/PDF del comprobante (opcional)</p>
+                        <p id="pd-file-name" style="font-weight:600;color:#0f172a;display:none;"></p>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button class="im-btn im-btn-ghost" onclick="closeModal('pagar-dev')">Cancelar</button>
+                    <button class="im-btn im-btn-primary" id="pd-btn" onclick="confirmarPagarDev()" style="background:#16a34a;border:none;">
+                        <i class="bi bi-check-circle"></i> Confirmar Devolución
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── MODAL: NUEVA RESCILIACION ─── -->
+    <div class="rm-overlay" id="modal-nueva-resc">
+        <div class="rm-box wide">
+            <div class="rm-header">
+                <span style="font-weight:700;font-size:1rem;"><i class="bi bi-file-earmark-x"></i> Nueva Resciliación</span>
+                <button onclick="closeModal('nueva-resc')" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;">×</button>
+            </div>
+            <div class="rm-body">
+                <div class="im-form-row" style="margin-bottom:12px;">
+                    <div class="im-input-group">
+                        <label>Proyecto</label>
+                        <select id="nr-proyecto" class="styled-input" onchange="cargarParcelasVendidas()">
+                            <option value="">— Selecciona proyecto —</option>
+                            <% proyectos.forEach(p => { %>
+                            <option value="<%= p.id %>"><%= p.nombre %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="im-input-group">
+                        <label>Parcela con Venta Activa</label>
+                        <select id="nr-parcela" class="styled-input" onchange="onSeleccionarParcela()">
+                            <option value="">— Selecciona primero el proyecto —</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="nr-cliente-info" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.82rem;"></div>
+                <div class="im-form-row" style="margin-bottom:12px;">
+                    <div class="im-input-group">
+                        <label>Fecha de Resciliación</label>
+                        <input type="date" id="nr-fecha" class="styled-input">
+                    </div>
+                </div>
+                <div class="im-input-group" style="margin-bottom:12px;">
+                    <label>Motivo</label>
+                    <input type="text" id="nr-motivo" class="styled-input" placeholder="Ej: Desistimiento del comprador, incumplimiento de pago...">
+                </div>
+                <div class="im-input-group" style="margin-bottom:14px;">
+                    <label>Notas Adicionales</label>
+                    <textarea id="nr-notas" class="styled-input" rows="2" style="resize:vertical;" placeholder="Observaciones, acuerdos, etc."></textarea>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button class="im-btn im-btn-ghost" onclick="closeModal('nueva-resc')">Cancelar</button>
+                    <button class="im-btn im-btn-primary" id="nr-btn" onclick="confirmarNuevaResc()" style="background:#dc2626;border:none;">
+                        <i class="bi bi-file-earmark-x"></i> Confirmar Resciliación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── MODAL: PREVIEW DOCUMENTO ─── -->
+    <div class="rm-overlay" id="modal-preview">
+        <div class="rm-box wide">
+            <div class="rm-header">
+                <span id="preview-title" style="font-weight:700;font-size:1rem;">Vista Previa</span>
+                <button onclick="closeModal('preview')" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;">×</button>
+            </div>
+            <div class="rm-body" style="padding:14px;">
+                <div id="preview-content"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ─────────────────────────────────────────────
+//  Helpers
+// ─────────────────────────────────────────────
+const $id=id=>document.getElementById(id);
+function openModal(id){const el=$id(`modal-${id}`);if(el)el.classList.add('open');}
+function closeModal(id){const el=$id(`modal-${id}`);if(el)el.classList.remove('open');}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtCLP(v){return v?'$'+Number(v).toLocaleString('es-CL'):'—';}
+function fmtFecha(d){return d?new Date(d).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';}
+function showToast(msg,type='info'){
+    const t=$id('im-toast'),ti=$id('im-toast-inner');
+    ti.textContent=msg;
+    ti.style.background=type==='success'?'#16a34a':type==='error'?'#dc2626':'#1e293b';
+    t.style.opacity='1';t.style.transform='translateX(0)';
+    setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(30px)';},4000);
+}
+const isOverdue=d=>d&&!d.pagado&&d.fecha_vencimiento&&new Date(d.fecha_vencimiento)<new Date();
+
+// ─────────────────────────────────────────────
+//  Estado
+// ─────────────────────────────────────────────
+let allResc=[],filtroEstado='all';
+
+// ─────────────────────────────────────────────
+//  Cargar datos
+// ─────────────────────────────────────────────
+async function loadResc(){
+    try{
+        const res=await fetch('/api/im/resciliaciones');
+        if(!res.ok)throw new Error('Error cargando resciliaciones');
+        allResc=await res.json();
+        updateSummary();
+        applyFilters();
+    }catch(e){
+        $id('resc-loading').innerHTML=`<i class="bi bi-exclamation-triangle" style="font-size:2rem;color:#ef4444;"></i><p style="color:#ef4444;margin:8px 0 0;">${escH(e.message)}</p>`;
+    }
+}
+
+function updateSummary(){
+    $id('sc-total').textContent=allResc.length;
+    $id('sc-proceso').textContent=allResc.filter(r=>r.estado!=='completada').length;
+    $id('sc-comp').textContent=allResc.filter(r=>r.estado==='completada').length;
+    const totalPend=allResc.reduce((s,r)=>s+Number(r.cuotas_dev_pendientes||0),0);
+    const totalMonto=allResc.reduce((s,r)=>s+Number(r.monto_dev_pendiente||0),0);
+    $id('sc-pend').textContent=totalPend;
+    $id('sc-monto').textContent=totalMonto>0?'$'+totalMonto.toLocaleString('es-CL'):'$0';
+}
+
+function setFilter(est,btn){
+    filtroEstado=est;
+    document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+}
+
+function applyFilters(){
+    const q=($id('search-input').value||'').toLowerCase().trim();
+    const proj=$id('filter-proyecto').value;
+    let list=allResc;
+    if(filtroEstado!=='all') list=list.filter(r=>(r.estado||'en_proceso')===filtroEstado);
+    if(proj) list=list.filter(r=>r.proyecto_id===proj);
+    if(q) list=list.filter(r=>[r.cliente_nombre,r.cliente_rut,r.numero_parcela,r.proyecto_nombre]
+        .some(v=>(v||'').toLowerCase().includes(q)));
+    renderTable(list);
+}
+
+// ─────────────────────────────────────────────
+//  Render tabla
+// ─────────────────────────────────────────────
+function renderTable(list){
+    $id('resc-loading').style.display='none';
+    if(list.length===0){
+        $id('resc-table').style.display='none';
+        $id('resc-empty').style.display='block';
+        return;
+    }
+    $id('resc-empty').style.display='none';
+    $id('resc-table').style.display='table';
+    $id('resc-tbody').innerHTML=list.map(r=>rowHTML(r)).join('');
+}
+
+function rowHTML(r){
+    const estado=r.estado||'en_proceso';
+    const badgeEst=estado==='completada'
+        ?`<span class="badge-completada"><i class="bi bi-check-circle-fill"></i> Completada</span>`
+        :`<span class="badge-proceso"><i class="bi bi-hourglass-split"></i> En Proceso</span>`;
+
+    const pendNum=Number(r.cuotas_dev_pendientes||0);
+    const totalCDev=Number(r.total_cuotas_dev||0);
+    const devBadge=r.tipo_devolucion==='completa'
+        ?`<span style="font-size:.78rem;color:#64748b;">Completa</span>`
+        :r.tipo_devolucion==='cuotas'
+        ?`<span style="font-size:.78rem;">${totalCDev} cuota${totalCDev!==1?'s':''}</span>`
+        :r.tipo_devolucion==='pie_mas_cuotas'
+        ?`<span style="font-size:.78rem;">Pie + ${totalCDev} cuota${totalCDev!==1?'s':''}</span>`
+        :`<span style="font-size:.78rem;color:#94a3b8;">Sin definir</span>`;
+
+    const cuotasBadge=totalCDev>0
+        ?`<span class="${pendNum>0?'badge-pendiente':'badge-pagada'}">${totalCDev-pendNum}/${totalCDev} pagadas</span>`
+        :`<span style="font-size:.78rem;color:#94a3b8;">—</span>`;
+
+    const docIcon=r.documento_url
+        ?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="event.stopPropagation();previewDoc('${escH(r.documento_url)}','Documento Resciliación')" title="Ver">
+            <i class="bi bi-eye"></i></button>
+          <a href="${escH(r.documento_url)}" download target="_blank" class="im-btn im-btn-sm im-btn-ghost" onclick="event.stopPropagation()" title="Descargar">
+            <i class="bi bi-download"></i></a>`
+        :`<span style="font-size:.75rem;color:#94a3b8;">Sin documento</span>`;
+
+    return `
+    <tr class="resc-main-row ${estado==='completada'?'row-completada':'row-en-proceso'}" onclick="toggleDetail('resc-${r.id}',${JSON.stringify(JSON.stringify(r)).slice(1,-1)})">
+        <td><i class="bi bi-chevron-right" id="chev-resc-${r.id}" style="transition:transform .2s;font-size:.8rem;color:#94a3b8;"></i></td>
+        <td>
+            <div style="font-weight:700;color:#0f172a;">${escH(r.proyecto_nombre)}</div>
+            <div style="font-size:.76rem;color:#64748b;">Parcela ${escH(r.numero_parcela)}</div>
+        </td>
+        <td>
+            <div style="font-weight:600;">${escH(r.cliente_nombre)}</div>
+            <div style="font-size:.75rem;color:#64748b;">${escH(r.cliente_rut||'')}</div>
+        </td>
+        <td style="white-space:nowrap;">${fmtFecha(r.fecha)}</td>
+        <td>${devBadge}</td>
+        <td>${cuotasBadge}</td>
+        <td>${badgeEst}</td>
+        <td onclick="event.stopPropagation();">${docIcon}</td>
+    </tr>
+    <tr class="resc-detail-row" id="resc-${r.id}" style="display:none;">
+        <td colspan="8"><div class="resc-detail-inner" id="resc-inner-${r.id}"></div></td>
+    </tr>`;
+}
+
+// ─────────────────────────────────────────────
+//  Expandir / contraer fila
+// ─────────────────────────────────────────────
+let activeRow=null;
+async function toggleDetail(rowId, rStr){
+    const row=$id(rowId);
+    const chev=$id('chev-'+rowId);
+    if(!row)return;
+    if(row.style.display!=='none'){
+        row.style.display='none';
+        if(chev){chev.style.transform='rotate(0deg)';}
+        activeRow=null;
+        return;
+    }
+    if(activeRow&&activeRow!==rowId){
+        const prev=$id(activeRow);
+        if(prev)prev.style.display='none';
+        const prevChev=$id('chev-'+activeRow);
+        if(prevChev)prevChev.style.transform='rotate(0deg)';
+    }
+    row.style.display='table-row';
+    if(chev)chev.style.transform='rotate(90deg)';
+    activeRow=rowId;
+    const inner=$id('resc-inner-'+rowId);
+    inner.innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="bi bi-hourglass-split"></i> Cargando detalle...</div>';
+
+    // Parsear el id numérico del rowId
+    const rescId=rowId.replace('resc-','');
+    await renderDetail(rescId, inner);
+}
+
+async function renderDetail(rescId, container){
+    try{
+        const res=await fetch(`/api/im/resciliaciones/${rescId}`);
+        if(!res.ok)throw new Error('Error al cargar detalle');
+        const {resciliacion:r, cuotas} = await res.json();
+
+        const tipoDev=r.tipo_devolucion||'';
+        container.innerHTML=`
+        <div class="detail-grid">
+            <!-- CLIENTE -->
+            <div class="detail-card">
+                <p class="detail-card-title"><i class="bi bi-person-vcard" style="color:#2563eb;"></i> Cliente</p>
+                <div class="detail-row"><span class="detail-key">Nombre</span><span class="detail-val">${escH(r.cliente_nombre)}</span></div>
+                <div class="detail-row"><span class="detail-key">RUT</span><span class="detail-val">${escH(r.cliente_rut||'—')}</span></div>
+                ${r.cliente_telefono?`<div class="detail-row"><span class="detail-key">Teléfono</span><span class="detail-val"><a href="tel:${escH(r.cliente_telefono)}">${escH(r.cliente_telefono)}</a></span></div>`:''}
+                ${r.cliente_email?`<div class="detail-row"><span class="detail-key">Email</span><span class="detail-val"><a href="mailto:${escH(r.cliente_email)}">${escH(r.cliente_email)}</a></span></div>`:''}
+                ${r.nombre_conyugue?`<div class="detail-row"><span class="detail-key">Cónyuge</span><span class="detail-val">${escH(r.nombre_conyugue)}</span></div>`:''}
+                ${r.telefono_conyugue?`<div class="detail-row"><span class="detail-key">Tel. Cónyuge</span><span class="detail-val">${escH(r.telefono_conyugue)}</span></div>`:''}
+            </div>
+
+            <!-- VENTA ORIGINAL -->
+            <div class="detail-card">
+                <p class="detail-card-title"><i class="bi bi-receipt" style="color:#f59e0b;"></i> Venta Original</p>
+                <div class="detail-row"><span class="detail-key">Proyecto</span><span class="detail-val">${escH(r.proyecto_nombre)}</span></div>
+                <div class="detail-row"><span class="detail-key">Parcela</span><span class="detail-val">N° ${escH(r.numero_parcela)}</span></div>
+                <div class="detail-row"><span class="detail-key">Precio</span><span class="detail-val">${fmtCLP(r.precio_acordado)}</span></div>
+                <div class="detail-row"><span class="detail-key">Tipo Pago</span><span class="detail-val">${r.tipo_pago==='credito'?'Crédito/Cuotas':'Contado'}</span></div>
+                <div class="detail-row"><span class="detail-key">Fecha Venta</span><span class="detail-val">${fmtFecha(r.fecha_venta)}</span></div>
+            </div>
+
+            <!-- RESCILIACIÓN -->
+            <div class="detail-card">
+                <p class="detail-card-title"><i class="bi bi-file-earmark-x" style="color:#dc2626;"></i> Resciliación</p>
+                <div class="detail-row"><span class="detail-key">Fecha</span><span class="detail-val">${fmtFecha(r.fecha)}</span></div>
+                <div class="detail-row"><span class="detail-key">Motivo</span><span class="detail-val">${escH(r.motivo||'—')}</span></div>
+                <div class="detail-row"><span class="detail-key">Gestionado por</span><span class="detail-val">${escH(r.creado_por_nombre||'—')}</span></div>
+                <div class="detail-row"><span class="detail-key">Estado</span><span class="detail-val">
+                    <select class="styled-input" style="padding:3px 8px;font-size:.78rem;" onchange="actualizarEstado(${rescId},this.value)">
+                        <option value="en_proceso" ${r.estado!=='completada'?'selected':''}>En Proceso</option>
+                        <option value="completada" ${r.estado==='completada'?'selected':''}>Completada</option>
+                    </select>
+                </span></div>
+                ${r.notas?`<div class="detail-row"><span class="detail-key">Notas</span><span class="detail-val" style="font-style:italic;">${escH(r.notas)}</span></div>`:''}
+            </div>
+
+            <!-- DOCUMENTO RESCILIACIÓN -->
+            <div class="detail-card">
+                <p class="detail-card-title"><i class="bi bi-paperclip" style="color:#64748b;"></i> Documento Resciliación</p>
+                ${r.documento_url
+                    ?`<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <span style="font-size:.8rem;font-weight:600;color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Documento cargado</span>
+                        <button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDoc('${escH(r.documento_url)}','Documento Resciliación')"><i class="bi bi-eye"></i> Ver</button>
+                        <a href="${escH(r.documento_url)}" download target="_blank" class="im-btn im-btn-sm im-btn-ghost"><i class="bi bi-download"></i></a>
+                      </div>`
+                    :`<p style="font-size:.78rem;color:#94a3b8;margin:0 0 8px;">Sin documento aún.</p>`}
+                <div class="dz-mini" id="dz-resc-${rescId}" style="margin-top:6px;">
+                    <input type="file" accept="image/*,.pdf,.doc,.docx" onchange="uploadDocResc(${rescId},this.files[0])">
+                    <i class="bi bi-cloud-arrow-up" style="font-size:1.2rem;color:#2563eb;"></i>
+                    <p>Subir / Reemplazar documento</p>
+                </div>
+                <div id="doc-resc-prog-${rescId}" style="display:none;margin-top:6px;font-size:.78rem;color:#2563eb;"><i class="bi bi-hourglass-split"></i> Subiendo...</div>
+            </div>
+        </div>
+
+        <!-- PLAN DE DEVOLUCIÓN -->
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:14px;">
+            <p style="font-size:.78rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin:0 0 12px;"><i class="bi bi-arrow-return-left" style="color:#dc2626;"></i> Plan de Devolución</p>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;" id="dev-type-btns-${rescId}">
+                <button class="dev-type-btn ${tipoDev==='completa'?'active':''}" onclick="setDevTipo(${rescId},'completa',this)">Devolución Completa</button>
+                <button class="dev-type-btn ${tipoDev==='pie_mas_cuotas'?'active':''}" onclick="setDevTipo(${rescId},'pie_mas_cuotas',this)">Pie + Cuotas</button>
+                <button class="dev-type-btn ${tipoDev==='cuotas'?'active':''}" onclick="setDevTipo(${rescId},'cuotas',this)">Solo Cuotas</button>
+            </div>
+
+            <div id="dev-monto-section-${rescId}" style="margin-bottom:14px;">
+                <div class="im-form-row">
+                    <div class="im-input-group">
+                        <label>Monto Total a Devolver (CLP)</label>
+                        <input type="text" id="dev-monto-${rescId}" class="styled-input" value="${r.monto_total_devolucion||''}" placeholder="Ej: 5.000.000" oninput="fmtDevInput(this)">
+                    </div>
+                    <div class="im-input-group" id="dev-pie-wrap-${rescId}" style="${tipoDev!=='pie_mas_cuotas'?'display:none':''}">
+                        <label>Monto Pie de Devolución (CLP)</label>
+                        <input type="text" id="dev-pie-${rescId}" class="styled-input" value="${r.monto_pie_devolucion||''}" placeholder="Monto inicial entregado" oninput="fmtDevInput(this)">
+                    </div>
+                </div>
+                <div id="dev-cuotas-config-${rescId}" style="${!tipoDev||tipoDev==='completa'?'display:none':''}">
+                    <div class="im-form-row">
+                        <div class="im-input-group">
+                            <label>Cantidad de Cuotas</label>
+                            <input type="number" id="dev-ncuotas-${rescId}" class="styled-input" value="${r.numero_cuotas_devolucion||''}" min="1" placeholder="Ej: 6" oninput="recalcDevCuotas(${rescId})">
+                        </div>
+                        <div class="im-input-group">
+                            <label>Monto por Cuota (CLP)</label>
+                            <input type="text" id="dev-mcuota-${rescId}" class="styled-input" value="${r.monto_cuota_devolucion||''}" placeholder="Ej: 500.000" oninput="fmtDevInput(this)">
+                        </div>
+                        <div class="im-input-group">
+                            <label>Primera Cuota (fecha)</label>
+                            <input type="date" id="dev-fecha1-${rescId}" class="styled-input" onchange="recalcDevCuotas(${rescId})">
+                        </div>
+                    </div>
+                    <button class="im-btn im-btn-ghost" onclick="generarCuotasDev(${rescId})" style="margin-bottom:8px;">
+                        <i class="bi bi-calendar-plus"></i> Generar tabla de cuotas a devolver
+                    </button>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                    <button class="im-btn im-btn-primary" onclick="guardarDevPlan(${rescId})" style="background:#dc2626;border:none;" id="btn-guardar-dev-${rescId}">
+                        <i class="bi bi-floppy"></i> Guardar Plan
+                    </button>
+                </div>
+            </div>
+
+            <!-- TABLA CUOTAS DE DEVOLUCIÓN -->
+            <div id="dev-cuotas-table-${rescId}">
+                ${renderCuotasDev(cuotas, rescId)}
+            </div>
+        </div>
+
+        <!-- DOCUMENTOS RELACIONADOS -->
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;">
+            <p style="font-size:.78rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin:0 0 12px;"><i class="bi bi-folder2-open" style="color:#2563eb;"></i> Documentos Relacionados</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                <button class="filter-chip active" id="doc-tab-${rescId}-parcela" onclick="loadRelDocs(${rescId},'parcela','${escH(r.parcela_id)}',this)">Docs Lote</button>
+                <button class="filter-chip" id="doc-tab-${rescId}-venta" onclick="loadRelDocs(${rescId},'venta','${r.venta_id}',this)">Docs Venta</button>
+                <button class="filter-chip" id="doc-tab-${rescId}-persona" onclick="loadRelDocs(${rescId},'persona','${escH(r.cliente_id)}',this)">Docs Cliente</button>
+            </div>
+            <div id="rel-docs-${rescId}"><div style="color:#94a3b8;font-size:.8rem;padding:8px 0;"><i class="bi bi-hourglass-split"></i> Cargando...</div></div>
+        </div>`;
+
+        // Auto-cargar docs parcela
+        setTimeout(()=>loadRelDocs(rescId,'parcela',r.parcela_id,$id(`doc-tab-${rescId}-parcela`)),100);
+    }catch(e){
+        container.innerHTML=`<div style="color:#ef4444;padding:16px;">${escH(e.message)}</div>`;
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Plan de devolución
+// ─────────────────────────────────────────────
+function setDevTipo(rescId, tipo, btn){
+    $id(`dev-type-btns-${rescId}`).querySelectorAll('.dev-type-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const cuotasConfig=$id(`dev-cuotas-config-${rescId}`);
+    const pieWrap=$id(`dev-pie-wrap-${rescId}`);
+    if(tipo==='completa'){cuotasConfig.style.display='none';if(pieWrap)pieWrap.style.display='none';}
+    else{cuotasConfig.style.display='block';if(pieWrap)pieWrap.style.display=(tipo==='pie_mas_cuotas'?'block':'none');}
+}
+
+function fmtDevInput(inp){
+    const raw=inp.value.replace(/\./g,'').replace(/[^0-9]/g,'');
+    if(raw)inp.value=Number(raw).toLocaleString('es-CL');
+}
+
+function parsePesos(s){return parseInt((s||'').replace(/\./g,'').replace(/[^0-9]/g,''))||null;}
+
+function recalcDevCuotas(rescId){
+    const nc=parseInt($id(`dev-ncuotas-${rescId}`)?.value)||0;
+    const mc=parsePesos($id(`dev-mcuota-${rescId}`)?.value);
+    if(nc&&mc) {
+        // auto fill monto cuota if total is set
+    }
+}
+
+function generarCuotasDev(rescId){
+    const nc=parseInt($id(`dev-ncuotas-${rescId}`)?.value)||0;
+    const mc=parsePesos($id(`dev-mcuota-${rescId}`)?.value);
+    const fecha1=$id(`dev-fecha1-${rescId}`)?.value;
+    if(!nc||!mc){showToast('Completa cantidad y monto de cuotas.','error');return;}
+
+    const filas=[];
+    for(let i=1;i<=nc;i++){
+        let fv='';
+        if(fecha1){
+            const d=new Date(fecha1);
+            d.setMonth(d.getMonth()+(i-1));
+            fv=d.toISOString().split('T')[0];
+        }
+        filas.push({numero_cuota:i,monto:mc,fecha_vencimiento:fv});
+    }
+    // Preview en UI
+    const tbl=$id(`dev-cuotas-table-${rescId}`);
+    tbl.innerHTML=previewCuotasDevHTML(filas,rescId)+
+        `<button class="im-btn im-btn-primary" style="margin-top:10px;background:#dc2626;border:none;" onclick='guardarCuotasDev(${rescId},${JSON.stringify(filas)})'>
+            <i class="bi bi-floppy"></i> Guardar Cuotas de Devolución
+         </button>`;
+}
+
+function previewCuotasDevHTML(cuotas,rescId){
+    return `<table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-top:8px;">
+        <thead><tr>
+            <th style="padding:6px 10px;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;">N°</th>
+            <th style="padding:6px 10px;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;">Monto</th>
+            <th style="padding:6px 10px;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;">Vencimiento</th>
+            <th style="padding:6px 10px;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;">Estado</th>
+        </tr></thead>
+        <tbody>${cuotas.map(c=>`<tr>
+            <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">${c.numero_cuota}</td>
+            <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;font-weight:600;">${fmtCLP(c.monto)}</td>
+            <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">${fmtFecha(c.fecha_vencimiento)}</td>
+            <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;"><span class="badge-pendiente">Pendiente</span></td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function renderCuotasDev(cuotas,rescId){
+    if(!cuotas||cuotas.length===0) return `<p style="font-size:.8rem;color:#94a3b8;margin:8px 0;">No hay cuotas de devolución definidas aún.</p>`;
+    const html=cuotas.map(c=>{
+        const venc=isOverdue({pagado:c.pagado,fecha_vencimiento:c.fecha_vencimiento});
+        const cls=c.pagado?'pagada-mini':venc?'vencida-mini':'';
+        const badge=c.pagado
+            ?`<span class="badge-pagada"><i class="bi bi-check-circle-fill"></i> Pagada</span>`
+            :venc?`<span class="badge-vencida"><i class="bi bi-exclamation-triangle-fill"></i> Vencida</span>`
+            :`<span class="badge-pendiente"><i class="bi bi-clock"></i> Pendiente</span>`;
+        const compIcon=c.comprobante_url
+            ?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDoc('${escH(c.comprobante_url)}','Comprobante Devolución ${c.numero_cuota}')" title="Ver comprobante">
+                <i class="bi bi-eye"></i></button>`
+            :'';
+        const pagarBtn=!c.pagado
+            ?`<button class="im-btn im-btn-sm im-btn-primary" style="background:#16a34a;border:none;" onclick="abrirPagarDev(${c.id})">
+                <i class="bi bi-check-circle"></i> Pagada</button>`
+            :`<span style="font-size:.75rem;color:#16a34a;">${fmtFecha(c.fecha_pago)}</span>`;
+        return `<div class="mini-cuota-dev ${cls}">
+            <span style="font-weight:700;min-width:24px;">N°${c.numero_cuota}</span>
+            <span style="flex:1;font-weight:600;">${fmtCLP(c.monto)}</span>
+            <span style="font-size:.75rem;color:#64748b;white-space:nowrap;">${fmtFecha(c.fecha_vencimiento)}</span>
+            ${badge}
+            ${compIcon}
+            ${pagarBtn}
+        </div>`;
+    }).join('');
+    return `<div style="margin-top:8px;"><p style="font-size:.75rem;font-weight:700;color:#475569;margin:0 0 6px;text-transform:uppercase;letter-spacing:.3px;">Cuotas de Devolución</p>${html}</div>`;
+}
+
+async function guardarDevPlan(rescId){
+    const btn=$id(`btn-guardar-dev-${rescId}`);
+    const tipoEl=$id(`dev-type-btns-${rescId}`);
+    const tipo=tipoEl?.querySelector('.dev-type-btn.active')?.textContent?.trim();
+    const tipoMap={'Devolución Completa':'completa','Pie + Cuotas':'pie_mas_cuotas','Solo Cuotas':'cuotas'};
+    const tipoVal=tipoMap[tipo]||'completa';
+    const monto=parsePesos($id(`dev-monto-${rescId}`)?.value);
+    const pie=parsePesos($id(`dev-pie-${rescId}`)?.value);
+    const nc=parseInt($id(`dev-ncuotas-${rescId}`)?.value)||null;
+    const mc=parsePesos($id(`dev-mcuota-${rescId}`)?.value);
+    btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...';
+    try{
+        const res=await fetch(`/api/im/resciliaciones/${rescId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({tipo_devolucion:tipoVal,monto_total_devolucion:monto,monto_pie_devolucion:pie,numero_cuotas_devolucion:nc,monto_cuota_devolucion:mc})});
+        if(!res.ok)throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
+        showToast('Plan de devolución guardado.','success');
+        await loadResc();
+    }catch(e){showToast(e.message,'error');}
+    finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-floppy"></i> Guardar Plan';}
+}
+
+async function guardarCuotasDev(rescId,cuotas){
+    try{
+        const res=await fetch(`/api/im/resciliaciones/${rescId}/cuotas-devolucion`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cuotas})});
+        if(!res.ok)throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
+        showToast('Cuotas de devolución guardadas.','success');
+        // Reload detail
+        const inner=$id(`resc-inner-${rescId}`);
+        if(inner) await renderDetail(rescId,inner);
+        await loadResc();
+    }catch(e){showToast(e.message,'error');}
+}
+
+async function actualizarEstado(rescId,estado){
+    try{
+        const res=await fetch(`/api/im/resciliaciones/${rescId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado})});
+        if(!res.ok)throw new Error('Error actualizando estado');
+        showToast('Estado actualizado.','success');
+        await loadResc();
+    }catch(e){showToast(e.message,'error');}
+}
+
+// ─────────────────────────────────────────────
+//  Pagar cuota de devolución
+// ─────────────────────────────────────────────
+function abrirPagarDev(cuotaId){
+    $id('pd-cuota-id').value=cuotaId;
+    $id('pd-fecha').value=new Date().toISOString().split('T')[0];
+    $id('pd-notas').value='';
+    $id('pd-file').value='';
+    $id('pd-file-name').style.display='none';
+    $id('pd-file').onchange=function(){
+        const fn=this.files[0]?.name||'';
+        if(fn){$id('pd-file-name').textContent=fn;$id('pd-file-name').style.display='block';}
+    };
+    openModal('pagar-dev');
+}
+
+async function confirmarPagarDev(){
+    const btn=$id('pd-btn');
+    const cuotaId=$id('pd-cuota-id').value;
+    btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Procesando...';
+    try{
+        const fd=new FormData();
+        fd.append('fecha_pago',$id('pd-fecha').value||'');
+        fd.append('notas',$id('pd-notas').value||'');
+        const file=$id('pd-file').files[0];
+        if(file) fd.append('archivo',file,file.name);
+        const res=await fetch(`/api/im/cuotas-devolucion/${cuotaId}/pagar`,{method:'PATCH',body:fd});
+        if(!res.ok)throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
+        showToast('Devolución registrada correctamente.','success');
+        closeModal('pagar-dev');
+        await loadResc();
+        if(activeRow){const inner=$id('resc-inner-'+activeRow);if(inner)await renderDetail(activeRow.replace('resc-',''),inner);}
+    }catch(e){showToast(e.message,'error');}
+    finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-check-circle"></i> Confirmar Devolución';}
+}
+
+// ─────────────────────────────────────────────
+//  Upload documento resciliación
+// ─────────────────────────────────────────────
+async function uploadDocResc(rescId, file){
+    if(!file)return;
+    const prog=$id(`doc-resc-prog-${rescId}`);
+    if(prog){prog.style.display='block';prog.innerHTML='<i class="bi bi-hourglass-split"></i> Subiendo...';}
+    try{
+        const fd=new FormData();
+        fd.append('archivo',file,file.name);
+        const res=await fetch(`/api/im/resciliaciones/${rescId}/documento`,{method:'POST',body:fd});
+        if(!res.ok)throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
+        showToast('Documento de resciliación subido.','success');
+        const inner=$id(`resc-inner-${rescId}`);
+        if(inner) await renderDetail(rescId,inner);
+        await loadResc();
+    }catch(e){
+        if(prog){prog.style.display='block';prog.style.color='#dc2626';prog.innerHTML=`<i class="bi bi-x-circle"></i> ${escH(e.message)}`;}
+        showToast(e.message,'error');
+    }
+}
+
+// ─────────────────────────────────────────────
+//  Documentos relacionados
+// ─────────────────────────────────────────────
+async function loadRelDocs(rescId, tipo, asociId, btn){
+    document.querySelectorAll(`[id^="doc-tab-${rescId}-"]`).forEach(b=>b.classList.remove('active'));
+    if(btn)btn.classList.add('active');
+    const cont=$id(`rel-docs-${rescId}`);
+    if(!cont)return;
+    cont.innerHTML='<div style="color:#94a3b8;font-size:.8rem;padding:8px 0;"><i class="bi bi-hourglass-split"></i> Cargando...</div>';
+    try{
+        const res=await fetch(`/api/im/documentos?tipo_asociacion=${tipo}&asociacion_id=${asociId}`);
+        if(!res.ok)throw new Error('Error cargando docs');
+        const docs=await res.json();
+        if(docs.length===0){cont.innerHTML='<p style="font-size:.8rem;color:#94a3b8;margin:8px 0;">Sin documentos en esta sección.</p>';return;}
+        cont.innerHTML=docs.map(d=>{
+            const ext=(d.storage_path||'').split('.').pop().toLowerCase();
+            const canPrev=['pdf','jpg','jpeg','png','webp','gif'].includes(ext);
+            return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;margin-bottom:5px;font-size:.8rem;">
+                <i class="bi bi-file-earmark${ext==='pdf'?'-pdf':['jpg','jpeg','png','webp'].includes(ext)?'-image':''}" style="font-size:1.1rem;color:#2563eb;flex-shrink:0;"></i>
+                <span style="flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(d.nombre_personalizado)}</span>
+                <span style="font-size:.72rem;color:#94a3b8;white-space:nowrap;">${new Date(d.creado_at).toLocaleDateString('es-CL')}</span>
+                ${canPrev?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDoc('${escH(d.url_storage)}','${escH(d.nombre_personalizado)}')"><i class="bi bi-eye"></i></button>`:''}
+                <a href="${escH(d.url_storage)}" download="${escH(d.nombre_personalizado)}" target="_blank" class="im-btn im-btn-sm im-btn-ghost"><i class="bi bi-download"></i></a>
+            </div>`;
+        }).join('');
+    }catch(e){cont.innerHTML=`<p style="color:#ef4444;font-size:.8rem;">${escH(e.message)}</p>`;}
+}
+
+// ─────────────────────────────────────────────
+//  Preview documento
+// ─────────────────────────────────────────────
+function previewDoc(url, nombre){
+    const ext=(url||'').split('.').pop().split('?')[0].toLowerCase();
+    $id('preview-title').textContent=nombre||'Vista Previa';
+    const cont=$id('preview-content');
+    if(['jpg','jpeg','png','webp','gif'].includes(ext)){
+        cont.innerHTML=`<img src="${escH(url)}" style="max-width:100%;border-radius:8px;">`;
+    }else{
+        cont.innerHTML=`<iframe src="${escH(url)}" class="preview-frame"></iframe>`;
+    }
+    openModal('preview');
+}
+
+// ─────────────────────────────────────────────
+//  Nueva Resciliación
+// ─────────────────────────────────────────────
+function openNuevaResc(){
+    $id('nr-proyecto').value='';
+    $id('nr-parcela').innerHTML='<option value="">— Selecciona primero el proyecto —</option>';
+    $id('nr-fecha').value=new Date().toISOString().split('T')[0];
+    $id('nr-motivo').value='';
+    $id('nr-notas').value='';
+    $id('nr-cliente-info').style.display='none';
+    openModal('nueva-resc');
+}
+
+let _ventaIdParaResc=null;
+async function cargarParcelasVendidas(){
+    const proyId=$id('nr-proyecto').value;
+    if(!proyId){$id('nr-parcela').innerHTML='<option value="">— Selecciona primero el proyecto —</option>';return;}
+    $id('nr-parcela').innerHTML='<option>Cargando...</option>';
+    try{
+        const res=await fetch(`/api/im/parcelas/vendidas?proyecto_id=${proyId}`);
+        const list=await res.json();
+        if(!list.length){$id('nr-parcela').innerHTML='<option value="">Sin parcelas con venta activa</option>';return;}
+        $id('nr-parcela').innerHTML='<option value="">— Selecciona parcela —</option>'
+            +list.map(p=>`<option value="${p.venta_id}" data-cliente="${escH(p.cliente_nombre)}" data-rut="${escH(p.cliente_rut||'')}">Parcela ${p.numero_parcela} — ${p.cliente_nombre}</option>`).join('');
+    }catch(e){$id('nr-parcela').innerHTML='<option>Error al cargar</option>';}
+}
+
+function onSeleccionarParcela(){
+    const sel=$id('nr-parcela');
+    const opt=sel.options[sel.selectedIndex];
+    _ventaIdParaResc=sel.value||null;
+    if(_ventaIdParaResc&&opt){
+        const info=$id('nr-cliente-info');
+        info.style.display='block';
+        info.innerHTML=`<i class="bi bi-person-fill" style="color:#2563eb;"></i> <strong>${opt.dataset.cliente}</strong>${opt.dataset.rut?' — '+opt.dataset.rut:''}`;
+    }else{
+        $id('nr-cliente-info').style.display='none';
+    }
+}
+
+async function confirmarNuevaResc(){
+    if(!_ventaIdParaResc){showToast('Selecciona una parcela con venta activa.','error');return;}
+    const btn=$id('nr-btn');
+    btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Procesando...';
+    try{
+        const body={
+            fecha:$id('nr-fecha').value,
+            motivo:$id('nr-motivo').value.trim(),
+            notas:$id('nr-notas').value.trim()
+        };
+        const res=await fetch(`/api/im/ventas/${_ventaIdParaResc}/resciliar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(!res.ok)throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
+        showToast('Resciliación registrada. La parcela volvió a Disponible.','success');
+        closeModal('nueva-resc');
+        await loadResc();
+    }catch(e){showToast(e.message,'error');}
+    finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-file-earmark-x"></i> Confirmar Resciliación';}
+}
+
+// ─────────────────────────────────────────────
+//  Init
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadResc);
+</script>
+</body>
+</html>

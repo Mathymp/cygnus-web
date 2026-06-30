@@ -311,6 +311,20 @@ router.get('/admin/inmobiliaria/cuotas', requireAuth, async (req, res) => {
     res.render('admin/cuotas-im', { user: req.session.user, page: 'cuotas-im' });
 });
 
+router.get('/admin/inmobiliaria/resciliaciones', requireAuth, async (req, res) => {
+    const isAdmin = req.session.user.role === 'admin';
+    let tieneAcceso = isAdmin;
+    if (!isAdmin) {
+        try {
+            const r = await pool.query('SELECT 1 FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
+            tieneAcceso = r.rows.length > 0;
+        } catch (_) {}
+    }
+    if (!tieneAcceso) return res.redirect('/dashboard');
+    const proyectosRes = await pool.query(`SELECT id, nombre FROM im_proyectos ORDER BY nombre ASC`).catch(() => ({ rows: [] }));
+    res.render('admin/resciliaciones-im', { user: req.session.user, page: 'resciliaciones-im', proyectos: proyectosRes.rows });
+});
+
 router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, async (req, res) => {
     const isAdmin = req.session.user.role === 'admin';
     let puedeCrear = isAdmin;
@@ -359,6 +373,15 @@ router.get('/api/im/cuotas',                    requireAuth, inmobiliariaControl
 router.get('/api/im/cuotas/:ventaId',           requireAuth, inmobiliariaController.getCuotas);
 router.put('/api/im/cuotas/:id',                requireAuth, inmobiliariaController.updateCuota);
 router.post('/api/im/cuotas/:id/comprobante',   requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteCuota);
+
+// API – Resciliaciones
+router.get('/api/im/resciliaciones',            requireAuth, inmobiliariaController.getAllResciliaciones);
+router.get('/api/im/resciliaciones/:id',        requireAuth, inmobiliariaController.getResciliacionById);
+router.patch('/api/im/resciliaciones/:id',      requireAuth, inmobiliariaController.updateResciliacion);
+router.post('/api/im/resciliaciones/:id/cuotas-devolucion', requireAuth, inmobiliariaController.setCuotasDevolucion);
+router.patch('/api/im/cuotas-devolucion/:id/pagar', requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.pagarCuotaDevolucion);
+router.post('/api/im/resciliaciones/:id/documento', requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadDocumentoResciliacion);
+router.get('/api/im/parcelas/vendidas',         requireAuth, inmobiliariaController.getParcelasVendidas);
 
 // API – Documentos (Supabase Storage)
 router.get('/api/im/documentos/test-storage', requireAuth, documentosController.testStorage);

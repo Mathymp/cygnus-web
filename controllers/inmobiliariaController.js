@@ -861,3 +861,241 @@ exports.getAuditoria = async (req, res) => {
         res.json(result.rows);
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
+
+// ==========================================
+//  RESCILIACIONES — gestión completa
+// ==========================================
+
+exports.getAllResciliaciones = async (req, res) => {
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
+    try {
+        const { proyecto_id } = req.query;
+        const params = [];
+        let where = [];
+        if (proyecto_id) { params.push(proyecto_id); where.push(`pr.id = $${params.length}`); }
+        const whereStr = where.length ? 'WHERE ' + where.join(' AND ') : '';
+        const result = await pool.query(`
+            SELECT
+                r.id, r.fecha, r.motivo, r.notas, r.creado_por_nombre,
+                r.tipo_devolucion, r.monto_total_devolucion, r.monto_pie_devolucion,
+                r.numero_cuotas_devolucion, r.monto_cuota_devolucion,
+                r.documento_url, r.documento_path, r.estado,
+                v.id   AS venta_id,   v.tipo_pago, v.precio_acordado, v.fecha_venta,
+                c.id   AS cliente_id, c.nombre_completo AS cliente_nombre,
+                c.rut  AS cliente_rut, c.telefono AS cliente_telefono,
+                c.email AS cliente_email, c.nombre_conyugue, c.rut_conyugue,
+                c.telefono_conyugue, c.email_conyugue,
+                pa.id  AS parcela_id, pa.numero_parcela,
+                pr.id  AS proyecto_id, pr.nombre AS proyecto_nombre,
+                (SELECT COUNT(*) FROM im_cuotas_devolucion cd
+                 WHERE cd.resciliacion_id = r.id AND cd.pagado = false) AS cuotas_dev_pendientes,
+                (SELECT COUNT(*) FROM im_cuotas_devolucion cd
+                 WHERE cd.resciliacion_id = r.id) AS total_cuotas_dev,
+                (SELECT COALESCE(SUM(cd.monto),0) FROM im_cuotas_devolucion cd
+                 WHERE cd.resciliacion_id = r.id AND cd.pagado = false) AS monto_dev_pendiente
+            FROM im_resciliaciones r
+            JOIN im_ventas_lotes  v  ON r.venta_id   = v.id
+            JOIN im_clientes       c  ON v.cliente_id = c.id
+            JOIN im_parcelas       pa ON r.parcela_id = pa.id
+            JOIN im_proyectos      pr ON pa.proyecto_id = pr.id
+            ${whereStr}
+            ORDER BY r.fecha DESC, r.id DESC
+        `, params);
+        res.json(result.rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.getResciliacionById = async (req, res) => {
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
+    try {
+        const { id } = req.params;
+        const [resc, cuotas] = await Promise.all([
+            pool.query(`
+                SELECT r.*,
+                    v.tipo_pago, v.precio_acordado, v.fecha_venta,
+                    c.nombre_completo AS cliente_nombre, c.rut AS cliente_rut,
+                    c.telefono AS cliente_telefono, c.email AS cliente_email,
+                    c.nombre_conyugue, c.rut_conyugue, c.telefono_conyugue, c.email_conyugue,
+                    c.estado_civil, c.regimen_matrimonial,
+                    pa.numero_parcela, pr.nombre AS proyecto_nombre
+                FROM im_resciliaciones r
+                JOIN im_ventas_lotes v ON r.venta_id = v.id
+                JOIN im_clientes c ON v.cliente_id = c.id
+                JOIN im_parcelas pa ON r.parcela_id = pa.id
+                JOIN im_proyectos pr ON pa.proyecto_id = pr.id
+                WHERE r.id = $1
+            `, [id]),
+            pool.query(
+                `SELECT * FROM im_cuotas_devolucion WHERE resciliacion_id = $1 ORDER BY numero_cuota ASC`,
+                [id]
+            )
+        ]);
+        if (resc.rows.length === 0) return res.status(404).json({ message: 'Resciliación no encontrada.' });
+        res.json({ resciliacion: resc.rows[0], cuotas: cuotas.rows });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.updateResciliacion = async (req, res) => {
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
+    try {
+        const { id } = req.params;
+        const { tipo_devolucion, monto_total_devolucion, monto_pie_devolucion,
+                numero_cuotas_devolucion, monto_cuota_devolucion, estado, notas } = req.body;
+        const result = await pool.query(`
+            UPDATE im_resciliaciones SET
+                tipo_devolucion          = COALESCE($1, tipo_devolucion),
+                monto_total_devolucion   = COALESCE($2, monto_total_devolucion),
+                monto_pie_devolucion     = COALESCE($3, monto_pie_devolucion),
+                numero_cuotas_devolucion = COALESCE($4, numero_cuotas_devolucion),
+                monto_cuota_devolucion   = COALESCE($5, monto_cuota_devolucion),
+                estado                   = COALESCE($6, estado),
+                notas                    = COALESCE($7, notas)
+            WHERE id = $8 RETURNING *
+        `, [tipo_devolucion, monto_total_devolucion || null, monto_pie_devolucion || null,
+            numero_cuotas_devolucion || null, monto_cuota_devolucion || null, estado, notas, id]);
+        if (result.rows.length === 0) return res.status(404).json({ message: 'Resciliación no encontrada.' });
+        res.json(result.rows[0]);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.setCuotasDevolucion = async (req, res) => {
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
+    try {
+        const { id } = req.params;
+        const { cuotas } = req.body;
+        if (!Array.isArray(cuotas) || cuotas.length === 0)
+            return res.status(400).json({ message: 'Debes enviar al menos una cuota.' });
+        // Solo elimina las no pagadas para no perder historial
+        await pool.query(`DELETE FROM im_cuotas_devolucion WHERE resciliacion_id=$1 AND pagado=false`, [id]);
+        for (const c of cuotas) {
+            await pool.query(
+                `INSERT INTO im_cuotas_devolucion (resciliacion_id, numero_cuota, monto, fecha_vencimiento)
+                 VALUES ($1,$2,$3,$4)`,
+                [id, c.numero_cuota, c.monto || null, c.fecha_vencimiento || null]
+            );
+        }
+        const result = await pool.query(
+            `SELECT * FROM im_cuotas_devolucion WHERE resciliacion_id=$1 ORDER BY numero_cuota ASC`, [id]
+        );
+        res.json(result.rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.pagarCuotaDevolucion = async (req, res) => {
+    const { createClient } = require('@supabase/supabase-js');
+    const path = require('path');
+    const supabaseAdmin = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
+    );
+    const BUCKET = 'cygnus-documentos';
+    try {
+        const { id } = req.params;
+        const { fecha_pago, notas } = req.body;
+
+        let comprobante_url = null, storage_path = null;
+        if (req.file) {
+            const ext = path.extname(req.file.originalname).toLowerCase();
+            storage_path = `cuotas-dev/${id}/${Date.now()}${ext}`;
+            const { error: upErr } = await supabaseAdmin.storage.from(BUCKET)
+                .upload(storage_path, req.file.buffer, { contentType: req.file.mimetype });
+            if (upErr) return res.status(500).json({ message: 'Error al subir comprobante: ' + upErr.message });
+            try {
+                const { data } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(storage_path, 60*60*24*365);
+                if (data?.signedUrl) comprobante_url = data.signedUrl;
+            } catch (_) { comprobante_url = storage_path; }
+        }
+
+        const sets = [`pagado=true`, `fecha_pago=COALESCE($1, CURRENT_DATE)`];
+        const params = [fecha_pago || null];
+        if (notas !== undefined) { params.push(notas); sets.push(`notas=$${params.length}`); }
+        if (comprobante_url)     { params.push(comprobante_url); sets.push(`comprobante_url=$${params.length}`); }
+        if (storage_path)        { params.push(storage_path);    sets.push(`storage_path=$${params.length}`); }
+        params.push(id);
+
+        const result = await pool.query(
+            `UPDATE im_cuotas_devolucion SET ${sets.join(',')} WHERE id=$${params.length} RETURNING *, resciliacion_id`,
+            params
+        );
+        if (result.rows.length === 0) return res.status(404).json({ message: 'Cuota de devolución no encontrada.' });
+
+        // Registrar en im_documentos como doc del parcela de la resciliación
+        if (comprobante_url) {
+            const cuota = result.rows[0];
+            const rescRes = await pool.query(`SELECT parcela_id FROM im_resciliaciones WHERE id=$1`, [cuota.resciliacion_id]);
+            if (rescRes.rows.length > 0) {
+                await pool.query(
+                    `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
+                     VALUES ($1,$2,'parcela',$3::text,$4,$5)`,
+                    [`Comprobante Devolución Cuota N° ${cuota.numero_cuota}`, comprobante_url,
+                     String(rescRes.rows[0].parcela_id), req.session.user?.id || null, storage_path]
+                ).catch(() => {});
+            }
+        }
+        res.json(result.rows[0]);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.uploadDocumentoResciliacion = async (req, res) => {
+    const { createClient } = require('@supabase/supabase-js');
+    const path = require('path');
+    const supabaseAdmin = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
+    );
+    const BUCKET = 'cygnus-documentos';
+    try {
+        if (!req.file) return res.status(400).json({ message: 'No se recibió archivo.' });
+        const { id } = req.params;
+
+        const rescRes = await pool.query(`SELECT parcela_id, venta_id FROM im_resciliaciones WHERE id=$1`, [id]);
+        if (rescRes.rows.length === 0) return res.status(404).json({ message: 'Resciliación no encontrada.' });
+        const { parcela_id, venta_id } = rescRes.rows[0];
+
+        const ext = path.extname(req.file.originalname).toLowerCase();
+        const storage_path = `resciliaciones/${id}/${Date.now()}${ext}`;
+        const { error: upErr } = await supabaseAdmin.storage.from(BUCKET)
+            .upload(storage_path, req.file.buffer, { contentType: req.file.mimetype });
+        if (upErr) return res.status(500).json({ message: 'Error al subir documento: ' + upErr.message });
+
+        let url = storage_path;
+        try {
+            const { data } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(storage_path, 60*60*24*365);
+            if (data?.signedUrl) url = data.signedUrl;
+        } catch (_) {}
+
+        // Actualizar resciliación
+        await pool.query(
+            `UPDATE im_resciliaciones SET documento_url=$1, documento_path=$2 WHERE id=$3`,
+            [url, storage_path, id]
+        );
+
+        // Registrar en im_documentos (asociado a la parcela)
+        await pool.query(
+            `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
+             VALUES ('Documento de Resciliación',$1,'parcela',$2::text,$3,$4)`,
+            [url, String(parcela_id), req.session.user?.id || null, storage_path]
+        ).catch(() => {});
+
+        res.json({ url, storage_path });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.getParcelasVendidas = async (req, res) => {
+    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
+    try {
+        const { proyecto_id } = req.query;
+        if (!proyecto_id) return res.status(400).json({ message: 'proyecto_id es requerido.' });
+        const result = await pool.query(`
+            SELECT pa.id, pa.numero_parcela,
+                   v.id AS venta_id, v.precio_acordado, v.tipo_pago, v.fecha_venta,
+                   c.nombre_completo AS cliente_nombre, c.rut AS cliente_rut
+            FROM im_parcelas pa
+            JOIN im_ventas_lotes v ON v.parcela_id = pa.id AND v.estado = 'activa'
+            JOIN im_clientes c ON v.cliente_id = c.id
+            WHERE pa.proyecto_id = $1
+            ORDER BY LENGTH(pa.numero_parcela), pa.numero_parcela
+        `, [proyecto_id]);
+        res.json(result.rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
