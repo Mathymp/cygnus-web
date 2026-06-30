@@ -57,6 +57,32 @@
         </div>
     </div>
 
+    <!-- Modal eliminar documento -->
+    <div id="modal-del-doc" class="im-modal-overlay">
+        <div class="im-modal-card" style="max-width:420px;">
+            <div class="im-modal-header" style="background:linear-gradient(135deg,#dc2626,#ef4444);">
+                <h3 style="display:flex;align-items:center;gap:8px;"><i class="bi bi-trash3-fill"></i> Eliminar Documento</h3>
+                <button class="btn-close" onclick="closeModal('del-doc')"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="im-modal-body" style="padding:24px;">
+                <div style="text-align:center;margin-bottom:20px;">
+                    <div style="width:56px;height:56px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                        <i class="bi bi-exclamation-triangle-fill" style="font-size:1.6rem;color:#dc2626;"></i>
+                    </div>
+                    <p style="font-weight:700;font-size:.95rem;color:#0f172a;margin:0 0 6px;">¿Eliminar este documento?</p>
+                    <p id="del-doc-nombre" style="font-size:.85rem;color:#64748b;margin:0;word-break:break-word;"></p>
+                    <p style="font-size:.78rem;color:#ef4444;margin:10px 0 0;font-weight:600;"><i class="bi bi-exclamation-circle"></i> Esta acción no se puede deshacer.</p>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="closeModal('del-doc')" class="im-btn im-btn-ghost" style="flex:1;">Cancelar</button>
+                    <button id="btn-confirm-del-doc" onclick="confirmDeleteDoc()" class="im-btn im-btn-danger" style="flex:1;">
+                        <i class="bi bi-trash3"></i> Sí, eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Resciliar contrato modal -->
     <div id="modal-liberar" class="im-modal-overlay">
         <div class="im-modal-card" style="max-width:520px;">
@@ -977,6 +1003,8 @@ function openCuotaModal(c){
 async function saveCuota(){
     const id=$('cuota-modal-id').value;
     const pagada=$('cuota-modal-pagada').checked;
+    const btn=document.querySelector('#modal-cuota .im-btn-success');
+    if(btn){btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...';}
     try{
         const body={pagado:pagada,fecha_pago:$('cuota-modal-fpago').value||null,monto:$('cuota-modal-monto').value,fecha_vencimiento:$('cuota-modal-venc').value||null,notas:$('cuota-modal-notas').value||null};
         const res=await fetch(`/api/im/cuotas/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -993,6 +1021,7 @@ async function saveCuota(){
         showToast(pagada?'Cuota marcada como pagada.':'Cuota actualizada.','success');
         init();
     }catch(e){showToast(e.message,'error');}
+    finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-save"></i> Guardar';}}
 }
 
 // ──────────────── GUARDAR PARCELA ────────────────
@@ -1274,7 +1303,7 @@ async function loadDocs(tipo_asociacion,asociacionId){
                     <a href="${escH(doc.url_storage)}" download="${escH(doc.nombre_personalizado)}.${ext}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Descargar"><i class="bi bi-download"></i></a>
                     <button class="im-btn im-btn-sm im-btn-ghost" onclick="startRename(${doc.id})" title="Renombrar"><i class="bi bi-pencil"></i></button>
                     <button class="im-btn im-btn-sm" id="save-rename-${doc.id}" style="display:none;" onclick="saveRename(${doc.id},'${tipo_asociacion}','${asociacionId}')"><i class="bi bi-check-lg"></i></button>
-                    ${(IS_ADMIN||PUEDE_CREAR)?`<button class="im-btn im-btn-sm im-btn-danger" onclick="deleteDoc(${doc.id},'${tipo_asociacion}','${asociacionId}')" title="Eliminar"><i class="bi bi-trash3"></i></button>`:''}
+                    ${(IS_ADMIN||PUEDE_CREAR)?`<button class="im-btn im-btn-sm im-btn-danger" onclick="deleteDoc(${doc.id},'${tipo_asociacion}','${asociacionId}','${escH(doc.nombre_personalizado)}')" title="Eliminar"><i class="bi bi-trash3"></i></button>`:''}
                 </div>
             </div>`;
         }).join('');
@@ -1293,13 +1322,24 @@ async function saveRename(id,tipo_asociacion,asociacionId){
     }catch(e){showToast(e.message,'error');cancelRename(id);}
 }
 
-async function deleteDoc(id,tipo_asociacion,asociacionId){
-    if(!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.'))return;
+let _delDocPending={id:null,tipo:null,asocId:null};
+function deleteDoc(id,tipo_asociacion,asociacionId,nombre){
+    _delDocPending={id,tipo:tipo_asociacion,asocId:asociacionId};
+    $('del-doc-nombre').textContent=nombre||'Documento seleccionado';
+    openModal('del-doc');
+}
+async function confirmDeleteDoc(){
+    const {id,tipo,asocId}=_delDocPending;if(!id)return;
+    const btn=$('btn-confirm-del-doc');
+    btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Eliminando...';
     try{
         const res=await fetch(`/api/im/documentos/${id}`,{method:'DELETE'});
-        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`No se pudo eliminar el documento (HTTP ${res.status}).`);}
-        showToast('Documento eliminado.','success');loadDocs(tipo_asociacion,asociacionId);loadAuditoria();
+        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`No se pudo eliminar (HTTP ${res.status}).`);}
+        closeModal('del-doc');
+        showToast('Documento eliminado correctamente.','success');
+        loadDocs(tipo,asocId);loadAuditoria();
     }catch(e){showToast(e.message,'error');}
+    finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-trash3"></i> Sí, eliminar';}
 }
 
 function previewDoc(url,nombre,ext){
