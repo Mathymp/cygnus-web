@@ -4,15 +4,71 @@
     <%- include('../partials/head') %>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/inmobiliaria.css">
+    <style>
+        .step-badge { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:#2563eb; color:white; font-size:0.75rem; font-weight:800; flex-shrink:0; }
+        .step-title { font-size:0.8rem; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.4px; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+        .step-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:14px; }
+        .step-box.highlight { background:#f0fdf4; border-color:#86efac; }
+        .rut-input-wrap { position:relative; }
+        .rut-status { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:1rem; }
+        .dm-queue { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+        .dm-queue-item { display:flex; align-items:center; gap:10px; background:white; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; }
+        .dm-queue-item input { flex:1; border:1px solid #e2e8f0; border-radius:6px; padding:6px 10px; font-size:0.82rem; font-family:inherit; }
+        .dm-queue-item input:focus { outline:none; border-color:#2563eb; }
+        .dm-progress { height:4px; background:#e2e8f0; border-radius:4px; margin-top:4px; overflow:hidden; }
+        .dm-progress-bar { height:100%; background:#10b981; border-radius:4px; transition:width 0.3s; }
+        .doc-item-name-edit { display:none; flex:1; border:1px solid #2563eb; border-radius:6px; padding:4px 8px; font-size:0.82rem; font-family:inherit; }
+        .doc-item-name-edit.active { display:block; }
+        .doc-item-name-display.hidden { display:none; }
+        .preview-frame { width:100%; height:500px; border:none; border-radius:8px; background:#f1f5f9; }
+        .price-hint { font-size:0.75rem; color:#64748b; margin-top:3px; }
+    </style>
 </head>
 <body class="dashboard-body">
     <%- include('../partials/alerts') %>
 
-    <!-- ====== TOAST ====== -->
-    <div id="im-toast" style="position:fixed; top:20px; right:20px; z-index:9999; pointer-events:none; opacity:0; transform:translateX(30px); transition:all 0.3s ease;">
-        <div id="im-toast-inner" style="padding:14px 18px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.15); display:flex; align-items:flex-start; gap:10px; min-width:250px; max-width:400px;">
+    <!-- Toast -->
+    <div id="im-toast" style="position:fixed; top:20px; right:20px; z-index:9999; pointer-events:none; opacity:0; transform:translateX(30px); transition:all 0.3s ease; max-width:420px;">
+        <div id="im-toast-inner" style="padding:14px 18px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.15); display:flex; align-items:flex-start; gap:10px;">
             <i id="im-toast-icon" class="bi" style="font-size:1.1rem; flex-shrink:0; margin-top:1px;"></i>
-            <div><div id="im-toast-title" style="font-weight:700; font-size:0.88rem;"></div><div id="im-toast-msg" style="font-size:0.82rem; margin-top:2px; opacity:0.85;"></div></div>
+            <div><div id="im-toast-title" style="font-weight:700; font-size:0.88rem;"></div><div id="im-toast-msg" style="font-size:0.82rem; margin-top:2px; opacity:0.9; word-break:break-word;"></div></div>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="modal-preview" class="im-modal-overlay">
+        <div class="im-modal-card" style="max-width:820px;">
+            <div class="im-modal-header">
+                <h3 id="preview-title"><i class="bi bi-eye"></i> Vista Previa</h3>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <a id="preview-download" href="#" download class="im-btn im-btn-sm im-btn-ghost" target="_blank">
+                        <i class="bi bi-download"></i> Descargar
+                    </a>
+                    <button class="btn-close" onclick="closeModal('preview')"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
+            <div class="im-modal-body" style="padding:16px; background:#f1f5f9; min-height:300px; display:flex; align-items:center; justify-content:center;">
+                <div id="preview-content" style="width:100%; text-align:center;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liberar parcela modal -->
+    <div id="modal-liberar" class="im-modal-overlay">
+        <div class="im-modal-card" style="max-width:400px;">
+            <div class="im-modal-header">
+                <h3><i class="bi bi-unlock"></i> Liberar Parcela</h3>
+                <button class="btn-close" onclick="closeModal('liberar')"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="im-modal-body" style="text-align:center; padding:28px 22px;">
+                <i class="bi bi-arrow-counterclockwise" style="font-size:2.5rem; color:#f59e0b; display:block; margin-bottom:10px;"></i>
+                <p style="font-weight:700; color:#0f172a; margin-bottom:6px;">¿Liberar esta parcela?</p>
+                <p style="font-size:0.85rem; color:#64748b;">Se eliminará la venta y la parcela vuelve a <strong>Disponible</strong>.</p>
+            </div>
+            <div class="im-modal-footer">
+                <button class="im-btn im-btn-ghost" onclick="closeModal('liberar')">Cancelar</button>
+                <button class="im-btn im-btn-danger" onclick="liberarParcela()"><i class="bi bi-unlock"></i> Liberar</button>
+            </div>
         </div>
     </div>
 
@@ -23,40 +79,39 @@
             <div class="dashboard-scroll">
 
                 <!-- Breadcrumb -->
-                <div style="display:flex; align-items:center; gap:8px; margin-top:16px; margin-bottom:20px; font-size:0.85rem; color:#64748b;">
+                <div style="display:flex; align-items:center; gap:8px; margin-top:16px; margin-bottom:16px; font-size:0.85rem; color:#64748b; flex-wrap:wrap;">
                     <a href="/admin/inmobiliaria" style="color:#2563eb; text-decoration:none; font-weight:600;">
                         <i class="bi bi-arrow-left"></i> Gestión de Campos
                     </a>
                     <span>›</span>
                     <span id="bc-proyecto" style="color:#64748b;">Proyecto</span>
                     <span>›</span>
-                    <span id="bc-parcela" style="color:#0f172a; font-weight:700;">Parcela</span>
+                    <b id="bc-parcela" style="color:#0f172a;">Parcela</b>
                 </div>
 
-                <!-- Header de la parcela -->
-                <div class="im-page-header" id="parcela-header" style="margin-top:0;">
+                <!-- Header -->
+                <div class="im-page-header" id="parcela-header" style="margin-top:0; margin-bottom:16px;">
                     <div>
-                        <h1 id="parcela-titulo">Cargando...</h1>
+                        <h1 id="parcela-titulo" style="font-size:1.5rem;">Cargando...</h1>
                         <div id="parcela-estado-badge" style="margin-top:6px;"></div>
                     </div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;" id="header-actions"></div>
                 </div>
 
-                <!-- Layout de dos columnas -->
                 <div class="im-ficha-layout">
 
-                    <!-- COLUMNA IZQUIERDA: Detalles + Historial precios -->
+                    <!-- ══════════════ COLUMNA IZQUIERDA ══════════════ -->
                     <div style="display:flex; flex-direction:column; gap:16px;">
 
-                        <!-- Datos de la parcela -->
+                        <!-- Info de la parcela -->
                         <div class="im-panel" id="panel-detalles">
                             <p class="im-panel-title"><i class="bi bi-info-circle"></i> Información de la Parcela</p>
                             <div id="detalle-rows">
                                 <div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>
                             </div>
 
-                            <div style="margin-top:16px;">
-                                <label style="font-size:0.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.4px; display:block; margin-bottom:8px;">Actualizar Datos</label>
+                            <div style="margin-top:18px; padding-top:14px; border-top:1px solid #e2e8f0;">
+                                <p class="step-title" style="margin-bottom:10px;"><i class="bi bi-pencil-square"></i> Actualizar Datos</p>
                                 <div class="im-form-row">
                                     <div class="im-input-group">
                                         <label>N° Rol Parcela</label>
@@ -64,13 +119,14 @@
                                     </div>
                                     <div class="im-input-group">
                                         <label>Metraje (m²)</label>
-                                        <input type="number" id="edit-metraje" class="styled-input" placeholder="Ej: 5000" step="0.01">
+                                        <input type="number" id="edit-metraje" class="styled-input" step="0.01" placeholder="Ej: 5000">
                                     </div>
                                 </div>
                                 <div class="im-form-row">
                                     <div class="im-input-group">
-                                        <label>Precio (CLP)</label>
+                                        <label>Precio de Lista (CLP)</label>
                                         <input type="text" id="edit-precio" class="styled-input" placeholder="Ej: 25.000.000" oninput="fmtPrecio(this)">
+                                        <p class="price-hint">Precio publicado / de referencia</p>
                                     </div>
                                     <div class="im-input-group">
                                         <label>Estado de Venta</label>
@@ -81,7 +137,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <button class="im-btn im-btn-primary im-btn-full" onclick="guardarParcela()">
+                                <button class="im-btn im-btn-primary im-btn-full" onclick="guardarParcela(event)">
                                     <i class="bi bi-save"></i> Guardar Cambios
                                 </button>
                             </div>
@@ -91,44 +147,38 @@
                         <div class="im-panel">
                             <p class="im-panel-title"><i class="bi bi-graph-up"></i> Historial de Precios</p>
                             <div id="historial-precios">
-                                <div class="im-empty"><i class="bi bi-clock-history"></i><p>Sin historial de precios.</p></div>
+                                <div class="im-empty"><i class="bi bi-clock-history"></i><p>Sin historial aún.</p></div>
                             </div>
                         </div>
 
                     </div>
 
-                    <!-- COLUMNA DERECHA: Tabs (Comprador, Documentos, Auditoría) -->
-                    <div class="im-panel" style="min-height:500px;">
+                    <!-- ══════════════ COLUMNA DERECHA ══════════════ -->
+                    <div class="im-panel" style="min-height:600px;">
                         <div class="im-tabs-header">
-                            <button class="im-tab-btn active" onclick="switchTab('comprador', this)">
-                                <i class="bi bi-person-fill"></i> Comprador
-                            </button>
-                            <button class="im-tab-btn" onclick="switchTab('docs-proyecto', this)">
-                                <i class="bi bi-folder2"></i> Del Proyecto
-                            </button>
-                            <button class="im-tab-btn" onclick="switchTab('docs-lote', this)">
-                                <i class="bi bi-file-earmark-text"></i> Del Lote
-                            </button>
-                            <button class="im-tab-btn" onclick="switchTab('docs-persona', this)">
-                                <i class="bi bi-person-vcard"></i> De la Persona
-                            </button>
-                            <button class="im-tab-btn" onclick="switchTab('auditoria', this)">
-                                <i class="bi bi-clock-history"></i> Auditoría
-                            </button>
+                            <button class="im-tab-btn active" onclick="switchTab('comprador',this)"><i class="bi bi-person-fill"></i> Comprador</button>
+                            <button class="im-tab-btn" onclick="switchTab('docs-proyecto',this)"><i class="bi bi-folder2"></i> Proyecto</button>
+                            <button class="im-tab-btn" onclick="switchTab('docs-lote',this)"><i class="bi bi-file-earmark-text"></i> Lote</button>
+                            <button class="im-tab-btn" onclick="switchTab('docs-persona',this)"><i class="bi bi-person-vcard"></i> Persona</button>
+                            <button class="im-tab-btn" onclick="switchTab('auditoria',this)"><i class="bi bi-clock-history"></i> Auditoría</button>
                         </div>
 
-                        <!-- TAB: COMPRADOR -->
+                        <!-- ─── TAB COMPRADOR ─── -->
                         <div id="tab-comprador" class="im-tab-content active">
 
-                            <div id="venta-actual" style="margin-bottom:20px;"></div>
+                            <div id="venta-actual" style="margin-bottom:16px;"></div>
 
-                            <!-- Buscador de cliente por RUT -->
-                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px;">
-                                <label style="font-size:0.78rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.4px; display:block; margin-bottom:10px;">
-                                    <i class="bi bi-search"></i> Buscar cliente existente por RUT
-                                </label>
-                                <div style="display:flex; gap:8px;">
-                                    <input type="text" id="buscar-rut" class="styled-input" placeholder="Ej: 12.345.678-9" style="flex:1;" oninput="autoFmtRut(this)">
+                            <!-- PASO 1: Buscar por RUT -->
+                            <div class="step-box">
+                                <p class="step-title">
+                                    <span class="step-badge">1</span> Buscar Cliente Existente por RUT
+                                </p>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <div class="rut-input-wrap" style="flex:1;">
+                                        <input type="text" id="buscar-rut" class="styled-input" placeholder="Ej: 12.345.678-9"
+                                            oninput="autoFmtRut(this,'buscar-rut-status')" style="padding-right:38px;">
+                                        <span id="buscar-rut-status" class="rut-status"></span>
+                                    </div>
                                     <button class="im-btn im-btn-ghost" onclick="buscarCliente()">
                                         <i class="bi bi-search"></i> Buscar
                                     </button>
@@ -136,36 +186,46 @@
                                 <div id="cliente-encontrado" style="margin-top:10px; display:none;"></div>
                             </div>
 
-                            <!-- Separator -->
-                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+                            <!-- Separador -->
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
                                 <div style="flex:1; height:1px; background:#e2e8f0;"></div>
-                                <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">o crear cliente nuevo</span>
+                                <span style="font-size:0.75rem; color:#94a3b8; font-weight:600; white-space:nowrap;">o completar / crear cliente nuevo</span>
                                 <div style="flex:1; height:1px; background:#e2e8f0;"></div>
                             </div>
 
-                            <!-- Formulario de cliente -->
-                            <form id="form-venta">
+                            <form id="form-venta" autocomplete="off">
                                 <input type="hidden" id="venta-cliente-id">
 
-                                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px; margin-bottom:14px;">
-                                    <p style="font-size:0.8rem; font-weight:700; color:#166534; margin:0 0 10px;">
-                                        <i class="bi bi-person-plus-fill"></i> Datos del Comprador
+                                <!-- PASO 2: Datos del comprador -->
+                                <div class="step-box highlight">
+                                    <p class="step-title">
+                                        <span class="step-badge" style="background:#10b981;">2</span> Datos del Comprador
                                     </p>
-                                    <div class="im-form-row">
-                                        <div class="im-input-group" style="grid-column:1/-1;">
-                                            <label>Nombre Completo *</label>
-                                            <input type="text" id="cli-nombre" class="styled-input" placeholder="Nombre y apellidos">
-                                        </div>
+                                    <div class="im-input-group">
+                                        <label>Nombre Completo <span style="color:#ef4444;">*</span></label>
+                                        <input type="text" id="cli-nombre" class="styled-input" placeholder="Nombre y apellidos">
                                     </div>
                                     <div class="im-form-row">
                                         <div class="im-input-group">
-                                            <label>RUT *</label>
-                                            <input type="text" id="cli-rut" class="styled-input" placeholder="12.345.678-9" oninput="autoFmtRut(this)">
+                                            <label>RUT <span style="color:#ef4444;">*</span></label>
+                                            <div class="rut-input-wrap">
+                                                <input type="text" id="cli-rut" class="styled-input" placeholder="12.345.678-9"
+                                                    oninput="autoFmtRut(this,'cli-rut-status')" style="padding-right:38px;">
+                                                <span id="cli-rut-status" class="rut-status"></span>
+                                            </div>
                                         </div>
                                         <div class="im-input-group">
-                                            <label>Dirección</label>
-                                            <input type="text" id="cli-direccion" class="styled-input" placeholder="Calle, ciudad">
+                                            <label>Teléfono</label>
+                                            <input type="tel" id="cli-telefono" class="styled-input" placeholder="+56 9 1234 5678">
                                         </div>
+                                    </div>
+                                    <div class="im-input-group">
+                                        <label>Correo Electrónico</label>
+                                        <input type="email" id="cli-email" class="styled-input" placeholder="correo@ejemplo.cl">
+                                    </div>
+                                    <div class="im-input-group">
+                                        <label>Dirección</label>
+                                        <textarea id="cli-direccion" class="styled-input" rows="2" placeholder="Calle, número, ciudad, región" style="resize:vertical;"></textarea>
                                     </div>
                                     <div class="im-input-group">
                                         <label>Estado Civil</label>
@@ -177,8 +237,7 @@
                                             <option value="Conviviente Civil">Conviviente Civil</option>
                                         </select>
                                     </div>
-                                    <div id="section-conyuge" style="display:none;">
-                                        <div style="height:1px; background:#bbf7d0; margin:10px 0;"></div>
+                                    <div id="section-conyuge" style="display:none; border-top:1px solid #bbf7d0; padding-top:10px; margin-top:6px;">
                                         <p style="font-size:0.78rem; font-weight:700; color:#166534; margin:0 0 8px;">
                                             <i class="bi bi-people-fill"></i> Datos del Cónyuge / Conviviente
                                         </p>
@@ -189,69 +248,88 @@
                                             </div>
                                             <div class="im-input-group">
                                                 <label>RUT Cónyuge</label>
-                                                <input type="text" id="cli-conyuge-rut" class="styled-input" placeholder="12.345.678-9" oninput="autoFmtRut(this)">
+                                                <div class="rut-input-wrap">
+                                                    <input type="text" id="cli-conyuge-rut" class="styled-input" placeholder="12.345.678-9"
+                                                        oninput="autoFmtRut(this,'conyuge-rut-status')" style="padding-right:38px;">
+                                                    <span id="conyuge-rut-status" class="rut-status"></span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Datos de la venta -->
-                                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:14px;">
-                                    <p style="font-size:0.8rem; font-weight:700; color:#334155; margin:0 0 10px;">
-                                        <i class="bi bi-cash-coin"></i> Condiciones de Venta
+                                <!-- PASO 3: Condiciones de venta -->
+                                <div class="step-box">
+                                    <p class="step-title">
+                                        <span class="step-badge" style="background:#f59e0b;">3</span> Condiciones de la Venta
                                     </p>
+                                    <div class="im-form-row">
+                                        <div class="im-input-group">
+                                            <label>Precio de Lista (CLP)</label>
+                                            <input type="text" id="venta-precio-lista" class="styled-input" placeholder="Precio publicado" oninput="fmtPrecio(this)">
+                                            <p class="price-hint">Se autocompleta del precio de la parcela</p>
+                                        </div>
+                                        <div class="im-input-group">
+                                            <label>Precio Acordado / Oferta (CLP)</label>
+                                            <input type="text" id="venta-precio-acordado" class="styled-input" placeholder="Precio negociado" oninput="fmtPrecio(this)">
+                                            <p class="price-hint">Precio final que pagó el comprador</p>
+                                        </div>
+                                    </div>
                                     <div class="im-input-group">
                                         <label>Forma de Pago</label>
-                                        <input type="text" id="venta-forma-pago" class="styled-input" placeholder="Ej: Transferencia, crédito hipotecario, efectivo...">
+                                        <input type="text" id="venta-forma-pago" class="styled-input" placeholder="Ej: Transferencia bancaria, crédito hipotecario, efectivo...">
+                                    </div>
+                                    <div class="im-form-row">
+                                        <div class="im-input-group">
+                                            <label>Fecha de Venta</label>
+                                            <input type="date" id="venta-fecha" class="styled-input">
+                                        </div>
+                                        <div class="im-input-group" style="display:flex; flex-direction:column; justify-content:flex-end; gap:6px;">
+                                            <div class="im-checkbox-row" style="padding:6px 0;">
+                                                <input type="checkbox" id="venta-promesa">
+                                                <label for="venta-promesa">Firmó Promesa de Compraventa</label>
+                                            </div>
+                                            <div class="im-checkbox-row" style="padding:6px 0;">
+                                                <input type="checkbox" id="venta-compraventa">
+                                                <label for="venta-compraventa">Firmó Escritura de Compraventa</label>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="im-input-group">
-                                        <label>Fecha de Venta</label>
-                                        <input type="date" id="venta-fecha" class="styled-input">
-                                    </div>
-                                    <div class="im-checkbox-row">
-                                        <input type="checkbox" id="venta-promesa">
-                                        <label for="venta-promesa">Firmó Promesa de Compraventa</label>
-                                    </div>
-                                    <div class="im-checkbox-row">
-                                        <input type="checkbox" id="venta-compraventa">
-                                        <label for="venta-compraventa">Firmó Escritura de Compraventa</label>
+                                        <label>Notas adicionales</label>
+                                        <textarea id="venta-notas" class="styled-input" rows="2" placeholder="Observaciones, condiciones especiales, acuerdos..." style="resize:vertical;"></textarea>
                                     </div>
                                 </div>
 
-                                <button type="submit" class="im-btn im-btn-success im-btn-full" style="margin-top:4px;">
-                                    <i class="bi bi-person-check-fill"></i> Asignar Comprador y Registrar Venta
+                                <button type="submit" class="im-btn im-btn-success im-btn-full">
+                                    <i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta
                                 </button>
                             </form>
                         </div>
 
-                        <!-- TAB: DOCUMENTOS DEL PROYECTO -->
+                        <!-- ─── TAB DOCS PROYECTO ─── -->
                         <div id="tab-docs-proyecto" class="im-tab-content">
-                            <div id="uploader-proyecto"></div>
-                            <div id="docs-list-proyecto" class="im-doc-list"></div>
+                            <div id="dm-proyecto"></div>
                         </div>
 
-                        <!-- TAB: DOCUMENTOS DEL LOTE -->
+                        <!-- ─── TAB DOCS LOTE ─── -->
                         <div id="tab-docs-lote" class="im-tab-content">
-                            <div id="uploader-lote"></div>
-                            <div id="docs-list-lote" class="im-doc-list"></div>
+                            <div id="dm-lote"></div>
                         </div>
 
-                        <!-- TAB: DOCUMENTOS DE LA PERSONA -->
+                        <!-- ─── TAB DOCS PERSONA ─── -->
                         <div id="tab-docs-persona" class="im-tab-content">
-                            <div id="uploader-persona" style="display:none;">
-                                <div id="persona-uploader-inner"></div>
-                            </div>
-                            <div id="no-cliente-msg" style="background:#fef3c7; border:1px solid #fde68a; border-radius:10px; padding:16px; text-align:center; color:#92400e; font-size:0.85rem; margin-bottom:16px;">
+                            <div id="no-cliente-msg" style="background:#fef3c7; border:1px solid #fde68a; border-radius:10px; padding:16px; text-align:center; color:#92400e; font-size:0.85rem;">
                                 <i class="bi bi-person-exclamation" style="font-size:1.5rem; display:block; margin-bottom:6px;"></i>
-                                Asigna un comprador primero para gestionar sus documentos.
+                                Asigna un comprador primero para gestionar sus documentos personales.
                             </div>
-                            <div id="docs-list-persona" class="im-doc-list"></div>
+                            <div id="dm-persona"></div>
                         </div>
 
-                        <!-- TAB: AUDITORÍA -->
+                        <!-- ─── TAB AUDITORÍA ─── -->
                         <div id="tab-auditoria" class="im-tab-content">
                             <div id="auditoria-list" class="im-audit-list">
-                                <div class="im-empty"><i class="bi bi-clock-history"></i><p>Cargando registros...</p></div>
+                                <div class="im-empty"><i class="bi bi-clock-history"></i><p>Cargando...</p></div>
                             </div>
                         </div>
 
@@ -261,517 +339,602 @@
         </main>
     </div>
 
-    <!-- ====== MODAL CONFIRMAR LIBERACIÓN DE LOTE ====== -->
-    <div id="modal-liberar" class="im-modal-overlay">
-        <div class="im-modal-card" style="max-width:400px;">
-            <div class="im-modal-header">
-                <h3><i class="bi bi-unlock"></i> Liberar Parcela</h3>
-                <button class="btn-close" onclick="closeModal('liberar')"><i class="bi bi-x-lg"></i></button>
-            </div>
-            <div class="im-modal-body" style="text-align:center; padding:28px 22px;">
-                <i class="bi bi-arrow-counterclockwise" style="font-size:2.5rem; color:#f59e0b; display:block; margin-bottom:10px;"></i>
-                <p style="font-weight:700; color:#0f172a; margin-bottom:6px;">¿Liberar esta parcela?</p>
-                <p style="font-size:0.85rem; color:#64748b;">Se eliminará la venta asignada y la parcela volverá a estado Disponible.</p>
-            </div>
-            <div class="im-modal-footer">
-                <button class="im-btn im-btn-ghost" onclick="closeModal('liberar')">Cancelar</button>
-                <button class="im-btn im-btn-danger" onclick="liberarParcela()"><i class="bi bi-unlock"></i> Liberar</button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        const PARCELA_ID = '<%= parcelaId %>';
-        const IS_ADMIN = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
-        const PUEDE_CREAR = '<%= typeof puedeCrear !== "undefined" && puedeCrear ? "true" : "false" %>' === 'true';
+    const PARCELA_ID  = '<%= parcelaId %>';
+    const IS_ADMIN    = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
+    const PUEDE_CREAR = '<%= typeof puedeCrear !== "undefined" && puedeCrear ? "true" : "false" %>' === 'true';
 
-        // ---- Toast ----
-        function showToast(msg, type='success', title='') {
-            const toast = document.getElementById('im-toast');
-            const inner = document.getElementById('im-toast-inner');
-            const icon  = document.getElementById('im-toast-icon');
-            const titleEl = document.getElementById('im-toast-title');
-            const msgEl = document.getElementById('im-toast-msg');
-            const cfg = {
-                success: { bg:'#dcfce7', color:'#166534', border:'#86efac', icon:'bi-check-circle-fill', def:'Éxito' },
-                error:   { bg:'#fee2e2', color:'#991b1b', border:'#fca5a5', icon:'bi-exclamation-triangle-fill', def:'Error' },
-                warning: { bg:'#fef3c7', color:'#92400e', border:'#fde68a', icon:'bi-exclamation-circle-fill', def:'Atención' },
-                info:    { bg:'#eff6ff', color:'#1e40af', border:'#bfdbfe', icon:'bi-info-circle-fill', def:'Info' }
-            };
-            const s = cfg[type] || cfg.info;
-            inner.style.cssText = `background:${s.bg}; color:${s.color}; border:1.5px solid ${s.border}; padding:14px 18px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.12); display:flex; align-items:flex-start; gap:10px; min-width:250px; max-width:400px;`;
-            icon.className = `bi ${s.icon}`;
-            titleEl.style.cssText = 'font-weight:700; font-size:0.88rem;';
-            msgEl.style.cssText = 'font-size:0.82rem; margin-top:2px; opacity:0.9; word-break:break-word;';
-            titleEl.textContent = title || s.def;
-            msgEl.textContent = msg;
-            toast.style.opacity = '1'; toast.style.transform = 'translateX(0)'; toast.style.pointerEvents = 'auto';
-            clearTimeout(toast._t);
-            toast._t = setTimeout(() => { toast.style.opacity='0'; toast.style.transform='translateX(30px)'; toast.style.pointerEvents='none'; }, 5000);
+    let parcelaData = null, ventaData = null, currentClienteId = null, proyectoId = null;
+
+    // ──────────────────────────────── TOAST ────────────────────────────────
+    function showToast(msg, type='success', title='') {
+        const t = document.getElementById('im-toast');
+        const i = document.getElementById('im-toast-inner');
+        const cfg = {
+            success:{ bg:'#dcfce7', c:'#166534', b:'#86efac', ic:'bi-check-circle-fill', d:'Éxito' },
+            error:  { bg:'#fee2e2', c:'#991b1b', b:'#fca5a5', ic:'bi-exclamation-triangle-fill', d:'Error' },
+            warning:{ bg:'#fef3c7', c:'#92400e', b:'#fde68a', ic:'bi-exclamation-circle-fill', d:'Atención' },
+            info:   { bg:'#eff6ff', c:'#1e40af', b:'#bfdbfe', ic:'bi-info-circle-fill', d:'Info' }
+        };
+        const s = cfg[type]||cfg.info;
+        i.style.cssText = `background:${s.bg};color:${s.c};border:1.5px solid ${s.b};padding:14px 18px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);display:flex;align-items:flex-start;gap:10px;`;
+        i.innerHTML = `<i class="bi ${s.ic}" style="font-size:1.1rem;flex-shrink:0;margin-top:1px;"></i>
+            <div><div style="font-weight:700;font-size:0.88rem;">${title||s.d}</div>
+            <div style="font-size:0.82rem;margin-top:2px;opacity:0.9;word-break:break-word;">${escH(msg)}</div></div>`;
+        t.style.opacity='1'; t.style.transform='translateX(0)'; t.style.pointerEvents='auto';
+        clearTimeout(t._t);
+        t._t = setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(30px)'; t.style.pointerEvents='none'; }, 5000);
+    }
+
+    // ──────────────────────────────── HELPERS ────────────────────────────────
+    const $ = id => document.getElementById(id);
+    function fmt(n) { return Math.floor(parseFloat(n)||0).toLocaleString('es-CL'); }
+    function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function fmtPrecio(input) { input.value = input.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+    function openModal(id) { $(`modal-${id}`).classList.add('show'); }
+    function closeModal(id) { $(`modal-${id}`).classList.remove('show'); }
+
+    function autoFmtRut(input, statusId) {
+        let v = input.value.replace(/[^0-9kK]/g,'').toUpperCase();
+        if (v.length > 1) v = v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.') + '-' + v.slice(-1);
+        input.value = v;
+        const statusEl = $(statusId);
+        if (!statusEl) return;
+        if (v.length < 3) { statusEl.textContent=''; return; }
+        const esValido = validarRut(v);
+        statusEl.textContent = esValido ? '✅' : '❌';
+        input.style.borderColor = esValido ? '#10b981' : (v.length > 4 ? '#ef4444' : '');
+    }
+
+    function validarRut(rut) {
+        const clean = rut.replace(/[^0-9kK]/g,'').toUpperCase();
+        if (clean.length < 2) return false;
+        const body = clean.slice(0,-1);
+        const dv   = clean.slice(-1);
+        let suma=0, mul=2;
+        for (let i=body.length-1; i>=0; i--) {
+            suma += parseInt(body[i],10) * mul;
+            mul = mul >= 7 ? 2 : mul+1;
+        }
+        const rest   = 11 - (suma % 11);
+        const dvCalc = rest===11?'0': rest===10?'K': String(rest);
+        return dv === dvCalc;
+    }
+
+    function toggleConyuge(val) {
+        $('section-conyuge').style.display = (val==='Casado/a'||val==='Conviviente Civil') ? 'block':'none';
+    }
+
+    function switchTab(name, btn) {
+        document.querySelectorAll('.im-tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.im-tab-content').forEach(c=>c.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+        $(`tab-${name}`).classList.add('active');
+        if (name==='docs-proyecto' && proyectoId) { initDM('proyecto', proyectoId); loadDocs('proyecto', proyectoId); }
+        if (name==='docs-lote') { initDM('lote', PARCELA_ID); loadDocs('parcela', PARCELA_ID); }
+        if (name==='docs-persona' && currentClienteId) { initDM('persona', currentClienteId); loadDocs('persona', currentClienteId); }
+        if (name==='auditoria') loadAuditoria();
+    }
+
+    // ──────────────────────────────── INIT PARCELA ────────────────────────────────
+    async function init() {
+        try {
+            const res = await fetch(`/api/im/parcelas/${PARCELA_ID}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            parcelaData = data.parcela;
+            ventaData   = data.venta;
+            proyectoId  = parcelaData.proyecto_id;
+            renderParcela(data);
+            initDM('lote', PARCELA_ID);
+        } catch(e) {
+            $('parcela-titulo').textContent = 'Error: ' + e.message;
+        }
+    }
+
+    function renderParcela(data) {
+        const p=data.parcela, venta=data.venta, hist=data.historial_precios||[];
+
+        $('bc-proyecto').textContent = p.proyecto_nombre||'Proyecto';
+        $('bc-parcela').textContent  = `Parcela N° ${p.numero_parcela}`;
+        $('parcela-titulo').textContent = `Parcela N° ${p.numero_parcela} — ${p.proyecto_nombre}`;
+
+        const eMap = {disponible:{cl:'disponible',ic:'bi-circle-fill',t:'Disponible'}, reservado:{cl:'reservado',ic:'bi-clock-history',t:'Reservado'}, vendido:{cl:'vendido',ic:'bi-bag-check-fill',t:'Vendido'}};
+        const e = eMap[p.estado_venta]||eMap.disponible;
+        $('parcela-estado-badge').innerHTML = `<span class="im-status-badge ${e.cl}"><i class="bi ${e.ic}"></i> ${e.t}</span>`;
+
+        $('header-actions').innerHTML = (IS_ADMIN && venta) ? `<button class="im-btn im-btn-danger" onclick="openModal('liberar')"><i class="bi bi-unlock"></i> Liberar Parcela</button>` : '';
+
+        const rows = [
+            ['N° Parcela', p.numero_parcela],
+            ['N° Rol Parcela', p.numero_rol_parcela||'—'],
+            ['Metraje', p.metraje ? `${Number(p.metraje).toLocaleString('es-CL')} m²`:'—'],
+            ['Precio de Lista', p.precio_actual ? `$${fmt(p.precio_actual)}`:'—'],
+            ['Proyecto', p.proyecto_nombre],
+            ['N° Rol 1', p.numero_rol_1||'—'],
+            ['N° Rol 2', p.numero_rol_2||'—'],
+            ['N° Matriz', p.numero_matriz||'—'],
+        ];
+        $('detalle-rows').innerHTML = rows.map(([k,v])=>
+            `<div class="im-detail-row"><span class="im-detail-key">${k}</span><span class="im-detail-val">${v}</span></div>`
+        ).join('');
+
+        $('edit-rol').value    = p.numero_rol_parcela||'';
+        $('edit-metraje').value = p.metraje||'';
+        if (p.precio_actual) $('edit-precio').value = Number(p.precio_actual).toLocaleString('es-CL');
+        $('edit-estado').value = p.estado_venta;
+
+        // Historial precios
+        if (hist.length===0) {
+            $('historial-precios').innerHTML = '<div class="im-empty"><i class="bi bi-clock-history"></i><p>Sin historial de precios.</p></div>';
+        } else {
+            $('historial-precios').innerHTML = `<div class="im-price-timeline">${hist.map((h,i)=>`
+                <div class="im-price-entry ${i===hist.length-1?'latest':''}">
+                    <div class="im-price-meta">
+                        <span class="im-price-amount">$${fmt(h.precio)}</span>
+                        <span class="im-price-date">${new Date(h.fecha_registro).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'})}</span>
+                    </div>
+                </div>`).join('')}</div>`;
         }
 
-        let parcelaData = null;
-        let ventaData = null;
-        let currentClienteId = null;
-        let proyectoId = null;
-
-        // ---- Helpers ----
-        const $ = id => document.getElementById(id);
-        function fmt(n) { return Math.floor(n).toLocaleString('es-CL'); }
-        function openModal(id)  { $(`modal-${id}`).classList.add('show'); }
-        function closeModal(id) { $(`modal-${id}`).classList.remove('show'); }
-
-        function fmtPrecio(input) {
-            let val = input.value.replace(/\D/g, '');
-            input.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        }
-
-        function autoFmtRut(input) {
-            let v = input.value.replace(/[^0-9kK]/g,'').toUpperCase();
-            if (v.length > 1) v = v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.') + '-' + v.slice(-1);
-            input.value = v;
-        }
-
-        function toggleConyuge(val) {
-            const show = val === 'Casado/a' || val === 'Conviviente Civil';
-            $('section-conyuge').style.display = show ? 'block' : 'none';
-        }
-
-        function switchTab(name, btn) {
-            document.querySelectorAll('.im-tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.im-tab-content').forEach(c => c.classList.remove('active'));
-            if (btn) btn.classList.add('active');
-            $(`tab-${name}`).classList.add('active');
-            if (name === 'docs-proyecto' && proyectoId) loadDocs('proyecto', proyectoId);
-            if (name === 'docs-lote')  loadDocs('parcela', PARCELA_ID);
-            if (name === 'docs-persona' && currentClienteId) loadDocs('persona', currentClienteId);
-            if (name === 'auditoria') loadAuditoria();
-        }
-
-        // ---- Cargar datos de la parcela ----
-        async function init() {
-            try {
-                const res = await fetch(`/api/im/parcelas/${PARCELA_ID}`);
-                if (!res.ok) throw new Error('Parcela no encontrada.');
-                const data = await res.json();
-                parcelaData = data.parcela;
-                ventaData = data.venta;
-                proyectoId = parcelaData.proyecto_id;
-                renderParcela(data);
-            } catch (e) {
-                $('parcela-titulo').textContent = 'Error: ' + e.message;
-            }
-        }
-
-        function renderParcela(data) {
-            const p = data.parcela;
-            const venta = data.venta;
-            const historial = data.historial_precios || [];
-
-            // Breadcrumb
-            $('bc-proyecto').textContent = p.proyecto_nombre || 'Proyecto';
-            $('bc-parcela').textContent = `Parcela N° ${p.numero_parcela}`;
-
-            // Header
-            $('parcela-titulo').textContent = `Parcela N° ${p.numero_parcela} — ${p.proyecto_nombre}`;
-
-            const estadoMap = {
-                disponible: { class: 'disponible', icon: 'bi-check-circle-fill', text: 'Disponible' },
-                reservado:  { class: 'reservado',  icon: 'bi-clock-history',      text: 'Reservado' },
-                vendido:    { class: 'vendido',     icon: 'bi-bag-check-fill',     text: 'Vendido' }
-            };
-            const est = estadoMap[p.estado_venta] || estadoMap['disponible'];
-            $('parcela-estado-badge').innerHTML = `
-                <span class="im-status-badge ${est.class}">
-                    <i class="bi ${est.icon}"></i> ${est.text}
-                </span>`;
-
-            // Acciones admin header
-            if (IS_ADMIN) {
-                $('header-actions').innerHTML = venta ? `
-                    <button class="im-btn im-btn-danger" onclick="openModal('liberar')">
-                        <i class="bi bi-unlock"></i> Liberar Parcela
-                    </button>` : '';
-            }
-
-            // Detalles
-            const rows = [
-                ['N° Parcela', p.numero_parcela],
-                ['N° Rol Parcela', p.numero_rol_parcela || '—'],
-                ['Metraje', p.metraje ? `${Number(p.metraje).toLocaleString('es-CL')} m²` : '—'],
-                ['Precio Actual', p.precio_actual ? `$${fmt(p.precio_actual)}` : '—'],
-                ['Proyecto', p.proyecto_nombre],
-                ['N° Rol 1', p.numero_rol_1 || '—'],
-                ['N° Rol 2', p.numero_rol_2 || '—'],
-                ['N° Matriz', p.numero_matriz || '—'],
-            ];
-            $('detalle-rows').innerHTML = rows.map(([k,v]) =>
-                `<div class="im-detail-row"><span class="im-detail-key">${k}</span><span class="im-detail-val">${v}</span></div>`
-            ).join('');
-
-            // Prellenar formulario de edición
-            $('edit-rol').value = p.numero_rol_parcela || '';
-            $('edit-metraje').value = p.metraje || '';
-            if (p.precio_actual) $('edit-precio').value = Number(p.precio_actual).toLocaleString('es-CL');
-            $('edit-estado').value = p.estado_venta;
-
-            // Historial de precios
-            if (historial.length === 0) {
-                $('historial-precios').innerHTML = '<div class="im-empty"><i class="bi bi-clock-history"></i><p>Sin historial de precios.</p></div>';
-            } else {
-                $('historial-precios').innerHTML = `<div class="im-price-timeline">
-                    ${historial.map((h, i) => `
-                        <div class="im-price-entry ${i === historial.length-1 ? 'latest' : ''}">
-                            <div class="im-price-meta">
-                                <span class="im-price-amount">$${fmt(h.precio)}</span>
-                                <span class="im-price-date">${new Date(h.fecha_registro).toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' })}</span>
-                            </div>
-                        </div>`).join('')}
-                </div>`;
-            }
-
-            // Venta actual
-            if (venta) {
-                currentClienteId = venta.cliente_id;
-                $('venta-actual').innerHTML = `
-                    <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:12px; padding:16px; margin-bottom:12px;">
-                        <p style="font-size:0.78rem; font-weight:700; color:#166534; text-transform:uppercase; margin:0 0 10px; letter-spacing:0.4px;">
+        // Venta actual
+        if (venta) {
+            currentClienteId = venta.cliente_id;
+            $('venta-actual').innerHTML = `
+                <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:12px; padding:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                        <p style="font-size:0.78rem; font-weight:700; color:#166534; margin:0; text-transform:uppercase; letter-spacing:0.4px;">
                             <i class="bi bi-person-check-fill"></i> Comprador Asignado
                         </p>
-                        <div class="im-detail-row"><span class="im-detail-key">Nombre</span><span class="im-detail-val">${escapeHtml(venta.nombre_completo)}</span></div>
-                        <div class="im-detail-row"><span class="im-detail-key">RUT</span><span class="im-detail-val">${venta.rut}</span></div>
-                        <div class="im-detail-row"><span class="im-detail-key">Estado Civil</span><span class="im-detail-val">${venta.estado_civil}</span></div>
-                        ${venta.nombre_conyugue ? `<div class="im-detail-row"><span class="im-detail-key">Cónyuge</span><span class="im-detail-val">${escapeHtml(venta.nombre_conyugue)} (${venta.rut_conyugue || 'S/R'})</span></div>` : ''}
-                        <div class="im-detail-row"><span class="im-detail-key">Forma de Pago</span><span class="im-detail-val">${venta.forma_pago || '—'}</span></div>
-                        <div class="im-detail-row"><span class="im-detail-key">Fecha Venta</span><span class="im-detail-val">${venta.fecha_venta ? new Date(venta.fecha_venta).toLocaleDateString('es-CL') : '—'}</span></div>
-                        <div style="display:flex; gap:16px; margin-top:10px;">
-                            <span style="font-size:0.85rem; color:${venta.firmo_promesa ? '#166534' : '#94a3b8'}; font-weight:600;">
-                                <i class="bi ${venta.firmo_promesa ? 'bi-check-circle-fill' : 'bi-circle'}"></i> Promesa
-                            </span>
-                            <span style="font-size:0.85rem; color:${venta.firmo_compraventa ? '#166534' : '#94a3b8'}; font-weight:600;">
-                                <i class="bi ${venta.firmo_compraventa ? 'bi-check-circle-fill' : 'bi-circle'}"></i> Compraventa
-                            </span>
-                        </div>
-                    </div>`;
+                        <a href="/admin/inmobiliaria/clientes" style="font-size:0.75rem; color:#2563eb; text-decoration:none;">
+                            <i class="bi bi-arrow-up-right"></i> Ver todos los clientes
+                        </a>
+                    </div>
+                    ${[
+                        ['Nombre', venta.nombre_completo],
+                        ['RUT', venta.rut],
+                        ['Email', venta.email||'—'],
+                        ['Teléfono', venta.telefono||'—'],
+                        ['Estado Civil', venta.estado_civil],
+                        venta.nombre_conyugue ? ['Cónyuge', `${venta.nombre_conyugue} (${venta.rut_conyugue||'S/R'})`] : null,
+                        ['Forma de Pago', venta.forma_pago||'—'],
+                        ['Precio Lista', venta.precio_lista ? `$${fmt(venta.precio_lista)}`:'—'],
+                        ['Precio Acordado', venta.precio_acordado ? `$${fmt(venta.precio_acordado)}`:'—'],
+                        ['Fecha Venta', venta.fecha_venta ? new Date(venta.fecha_venta).toLocaleDateString('es-CL'):'—'],
+                    ].filter(Boolean).map(([k,v])=>
+                        `<div class="im-detail-row"><span class="im-detail-key">${k}</span><span class="im-detail-val">${escH(String(v))}</span></div>`
+                    ).join('')}
+                    <div style="display:flex; gap:16px; margin-top:10px; padding-top:10px; border-top:1px solid #bbf7d0;">
+                        <span style="font-size:0.85rem; color:${venta.firmo_promesa?'#166534':'#94a3b8'}; font-weight:600;">
+                            <i class="bi ${venta.firmo_promesa?'bi-check-circle-fill':'bi-circle'}"></i> Promesa
+                        </span>
+                        <span style="font-size:0.85rem; color:${venta.firmo_compraventa?'#166534':'#94a3b8'}; font-weight:600;">
+                            <i class="bi ${venta.firmo_compraventa?'bi-check-circle-fill':'bi-circle'}"></i> Compraventa
+                        </span>
+                    </div>
+                    ${venta.notas ? `<div style="margin-top:8px; font-size:0.82rem; color:#475569; font-style:italic; background:white; border-radius:6px; padding:8px 10px;">${escH(venta.notas)}</div>` : ''}
+                </div>`;
 
-                // Prellenar formulario con datos existentes para edición
-                $('venta-cliente-id').value = venta.cliente_id;
-                $('cli-nombre').value = venta.nombre_completo;
-                $('cli-rut').value = venta.rut;
-                $('cli-direccion').value = venta.direccion || '';
-                $('cli-estado-civil').value = venta.estado_civil;
-                toggleConyuge(venta.estado_civil);
-                if (venta.nombre_conyugue) $('cli-conyuge-nombre').value = venta.nombre_conyugue;
-                if (venta.rut_conyugue) $('cli-conyuge-rut').value = venta.rut_conyugue;
-                $('venta-forma-pago').value = venta.forma_pago || '';
-                $('venta-fecha').value = venta.fecha_venta ? venta.fecha_venta.split('T')[0] : '';
-                $('venta-promesa').checked = venta.firmo_promesa;
-                $('venta-compraventa').checked = venta.firmo_compraventa;
+            // Prellenar formulario de edición
+            $('venta-cliente-id').value   = venta.cliente_id;
+            $('cli-nombre').value         = venta.nombre_completo;
+            $('cli-rut').value            = venta.rut;
+            $('cli-telefono').value        = venta.telefono||'';
+            $('cli-email').value          = venta.email||'';
+            $('cli-direccion').value      = venta.direccion||'';
+            $('cli-estado-civil').value   = venta.estado_civil;
+            toggleConyuge(venta.estado_civil);
+            $('cli-conyuge-nombre').value = venta.nombre_conyugue||'';
+            $('cli-conyuge-rut').value    = venta.rut_conyugue||'';
+            $('venta-forma-pago').value   = venta.forma_pago||'';
+            $('venta-fecha').value        = venta.fecha_venta ? venta.fecha_venta.split('T')[0]:'';
+            $('venta-promesa').checked    = venta.firmo_promesa;
+            $('venta-compraventa').checked= venta.firmo_compraventa;
+            $('venta-notas').value        = venta.notas||'';
+            if (venta.precio_lista)    $('venta-precio-lista').value    = Number(venta.precio_lista).toLocaleString('es-CL');
+            if (venta.precio_acordado) $('venta-precio-acordado').value = Number(venta.precio_acordado).toLocaleString('es-CL');
 
-                // Mostrar uploader de persona
-                mostrarUploaderPersona(venta.cliente_id);
+            // Mostrar docs de persona
+            $('no-cliente-msg').style.display = 'none';
+            initDM('persona', venta.cliente_id);
+        } else {
+            $('venta-actual').innerHTML = '';
+            $('venta-fecha').value = new Date().toISOString().split('T')[0];
+            // Prellenar precio lista desde la parcela
+            if (p.precio_actual) $('venta-precio-lista').value = Number(p.precio_actual).toLocaleString('es-CL');
+        }
+    }
+
+    // ──────────────────────────────── GUARDAR PARCELA ────────────────────────────────
+    async function guardarParcela(event) {
+        const btn = event.currentTarget;
+        btn.disabled=true; btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...';
+        try {
+            const body = {
+                numero_rol_parcela: $('edit-rol').value.trim()||null,
+                metraje: $('edit-metraje').value||null,
+                precio_actual: $('edit-precio').value.replace(/\./g,'')||null,
+                estado_venta: $('edit-estado').value
+            };
+            const res = await fetch(`/api/im/parcelas/${PARCELA_ID}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+            if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.message||`Error ${res.status}`); }
+            showToast('Parcela actualizada correctamente.','success');
+            init();
+        } catch(e) { showToast(e.message,'error','No se pudo guardar'); }
+        finally { btn.disabled=false; btn.innerHTML='<i class="bi bi-save"></i> Guardar Cambios'; }
+    }
+
+    // ──────────────────────────────── BUSCAR CLIENTE ────────────────────────────────
+    async function buscarCliente() {
+        const rut = $('buscar-rut').value.trim();
+        if (!rut) return;
+        const el = $('cliente-encontrado');
+        el.style.display='block';
+        el.innerHTML = '<div style="color:#64748b; font-size:0.82rem;"><i class="bi bi-hourglass-split"></i> Buscando...</div>';
+        try {
+            const res = await fetch(`/api/im/clientes/buscar?rut=${encodeURIComponent(rut)}`);
+            if (res.status===404) {
+                el.innerHTML='<div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:10px; font-size:0.85rem; color:#92400e;"><i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente con ese RUT. Completa el formulario de abajo.</div>';
+                return;
+            }
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const c = await res.json();
+            el.innerHTML = `
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                    <div>
+                        <span style="font-size:0.9rem; font-weight:700; color:#0f172a;">${escH(c.nombre_completo)}</span>
+                        <span style="font-size:0.8rem; color:#64748b; display:block;">${c.rut} · ${c.estado_civil}${c.email ? ' · '+c.email : ''}</span>
+                    </div>
+                    <button class="im-btn im-btn-sm im-btn-primary" onclick='cargarCliente(${JSON.stringify(c)})'>
+                        <i class="bi bi-person-check"></i> Usar este
+                    </button>
+                </div>`;
+        } catch(e) { showToast(e.message,'error','Error al buscar cliente'); el.style.display='none'; }
+    }
+
+    function cargarCliente(c) {
+        $('venta-cliente-id').value   = c.id;
+        $('cli-nombre').value         = c.nombre_completo;
+        $('cli-rut').value            = c.rut;
+        $('cli-telefono').value        = c.telefono||'';
+        $('cli-email').value          = c.email||'';
+        $('cli-direccion').value      = c.direccion||'';
+        $('cli-estado-civil').value   = c.estado_civil;
+        toggleConyuge(c.estado_civil);
+        $('cli-conyuge-nombre').value = c.nombre_conyugue||'';
+        $('cli-conyuge-rut').value    = c.rut_conyugue||'';
+        showToast(`Cliente "${c.nombre_completo}" cargado. Completa los datos de venta.`,'info');
+    }
+
+    // ──────────────────────────────── GUARDAR VENTA ────────────────────────────────
+    $('form-venta').addEventListener('submit', async(e)=>{
+        e.preventDefault();
+        const btn = e.submitter || e.target.querySelector('[type="submit"]');
+        if (btn) { btn.disabled=true; btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...'; }
+        try {
+            // Validar RUT
+            if (!validarRut($('cli-rut').value)) {
+                showToast('El RUT del comprador no es válido (verificación Módulo 11).','error','RUT inválido');
+                return;
+            }
+
+            let clienteId = $('venta-cliente-id').value;
+            const clienteBody = {
+                nombre_completo: $('cli-nombre').value,
+                rut:             $('cli-rut').value,
+                email:           $('cli-email').value||null,
+                telefono:        $('cli-telefono').value||null,
+                direccion:       $('cli-direccion').value||null,
+                estado_civil:    $('cli-estado-civil').value,
+                nombre_conyugue: $('cli-conyuge-nombre').value||null,
+                rut_conyugue:    $('cli-conyuge-rut').value||null
+            };
+
+            if (clienteId) {
+                const cRes = await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(clienteBody)});
+                if (!cRes.ok) { const err=await cRes.json().catch(()=>({})); throw new Error(err.message||`Error ${cRes.status}`); }
             } else {
-                $('venta-actual').innerHTML = '';
-                // Fecha default = hoy
-                $('venta-fecha').value = new Date().toISOString().split('T')[0];
+                const cRes = await fetch('/api/im/clientes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(clienteBody)});
+                if (!cRes.ok) { const err=await cRes.json().catch(()=>({})); throw new Error(err.message||`Error ${cRes.status}`); }
+                const cData = await cRes.json();
+                clienteId = cData.id;
+                $('venta-cliente-id').value = clienteId;
+            }
+
+            const cleanN = v => v ? parseFloat(String(v).replace(/\./g,'').replace(',','.')) || null : null;
+
+            const ventaBody = {
+                parcela_id:       PARCELA_ID,
+                cliente_id:       clienteId,
+                firmo_promesa:    $('venta-promesa').checked,
+                firmo_compraventa:$('venta-compraventa').checked,
+                forma_pago:       $('venta-forma-pago').value||null,
+                fecha_venta:      $('venta-fecha').value,
+                precio_lista:     cleanN($('venta-precio-lista').value),
+                precio_acordado:  cleanN($('venta-precio-acordado').value),
+                notas:            $('venta-notas').value||null
+            };
+            const vRes = await fetch('/api/im/ventas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ventaBody)});
+            if (!vRes.ok) { const err=await vRes.json().catch(()=>({})); throw new Error(err.message||`Error ${vRes.status}`); }
+
+            showToast('Comprador y venta guardados correctamente.','success');
+            init();
+        } catch(err) { showToast(err.message,'error','No se pudo guardar'); }
+        finally { if (btn) { btn.disabled=false; btn.innerHTML='<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta'; } }
+    });
+
+    // ──────────────────────────────── LIBERAR PARCELA ────────────────────────────────
+    async function liberarParcela() {
+        try {
+            const res = await fetch(`/api/im/ventas/${ventaData.id}`,{method:'DELETE'});
+            if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.message||'No se pudo liberar.'); }
+            closeModal('liberar');
+            currentClienteId=null;
+            showToast('Parcela liberada. Estado: Disponible.','info');
+            init();
+        } catch(e) { showToast(e.message,'error'); }
+    }
+
+    // ──────────────────────────────── GESTOR DE DOCUMENTOS ────────────────────────────────
+    const dmState = {}; // tipo → { asociacionId, initialized }
+
+    function initDM(tipo, asociacionId) {
+        const containerId = `dm-${tipo}`;
+        const container = $(containerId);
+        if (!container) return;
+        if (dmState[tipo] && dmState[tipo].asociacionId === asociacionId) return; // ya inicializado
+        dmState[tipo] = { asociacionId, initialized: true };
+
+        container.innerHTML = `
+            <div class="step-box" style="margin-bottom:14px;">
+                <p class="step-title"><i class="bi bi-cloud-upload"></i> Subir Documentos</p>
+                <p style="font-size:0.8rem; color:#64748b; margin:0 0 10px;">
+                    Selecciona uno o varios archivos a la vez. Edita el nombre antes de subir.
+                </p>
+                <div class="im-upload-zone" id="dz-${tipo}">
+                    <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
+                        id="file-input-${tipo}"
+                        onchange="handleFileSelect('${tipo}', '${asociacionId}', this.files)">
+                    <i class="bi bi-cloud-arrow-up im-upload-icon"></i>
+                    <p class="im-upload-text">Arrastra archivos aquí o <strong>haz clic</strong></p>
+                    <p class="im-upload-hint">PDF, imágenes, Word, Excel · múltiples archivos · máx. 100 MB c/u</p>
+                </div>
+                <div id="dq-${tipo}" class="dm-queue"></div>
+                <div id="dq-actions-${tipo}" style="display:none; margin-top:10px; gap:8px; flex-wrap:wrap;">
+                    <button class="im-btn im-btn-success" onclick="uploadAllFiles('${tipo}','${asociacionId}')">
+                        <i class="bi bi-upload"></i> Subir Todos
+                    </button>
+                    <button class="im-btn im-btn-ghost" onclick="clearQueue('${tipo}')">
+                        <i class="bi bi-x"></i> Limpiar
+                    </button>
+                </div>
+            </div>
+            <div>
+                <p class="step-title"><i class="bi bi-folder2-open"></i> Documentos Subidos</p>
+                <div id="dl-${tipo}" class="im-doc-list">
+                    <div class="im-empty" style="padding:16px;"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>
+                </div>
+            </div>`;
+
+        loadDocs(tipo === 'lote' ? 'parcela' : tipo, asociacionId);
+    }
+
+    const fileQueues = {}; // tipo → [{file, nombre, id}]
+
+    function handleFileSelect(tipo, asociacionId, files) {
+        if (!fileQueues[tipo]) fileQueues[tipo] = [];
+        Array.from(files).forEach(f => {
+            const nombre = f.name.replace(/\.[^/.]+$/, '').replace(/_/g,' ').replace(/-/g,' ');
+            fileQueues[tipo].push({ file: f, nombre, id: Date.now() + Math.random() });
+        });
+        renderQueue(tipo, asociacionId);
+        // Limpiar el input para permitir re-selección
+        const inp = $(`file-input-${tipo}`);
+        if (inp) inp.value = '';
+    }
+
+    function renderQueue(tipo, asociacionId) {
+        const q = fileQueues[tipo]||[];
+        const qEl = $(`dq-${tipo}`);
+        const actEl = $(`dq-actions-${tipo}`);
+        if (!qEl) return;
+        if (q.length===0) { qEl.innerHTML=''; if (actEl) actEl.style.display='none'; return; }
+        if (actEl) actEl.style.display='flex';
+
+        const ext2icon = ext => ['pdf'].includes(ext)?'bi-file-earmark-pdf':['jpg','jpeg','png','webp','gif'].includes(ext)?'bi-file-earmark-image':['doc','docx'].includes(ext)?'bi-file-earmark-word':'bi-file-earmark';
+
+        qEl.innerHTML = q.map((item,idx) => {
+            const ext = item.file.name.split('.').pop().toLowerCase();
+            const size = (item.file.size/1024/1024).toFixed(1);
+            return `<div class="dm-queue-item" id="qitem-${tipo}-${idx}">
+                <i class="bi ${ext2icon(ext)}" style="font-size:1.3rem; color:#2563eb; flex-shrink:0;"></i>
+                <div style="flex:1; min-width:0;">
+                    <input type="text" value="${escH(item.nombre)}" placeholder="Nombre del documento"
+                        oninput="fileQueues['${tipo}'][${idx}].nombre=this.value">
+                    <div class="dm-progress" id="prog-${tipo}-${idx}"><div class="dm-progress-bar" style="width:0%" id="progbar-${tipo}-${idx}"></div></div>
+                </div>
+                <span style="font-size:0.72rem; color:#94a3b8; flex-shrink:0;">${size}MB</span>
+                <button class="im-btn im-btn-sm im-btn-danger" onclick="removeFromQueue('${tipo}',${idx})"><i class="bi bi-x"></i></button>
+            </div>`;
+        }).join('');
+    }
+
+    function removeFromQueue(tipo, idx) {
+        if (fileQueues[tipo]) { fileQueues[tipo].splice(idx,1); renderQueue(tipo); }
+    }
+
+    function clearQueue(tipo) {
+        fileQueues[tipo] = [];
+        renderQueue(tipo);
+    }
+
+    async function uploadAllFiles(tipo, asociacionId) {
+        const q = fileQueues[tipo]||[];
+        if (q.length===0) return;
+        let ok=0, fail=0;
+
+        for (let idx=0; idx<q.length; idx++) {
+            const item = q[idx];
+            const progbar = $(`progbar-${tipo}-${idx}`);
+            if (progbar) progbar.style.width='30%';
+            try {
+                const fd = new FormData();
+                fd.append('archivo', item.file, item.file.name);
+                fd.append('nombre_personalizado', item.nombre||item.file.name);
+                fd.append('tipo_asociacion', tipo==='lote'?'parcela': tipo==='persona'?'persona': 'proyecto');
+                fd.append('asociacion_id', asociacionId);
+                const res = await fetch('/api/im/documentos',{method:'POST',body:fd});
+                if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.message||`Error ${res.status}`); }
+                if (progbar) progbar.style.width='100%';
+                ok++;
+            } catch(e) {
+                if (progbar) { progbar.parentElement.style.background='#fee2e2'; progbar.style.background='#ef4444'; progbar.style.width='100%'; }
+                fail++;
             }
         }
 
-        // ---- Guardar datos parcela ----
-        async function guardarParcela() {
-            const btn = event.currentTarget;
-            btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
-            try {
-                const precioRaw = $('edit-precio').value.replace(/\./g,'');
-                const body = {
-                    numero_rol_parcela: $('edit-rol').value.trim() || null,
-                    metraje: $('edit-metraje').value || null,
-                    precio_actual: precioRaw || null,
-                    estado_venta: $('edit-estado').value
-                };
-                const res = await fetch(`/api/im/parcelas/${PARCELA_ID}`, {
-                    method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-                });
-                if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || `Error ${res.status}`); }
-                showToast('Parcela actualizada correctamente.', 'success');
-                init();
-            } catch (e) { showToast(e.message, 'error', 'No se pudo guardar'); }
-            finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Guardar Cambios'; }
-        }
+        fileQueues[tipo] = [];
+        setTimeout(()=>renderQueue(tipo), 800);
+        if (ok>0) showToast(`${ok} documento${ok>1?'s':''} subido${ok>1?'s':''} correctamente.`,'success');
+        if (fail>0) showToast(`${fail} archivo${fail>1?'s':''} fallaron. Verifica el tamaño o formato.`,'error');
+        loadDocs(tipo==='lote'?'parcela':tipo, asociacionId);
+        if (tipo==='lote'||tipo==='persona') loadAuditoria();
+    }
 
-        // ---- Buscar cliente por RUT ----
-        async function buscarCliente() {
-            const rut = $('buscar-rut').value.trim();
-            if (!rut) return;
-            try {
-                const res = await fetch(`/api/im/clientes/buscar?rut=${encodeURIComponent(rut)}`);
-                if (res.status === 404) {
-                    $('cliente-encontrado').style.display = 'block';
-                    $('cliente-encontrado').innerHTML = '<div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:10px; font-size:0.85rem; color:#92400e;"><i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente con ese RUT. Completa el formulario de abajo para crearlo.</div>';
-                    return;
-                }
-                if (!res.ok) throw new Error(`Error ${res.status}`);
-                const c = await res.json();
-                $('cliente-encontrado').style.display = 'block';
-                $('cliente-encontrado').innerHTML = `
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                        <div>
-                            <span style="font-size:0.9rem; font-weight:700; color:#0f172a;">${escapeHtml(c.nombre_completo)}</span>
-                            <span style="font-size:0.8rem; color:#64748b; display:block;">${c.rut} · ${c.estado_civil}</span>
-                        </div>
-                        <button class="im-btn im-btn-sm im-btn-primary" onclick="cargarClienteEnForm('${c.id}')">
-                            <i class="bi bi-person-check"></i> Usar este
-                        </button>
-                    </div>`;
-            } catch (e) { showToast(e.message, 'error', 'Error al buscar cliente'); }
-        }
+    // ──────────────────────────────── CARGA DE DOCS ────────────────────────────────
+    async function loadDocs(tipo_asociacion, asociacionId) {
+        const dlId = tipo_asociacion==='proyecto'?'dl-proyecto': tipo_asociacion==='parcela'?'dl-lote':'dl-persona';
+        const dl = $(dlId);
+        if (!dl) return;
+        dl.innerHTML = '<div class="im-empty" style="padding:16px;"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
+        try {
+            const res = await fetch(`/api/im/documentos?tipo_asociacion=${tipo_asociacion}&asociacion_id=${asociacionId}`);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const docs = await res.json();
+            if (docs.length===0) { dl.innerHTML='<div class="im-empty" style="padding:16px;"><i class="bi bi-folder2-open"></i><p>Sin documentos aún.</p></div>'; return; }
 
-        function cargarClienteEnForm(clienteId) {
-            fetch(`/api/im/clientes?q=`)
-                .then(r => r.json())
-                .then(clientes => {
-                    const c = clientes.find(x => x.id === clienteId);
-                    if (!c) return;
-                    $('venta-cliente-id').value = c.id;
-                    $('cli-nombre').value = c.nombre_completo;
-                    $('cli-rut').value = c.rut;
-                    $('cli-direccion').value = c.direccion || '';
-                    $('cli-estado-civil').value = c.estado_civil;
-                    toggleConyuge(c.estado_civil);
-                    $('cli-conyuge-nombre').value = c.nombre_conyugue || '';
-                    $('cli-conyuge-rut').value = c.rut_conyugue || '';
-                });
-        }
+            const ext2icon = ext => ['pdf'].includes(ext)?'bi-file-earmark-pdf bi-doc-red':['jpg','jpeg','png','webp','gif'].includes(ext)?'bi-file-earmark-image bi-doc-blue':['doc','docx'].includes(ext)?'bi-file-earmark-word bi-doc-blue':'bi-file-earmark';
+            const canPreview = ext => ['pdf','jpg','jpeg','png','webp','gif'].includes(ext);
 
-        // ---- Formulario de venta ----
-        $('form-venta').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.submitter || e.target.querySelector('[type="submit"]');
-            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...'; }
-            try {
-                // 1. Crear/actualizar cliente
-                let clienteId = $('venta-cliente-id').value;
-                const clienteBody = {
-                    nombre_completo: $('cli-nombre').value,
-                    rut: $('cli-rut').value,
-                    direccion: $('cli-direccion').value,
-                    estado_civil: $('cli-estado-civil').value,
-                    nombre_conyugue: $('cli-conyuge-nombre').value || null,
-                    rut_conyugue: $('cli-conyuge-rut').value || null
-                };
-
-                if (clienteId) {
-                    await fetch(`/api/im/clientes/${clienteId}`, {
-                        method: 'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(clienteBody)
-                    });
-                } else {
-                    const cRes = await fetch('/api/im/clientes', {
-                        method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(clienteBody)
-                    });
-                    if (!cRes.ok) { const err = await cRes.json().catch(()=>({})); throw new Error(err.message || `Error ${cRes.status}`); }
-                    const cData = await cRes.json();
-                    clienteId = cData.id;
-                    $('venta-cliente-id').value = clienteId;
-                }
-
-                // 2. Registrar venta
-                const ventaBody = {
-                    parcela_id: PARCELA_ID,
-                    cliente_id: clienteId,
-                    firmo_promesa: $('venta-promesa').checked,
-                    firmo_compraventa: $('venta-compraventa').checked,
-                    forma_pago: $('venta-forma-pago').value || null,
-                    fecha_venta: $('venta-fecha').value
-                };
-                const vRes = await fetch('/api/im/ventas', {
-                    method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(ventaBody)
-                });
-                if (!vRes.ok) { const err = await vRes.json().catch(()=>({})); throw new Error(err.message || `Error ${vRes.status}`); }
-
-                showToast('Comprador asignado correctamente.', 'success');
-                init();
-            } catch (err) { showToast(err.message, 'error', 'No se pudo guardar'); }
-            finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-person-check-fill"></i> Asignar Comprador y Registrar Venta'; } }
-        });
-
-        // ---- Liberar parcela ----
-        async function liberarParcela() {
-            try {
-                const vRes = await fetch(`/api/im/ventas/${ventaData.id}`, { method: 'DELETE' });
-                if (!vRes.ok) { const err = await vRes.json().catch(()=>({})); throw new Error(err.message || 'No se pudo liberar.'); }
-                closeModal('liberar');
-                currentClienteId = null;
-                showToast('Parcela liberada. Estado: Disponible.', 'info');
-                init();
-            } catch (e) { showToast(e.message, 'error'); }
-        }
-
-        // ---- Documentos ----
-        function mostrarUploaderPersona(clienteId) {
-            $('no-cliente-msg').style.display = 'none';
-            $('uploader-persona').style.display = 'block';
-            $('persona-uploader-inner').innerHTML = buildUploaderHtml('persona', clienteId);
-            $('persona-uploader-inner').querySelector('form').addEventListener('submit', (e) => handleDocSubmit(e, 'persona', clienteId));
-            loadDocs('persona', clienteId);
-        }
-
-        function buildUploaderHtml(tipo, asociacionId) {
-            return `
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:14px;">
-                <p style="font-size:0.78rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.4px; margin:0 0 12px;">
-                    <i class="bi bi-cloud-upload"></i> Subir Documento
-                </p>
-                <form id="form-doc-${tipo}" enctype="multipart/form-data">
-                    <div class="im-input-group">
-                        <label>Nombre del Documento *</label>
-                        <input type="text" name="nombre_personalizado" class="styled-input" placeholder="Ej: Fotocopia carnet de identidad, Escritura..." required>
+            dl.innerHTML = docs.map(doc=>{
+                const ext = (doc.storage_path||'').split('.').pop().toLowerCase();
+                const fecha = new Date(doc.creado_at).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'});
+                return `<div class="im-doc-item" id="docitem-${doc.id}">
+                    <i class="bi ${ext2icon(ext)} im-doc-icon"></i>
+                    <div class="im-doc-info" style="flex:1; min-width:0;">
+                        <div class="im-doc-name doc-item-name-display" id="dname-${doc.id}" title="${escH(doc.nombre_personalizado)}">${escH(doc.nombre_personalizado)}</div>
+                        <input class="doc-item-name-edit" id="dedit-${doc.id}" value="${escH(doc.nombre_personalizado)}"
+                            onkeydown="if(event.key==='Enter'){saveRename(${doc.id},'${tipo_asociacion}','${asociacionId}');} if(event.key==='Escape'){cancelRename(${doc.id});}">
+                        <div class="im-doc-date">${fecha}</div>
                     </div>
-                    <div class="im-upload-zone" id="zone-${tipo}">
-                        <input type="file" name="archivo" accept="image/*,.pdf,.doc,.docx" required onchange="showFileName(this, '${tipo}')">
-                        <i class="bi bi-cloud-arrow-up im-upload-icon"></i>
-                        <p class="im-upload-text">Arrastra el archivo o haz clic</p>
-                        <p class="im-upload-hint">PDF, imagen o Word · máx. 20 MB</p>
-                        <span id="fname-${tipo}" style="display:none; margin-top:6px; font-size:0.8rem; font-weight:700; color:#2563eb;"></span>
+                    <div class="im-doc-actions">
+                        ${canPreview(ext) ? `<button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDoc('${escH(doc.url_storage)}','${escH(doc.nombre_personalizado)}','${ext}')" title="Previsualizar"><i class="bi bi-eye"></i></button>` : ''}
+                        <a href="${escH(doc.url_storage)}" download="${escH(doc.nombre_personalizado)}.${ext}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Descargar"><i class="bi bi-download"></i></a>
+                        <button class="im-btn im-btn-sm im-btn-ghost" onclick="startRename(${doc.id})" title="Renombrar"><i class="bi bi-pencil"></i></button>
+                        <button class="im-btn im-btn-sm" id="save-rename-${doc.id}" style="display:none;" onclick="saveRename(${doc.id},'${tipo_asociacion}','${asociacionId}')"><i class="bi bi-check-lg"></i></button>
+                        ${IS_ADMIN ? `<button class="im-btn im-btn-sm im-btn-danger" onclick="deleteDoc(${doc.id},'${tipo_asociacion}','${asociacionId}')" title="Eliminar"><i class="bi bi-trash3"></i></button>` : ''}
                     </div>
-                    <button type="submit" class="im-btn im-btn-primary im-btn-full" style="margin-top:12px;">
-                        <i class="bi bi-upload"></i> Subir Documento
-                    </button>
-                </form>
+                </div>`;
+            }).join('');
+        } catch(e) {
+            dl.innerHTML = `<div class="im-empty" style="color:#ef4444;padding:16px;"><i class="bi bi-exclamation-triangle"></i><p>${escH(e.message)}</p></div>`;
+        }
+    }
+
+    function startRename(id) {
+        const display = $(`dname-${id}`);
+        const editEl  = $(`dedit-${id}`);
+        const saveBtn = $(`save-rename-${id}`);
+        if (!display||!editEl) return;
+        display.classList.add('hidden');
+        editEl.classList.add('active');
+        if (saveBtn) saveBtn.style.display='flex';
+        editEl.focus(); editEl.select();
+    }
+
+    function cancelRename(id) {
+        const display = $(`dname-${id}`);
+        const editEl  = $(`dedit-${id}`);
+        const saveBtn = $(`save-rename-${id}`);
+        if (display) display.classList.remove('hidden');
+        if (editEl)  editEl.classList.remove('active');
+        if (saveBtn) saveBtn.style.display='none';
+    }
+
+    async function saveRename(id, tipo_asociacion, asociacionId) {
+        const editEl = $(`dedit-${id}`);
+        if (!editEl) return;
+        const nuevoNombre = editEl.value.trim();
+        if (!nuevoNombre) return;
+        try {
+            const res = await fetch(`/api/im/documentos/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre_personalizado:nuevoNombre})});
+            if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.message||`Error ${res.status}`); }
+            showToast('Nombre actualizado.','success');
+            loadDocs(tipo_asociacion, asociacionId);
+        } catch(e) { showToast(e.message,'error'); cancelRename(id); }
+    }
+
+    async function deleteDoc(id, tipo_asociacion, asociacionId) {
+        if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
+        try {
+            const res = await fetch(`/api/im/documentos/${id}`,{method:'DELETE'});
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            showToast('Documento eliminado.','success');
+            loadDocs(tipo_asociacion, asociacionId);
+            loadAuditoria();
+        } catch(e) { showToast(e.message,'error'); }
+    }
+
+    // ──────────────────────────────── PREVIEW ────────────────────────────────
+    function previewDoc(url, nombre, ext) {
+        $('preview-title').innerHTML = `<i class="bi bi-eye"></i> ${escH(nombre)}`;
+        $('preview-download').href = url;
+        $('preview-download').download = nombre + '.' + ext;
+
+        const imgs = ['jpg','jpeg','png','webp','gif'];
+        let content = '';
+        if (imgs.includes(ext)) {
+            content = `<img src="${url}" style="max-width:100%; max-height:480px; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,0.1);" alt="${escH(nombre)}">`;
+        } else if (ext==='pdf') {
+            content = `<iframe src="${url}" class="preview-frame"></iframe>`;
+        } else {
+            content = `<div style="padding:40px; color:#64748b; text-align:center;">
+                <i class="bi bi-file-earmark-text" style="font-size:3rem; display:block; margin-bottom:12px;"></i>
+                <p>Vista previa no disponible para este tipo de archivo.</p>
+                <a href="${url}" target="_blank" class="im-btn im-btn-primary" style="margin-top:10px; display:inline-flex;">
+                    <i class="bi bi-box-arrow-up-right"></i> Abrir en nueva pestaña
+                </a>
             </div>`;
         }
+        $('preview-content').innerHTML = content;
+        openModal('preview');
+    }
 
-        function showFileName(input, tipo) {
-            const span = $(`fname-${tipo}`);
-            if (input.files[0]) { span.style.display = 'block'; span.textContent = input.files[0].name; }
-        }
+    // ──────────────────────────────── AUDITORÍA ────────────────────────────────
+    async function loadAuditoria() {
+        const list = $('auditoria-list');
+        list.innerHTML = '<div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
+        try {
+            const [r1, r2] = await Promise.all([
+                fetch(`/api/im/auditoria?entidad_id=${PARCELA_ID}`).then(r=>r.json()),
+                proyectoId ? fetch(`/api/im/auditoria?entidad_id=${proyectoId}`).then(r=>r.json()) : []
+            ]);
+            const all = [...(Array.isArray(r1)?r1:[]), ...(Array.isArray(r2)?r2:[])].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+            if (all.length===0) { list.innerHTML='<div class="im-empty"><i class="bi bi-clock-history"></i><p>Sin registros aún.</p></div>'; return; }
+            list.innerHTML = all.map(a=>`
+                <div class="im-audit-item">
+                    <div class="im-audit-dot"></div>
+                    <div class="im-audit-body">
+                        <div class="im-audit-accion">${escH(a.accion)}</div>
+                        ${a.descripcion?`<div class="im-audit-desc">${escH(a.descripcion)}</div>`:''}
+                        <div class="im-audit-meta">${new Date(a.fecha).toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${escH(a.usuario_nombre||'Sistema')}</div>
+                    </div>
+                </div>`).join('');
+        } catch(e) { list.innerHTML=`<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${escH(e.message)}</p></div>`; }
+    }
 
-        async function handleDocSubmit(e, tipo, asociacionId) {
-            e.preventDefault();
-            const form = e.target;
-            const btn = form.querySelector('[type="submit"]');
-            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Subiendo...'; }
-            try {
-                const fd = new FormData(form);
-                fd.append('tipo_asociacion', tipo);
-                fd.append('asociacion_id', asociacionId);
-                const res = await fetch('/api/im/documentos', { method: 'POST', body: fd });
-                if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.message || err.detail || `Error ${res.status}`); }
-                form.reset();
-                const fnameEl = $(`fname-${tipo}`);
-                if (fnameEl) { fnameEl.textContent = ''; fnameEl.style.display = 'none'; }
-                showToast('Documento subido correctamente.', 'success');
-                loadDocs(tipo, asociacionId);
-                loadAuditoria();
-            } catch (err) { showToast(err.message, 'error', 'Error al subir documento'); }
-            finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload"></i> Subir Documento'; } }
-        }
-
-        async function loadDocs(tipo, asociacionId) {
-            const listId = tipo === 'proyecto' ? 'docs-list-proyecto' : tipo === 'parcela' ? 'docs-list-lote' : 'docs-list-persona';
-            const list = $(listId);
-            list.innerHTML = '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.82rem;">Cargando...</div>';
-            try {
-                const res = await fetch(`/api/im/documentos?tipo_asociacion=${tipo}&asociacion_id=${asociacionId}`);
-                const docs = await res.json();
-                if (docs.length === 0) {
-                    list.innerHTML = '<div class="im-empty" style="padding:20px;"><i class="bi bi-folder2-open"></i><p>Sin documentos.</p></div>';
-                    return;
-                }
-                list.innerHTML = docs.map(doc => {
-                    const ext = doc.storage_path ? doc.storage_path.split('.').pop().toLowerCase() : '';
-                    const icon = ['pdf'].includes(ext) ? 'bi-file-earmark-pdf' :
-                                 ['jpg','jpeg','png','webp','gif'].includes(ext) ? 'bi-file-earmark-image' :
-                                 ['doc','docx'].includes(ext) ? 'bi-file-earmark-word' : 'bi-file-earmark';
-                    const fecha = new Date(doc.creado_at).toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' });
-                    return `<div class="im-doc-item">
-                        <i class="bi ${icon} im-doc-icon"></i>
-                        <div class="im-doc-info">
-                            <div class="im-doc-name" title="${escapeHtml(doc.nombre_personalizado)}">${escapeHtml(doc.nombre_personalizado)}</div>
-                            <div class="im-doc-date">${fecha}</div>
-                        </div>
-                        <div class="im-doc-actions">
-                            <a href="${doc.url_storage}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Ver">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            ${IS_ADMIN ? `<button class="im-btn im-btn-sm im-btn-danger" onclick="eliminarDoc(${doc.id}, '${tipo}', '${asociacionId}')" title="Eliminar">
-                                <i class="bi bi-trash3"></i>
-                            </button>` : ''}
-                        </div>
-                    </div>`;
-                }).join('');
-            } catch (e) {
-                list.innerHTML = `<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${e.message}</p></div>`;
-            }
-        }
-
-        async function eliminarDoc(id, tipo, asociacionId) {
-            if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
-            try {
-                const res = await fetch(`/api/im/documentos/${id}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error(`Error ${res.status}`);
-                showToast('Documento eliminado.', 'success');
-                loadDocs(tipo, asociacionId);
-                loadAuditoria();
-            } catch (e) { showToast(e.message, 'error'); }
-        }
-
-        // ---- Auditoría ----
-        async function loadAuditoria() {
-            const list = $('auditoria-list');
-            list.innerHTML = '<div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
-            try {
-                const [parcRes, projRes] = await Promise.all([
-                    fetch(`/api/im/auditoria?entidad_id=${PARCELA_ID}`).then(r => r.json()),
-                    proyectoId ? fetch(`/api/im/auditoria?entidad_id=${proyectoId}`).then(r => r.json()) : Promise.resolve([])
-                ]);
-                const all = [...parcRes, ...projRes].sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
-
-                if (all.length === 0) {
-                    list.innerHTML = '<div class="im-empty"><i class="bi bi-clock-history"></i><p>Sin registros de auditoría.</p></div>';
-                    return;
-                }
-                list.innerHTML = all.map(a => {
-                    const fecha = new Date(a.fecha).toLocaleString('es-CL', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-                    return `<div class="im-audit-item">
-                        <div class="im-audit-dot"></div>
-                        <div class="im-audit-body">
-                            <div class="im-audit-accion">${a.accion}</div>
-                            ${a.descripcion ? `<div class="im-audit-desc">${escapeHtml(a.descripcion)}</div>` : ''}
-                            <div class="im-audit-meta">${fecha} · ${escapeHtml(a.usuario_nombre || 'Sistema')}</div>
-                        </div>
-                    </div>`;
-                }).join('');
-            } catch (e) {
-                list.innerHTML = `<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${e.message}</p></div>`;
-            }
-        }
-
-        function escapeHtml(str) {
-            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        }
-
-        // ---- Inicializar uploaders de proyecto y lote ----
-        // Llamar DESPUÉS de que init() ya cargó proyectoId
-        function initUploaders() {
-            // Lote (siempre disponible)
-            const uLote = $('uploader-lote');
-            uLote.innerHTML = buildUploaderHtml('parcela', PARCELA_ID);
-            uLote.querySelector('form').addEventListener('submit', (e) => handleDocSubmit(e, 'parcela', PARCELA_ID));
-
-            // Proyecto (requiere proyectoId)
-            if (proyectoId) {
-                const uProj = $('uploader-proyecto');
-                uProj.innerHTML = buildUploaderHtml('proyecto', proyectoId);
-                uProj.querySelector('form').addEventListener('submit', (e) => handleDocSubmit(e, 'proyecto', proyectoId));
-            }
-        }
-
-        // ---- Init ----
-        document.addEventListener('DOMContentLoaded', async () => {
-            await init();
-            initUploaders();
-            loadDocs('parcela', PARCELA_ID);
-        });
+    // ──────────────────────────────── INIT ────────────────────────────────
+    document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>

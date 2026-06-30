@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/inmobiliaria.css">
+    <style>
+        .cli-table { width:100%; border-collapse:collapse; }
+        .cli-table th { background:#f1f5f9; font-size:0.75rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px; padding:10px 14px; text-align:left; border-bottom:2px solid #e2e8f0; }
+        .cli-table td { padding:12px 14px; border-bottom:1px solid #f1f5f9; font-size:0.85rem; color:#334155; vertical-align:middle; }
+        .cli-table tr:hover td { background:#f8fafc; }
+        .cli-table tr.expanded td { background:#eff6ff; }
+        .cli-expand { background:#eff6ff; border-bottom:2px solid #bfdbfe; }
+        .cli-expand td { padding:0; }
+        .cli-expand-inner { padding:18px 20px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+        .cli-expand-section { background:white; border-radius:10px; border:1px solid #e2e8f0; padding:14px; }
+        .cli-expand-section p.label { font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.4px; margin:0 0 8px; }
+        .cli-edit-form { display:flex; flex-direction:column; gap:10px; }
+        .cli-form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        @media (max-width:640px) { .cli-expand-inner { grid-template-columns:1fr; } .cli-form-row { grid-template-columns:1fr; } }
+        .badge-proyecto { display:inline-flex; align-items:center; gap:5px; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:20px; padding:3px 10px; font-size:0.75rem; font-weight:600; }
+        .filters-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .rut-input-wrap { position:relative; }
+        .rut-status { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:0.9rem; }
+        .no-results { text-align:center; padding:40px 20px; color:#94a3b8; }
+        .no-results i { font-size:2.5rem; display:block; margin-bottom:10px; }
+    </style>
+</head>
+<body class="dashboard-body">
+    <%- include('../partials/alerts') %>
+
+    <!-- Toast -->
+    <div id="im-toast" style="position:fixed; top:20px; right:20px; z-index:9999; pointer-events:none; opacity:0; transform:translateX(30px); transition:all 0.3s ease; max-width:420px;">
+        <div id="im-toast-inner" style="padding:14px 18px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.15); display:flex; align-items:flex-start; gap:10px;"></div>
+    </div>
+
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin', { page: 'inmobiliaria' }) %>
+
+        <main class="main-content">
+            <div class="dashboard-scroll">
+
+                <!-- Breadcrumb -->
+                <div style="display:flex; align-items:center; gap:8px; margin-top:16px; margin-bottom:16px; font-size:0.85rem; color:#64748b;">
+                    <a href="/admin/inmobiliaria" style="color:#2563eb; text-decoration:none; font-weight:600;">
+                        <i class="bi bi-arrow-left"></i> Gestión de Campos
+                    </a>
+                    <span>›</span>
+                    <b style="color:#0f172a;">Clientes</b>
+                </div>
+
+                <!-- Header -->
+                <div class="im-page-header" style="margin-top:0; margin-bottom:20px;">
+                    <div>
+                        <h1 style="font-size:1.5rem;">Clientes Inmobiliarios</h1>
+                        <p style="color:#64748b; font-size:0.85rem; margin:4px 0 0;">Todos los compradores registrados en el sistema.</p>
+                    </div>
+                    <div id="header-count" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 18px; text-align:center;">
+                        <span id="total-count" style="font-size:1.5rem; font-weight:800; color:#2563eb;">—</span>
+                        <span style="display:block; font-size:0.75rem; color:#64748b; font-weight:600;">clientes</span>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="im-panel" style="margin-bottom:16px; padding:14px 18px;">
+                    <div class="filters-bar">
+                        <div style="flex:1; min-width:220px; position:relative;">
+                            <i class="bi bi-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
+                            <input type="text" id="filter-q" class="styled-input" style="padding-left:36px;" placeholder="Buscar por nombre, RUT o email...">
+                        </div>
+                        <div style="min-width:200px;">
+                            <select id="filter-proyecto" class="styled-input">
+                                <option value="">Todos los proyectos</option>
+                            </select>
+                        </div>
+                        <button class="im-btn im-btn-primary" onclick="loadClientes()">
+                            <i class="bi bi-funnel"></i> Filtrar
+                        </button>
+                        <button class="im-btn im-btn-ghost" onclick="clearFilters()">
+                            <i class="bi bi-x-circle"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla -->
+                <div class="im-panel" style="overflow:hidden; padding:0;">
+                    <div style="overflow-x:auto;">
+                        <table class="cli-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre Completo</th>
+                                    <th>RUT</th>
+                                    <th>Contacto</th>
+                                    <th>Estado Civil</th>
+                                    <th>Proyecto / Parcela</th>
+                                    <th style="width:50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientes-tbody">
+                                <tr><td colspan="6" class="no-results"><i class="bi bi-hourglass-split"></i>Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+    const IS_ADMIN = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
+
+    function showToast(msg, type='success', title='') {
+        const t = document.getElementById('im-toast');
+        const i = document.getElementById('im-toast-inner');
+        const cfg = {
+            success:{ bg:'#dcfce7', c:'#166534', b:'#86efac', ic:'bi-check-circle-fill', d:'Éxito' },
+            error:  { bg:'#fee2e2', c:'#991b1b', b:'#fca5a5', ic:'bi-exclamation-triangle-fill', d:'Error' },
+            warning:{ bg:'#fef3c7', c:'#92400e', b:'#fde68a', ic:'bi-exclamation-circle-fill', d:'Atención' },
+            info:   { bg:'#eff6ff', c:'#1e40af', b:'#bfdbfe', ic:'bi-info-circle-fill', d:'Info' }
+        };
+        const s = cfg[type]||cfg.info;
+        i.style.cssText = `background:${s.bg};color:${s.c};border:1.5px solid ${s.b};padding:14px 18px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);display:flex;align-items:flex-start;gap:10px;`;
+        i.innerHTML = `<i class="bi ${s.ic}" style="font-size:1.1rem;flex-shrink:0;margin-top:1px;"></i>
+            <div><div style="font-weight:700;font-size:0.88rem;">${title||s.d}</div>
+            <div style="font-size:0.82rem;margin-top:2px;opacity:0.9;">${escH(msg)}</div></div>`;
+        t.style.opacity='1'; t.style.transform='translateX(0)'; t.style.pointerEvents='auto';
+        clearTimeout(t._t);
+        t._t = setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(30px)'; t.style.pointerEvents='none'; }, 5000);
+    }
+
+    const $ = id => document.getElementById(id);
+    function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function fmtPrecio(input) { input.value = input.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+
+    function autoFmtRut(input, statusId) {
+        let v = input.value.replace(/[^0-9kK]/g,'').toUpperCase();
+        if (v.length > 1) v = v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.') + '-' + v.slice(-1);
+        input.value = v;
+        const statusEl = $(statusId);
+        if (!statusEl) return;
+        if (v.length < 3) { statusEl.textContent=''; return; }
+        const esValido = validarRut(v);
+        statusEl.textContent = esValido ? '✅' : '❌';
+        input.style.borderColor = esValido ? '#10b981' : (v.length > 4 ? '#ef4444' : '');
+    }
+
+    function validarRut(rut) {
+        const clean = rut.replace(/[^0-9kK]/g,'').toUpperCase();
+        if (clean.length < 2) return false;
+        const body = clean.slice(0,-1);
+        const dv   = clean.slice(-1);
+        let suma=0, mul=2;
+        for (let i=body.length-1; i>=0; i--) {
+            suma += parseInt(body[i],10) * mul;
+            mul = mul >= 7 ? 2 : mul+1;
+        }
+        const rest = 11 - (suma % 11);
+        const dvCalc = rest===11?'0': rest===10?'K': String(rest);
+        return dv === dvCalc;
+    }
+
+    let allClientes = [];
+    let expandedRow = null;
+    let proyectos   = [];
+
+    async function loadProyectos() {
+        try {
+            const res = await fetch('/api/im/proyectos');
+            if (!res.ok) return;
+            proyectos = await res.json();
+            const sel = $('filter-proyecto');
+            proyectos.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.nombre;
+                sel.appendChild(opt);
+            });
+        } catch(_) {}
+    }
+
+    async function loadClientes() {
+        const tbody = $('clientes-tbody');
+        tbody.innerHTML = '<tr><td colspan="6" class="no-results"><i class="bi bi-hourglass-split"></i>Cargando clientes...</td></tr>';
+        const q       = $('filter-q').value.trim();
+        const proj    = $('filter-proyecto').value;
+
+        let url = '/api/im/clientes?';
+        if (q)    url += `q=${encodeURIComponent(q)}&`;
+        if (proj) url += `proyecto_id=${encodeURIComponent(proj)}&`;
+
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            allClientes = await res.json();
+            $('total-count').textContent = allClientes.length;
+            renderTable(allClientes);
+        } catch(e) {
+            tbody.innerHTML = `<tr><td colspan="6" class="no-results" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i>${escH(e.message)}</td></tr>`;
+        }
+    }
+
+    function clearFilters() {
+        $('filter-q').value = '';
+        $('filter-proyecto').value = '';
+        loadClientes();
+    }
+
+    function renderTable(list) {
+        const tbody = $('clientes-tbody');
+        if (list.length===0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="no-results"><i class="bi bi-people"></i><br>No se encontraron clientes con esos filtros.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = list.map((c,idx)=> `
+            <tr id="row-${c.id}" onclick="toggleExpand('${c.id}', ${idx})" style="cursor:pointer;">
+                <td><strong>${escH(c.nombre_completo)}</strong></td>
+                <td><span style="font-family:monospace; font-size:0.8rem; background:#f1f5f9; padding:2px 7px; border-radius:4px;">${escH(c.rut)}</span></td>
+                <td>
+                    ${c.email ? `<div style="font-size:0.8rem;"><i class="bi bi-envelope" style="color:#64748b;"></i> ${escH(c.email)}</div>` : ''}
+                    ${c.telefono ? `<div style="font-size:0.8rem;"><i class="bi bi-telephone" style="color:#64748b;"></i> ${escH(c.telefono)}</div>` : ''}
+                    ${!c.email && !c.telefono ? '<span style="color:#94a3b8; font-size:0.8rem;">—</span>' : ''}
+                </td>
+                <td>${escH(c.estado_civil)}</td>
+                <td>
+                    ${c.proyecto_nombre ? `<span class="badge-proyecto"><i class="bi bi-geo-alt"></i>${escH(c.proyecto_nombre)} · P${c.parcela_numero||'?'}</span>` : '<span style="color:#94a3b8; font-size:0.8rem;">Sin asignar</span>'}
+                </td>
+                <td style="text-align:center;">
+                    <i class="bi bi-chevron-down" id="chevron-${c.id}" style="color:#94a3b8; transition:transform 0.2s;"></i>
+                </td>
+            </tr>
+            <tr class="cli-expand" id="expand-${c.id}" style="display:none;">
+                <td colspan="6">
+                    <div class="cli-expand-inner" id="expand-inner-${c.id}"></div>
+                </td>
+            </tr>`).join('');
+    }
+
+    function toggleExpand(id, idx) {
+        const row    = $(`expand-${id}`);
+        const chev   = $(`chevron-${id}`);
+        const mainRow = $(`row-${id}`);
+        const isOpen = row.style.display !== 'none';
+
+        // Cerrar el anterior
+        if (expandedRow && expandedRow !== id) {
+            $(`expand-${expandedRow}`).style.display='none';
+            $(`chevron-${expandedRow}`).style.transform='';
+            $(`row-${expandedRow}`).classList.remove('expanded');
+        }
+
+        if (isOpen) {
+            row.style.display='none';
+            chev.style.transform='';
+            mainRow.classList.remove('expanded');
+            expandedRow = null;
+        } else {
+            row.style.display='table-row';
+            chev.style.transform='rotate(180deg)';
+            mainRow.classList.add('expanded');
+            expandedRow = id;
+            const c = allClientes[idx];
+            renderExpand(id, c);
+        }
+    }
+
+    function renderExpand(id, c) {
+        const el = $(`expand-inner-${id}`);
+        el.innerHTML = `
+            <!-- Datos del cliente -->
+            <div class="cli-expand-section">
+                <p class="label"><i class="bi bi-person-fill"></i> Datos del Cliente</p>
+                <form class="cli-edit-form" onsubmit="saveCliente(event,'${c.id}')">
+                    <div class="im-input-group">
+                        <label>Nombre Completo</label>
+                        <input type="text" id="ec-nombre-${id}" class="styled-input" value="${escH(c.nombre_completo)}" required>
+                    </div>
+                    <div class="cli-form-row">
+                        <div class="im-input-group">
+                            <label>RUT</label>
+                            <div class="rut-input-wrap">
+                                <input type="text" id="ec-rut-${id}" class="styled-input" value="${escH(c.rut)}"
+                                    oninput="autoFmtRut(this,'ec-rut-status-${id}')" style="padding-right:36px;">
+                                <span id="ec-rut-status-${id}" class="rut-status"></span>
+                            </div>
+                        </div>
+                        <div class="im-input-group">
+                            <label>Teléfono</label>
+                            <input type="tel" id="ec-tel-${id}" class="styled-input" value="${escH(c.telefono||'')}">
+                        </div>
+                    </div>
+                    <div class="im-input-group">
+                        <label>Email</label>
+                        <input type="email" id="ec-email-${id}" class="styled-input" value="${escH(c.email||'')}">
+                    </div>
+                    <div class="im-input-group">
+                        <label>Dirección</label>
+                        <textarea id="ec-dir-${id}" class="styled-input" rows="2" style="resize:vertical;">${escH(c.direccion||'')}</textarea>
+                    </div>
+                    <div class="cli-form-row">
+                        <div class="im-input-group">
+                            <label>Estado Civil</label>
+                            <select id="ec-civil-${id}" class="styled-input" onchange="toggleConyugeExpand('${id}', this.value)">
+                                ${['Soltero/a','Casado/a','Divorciado/a','Viudo/a','Conviviente Civil'].map(op=>
+                                    `<option value="${op}" ${c.estado_civil===op?'selected':''}>${op}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div id="ec-conyuge-${id}" style="display:${c.estado_civil==='Casado/a'||c.estado_civil==='Conviviente Civil'?'block':'none'}; border-top:1px solid #e2e8f0; padding-top:10px;">
+                        <p style="font-size:0.75rem; font-weight:700; color:#64748b; margin:0 0 8px;">Cónyuge / Conviviente</p>
+                        <div class="cli-form-row">
+                            <div class="im-input-group">
+                                <label>Nombre</label>
+                                <input type="text" id="ec-con-nombre-${id}" class="styled-input" value="${escH(c.nombre_conyugue||'')}">
+                            </div>
+                            <div class="im-input-group">
+                                <label>RUT</label>
+                                <div class="rut-input-wrap">
+                                    <input type="text" id="ec-con-rut-${id}" class="styled-input" value="${escH(c.rut_conyugue||'')}"
+                                        oninput="autoFmtRut(this,'ec-con-rut-status-${id}')" style="padding-right:36px;">
+                                    <span id="ec-con-rut-status-${id}" class="rut-status"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="im-btn im-btn-success" style="align-self:flex-start;">
+                        <i class="bi bi-save"></i> Guardar Cambios
+                    </button>
+                </form>
+            </div>
+
+            <!-- Info adicional -->
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                ${c.proyecto_nombre ? `
+                <div class="cli-expand-section">
+                    <p class="label"><i class="bi bi-geo-alt-fill"></i> Proyecto Asignado</p>
+                    <div style="font-weight:700; color:#0f172a; margin-bottom:4px;">${escH(c.proyecto_nombre)}</div>
+                    <div style="font-size:0.82rem; color:#64748b;">Parcela N° ${c.parcela_numero||'—'}</div>
+                    ${c.parcela_id ? `<a href="/admin/inmobiliaria/parcela/${c.parcela_id}" class="im-btn im-btn-sm im-btn-ghost" style="margin-top:10px; display:inline-flex;">
+                        <i class="bi bi-arrow-up-right"></i> Ver Parcela
+                    </a>` : ''}
+                </div>` : ''}
+                <div class="cli-expand-section">
+                    <p class="label"><i class="bi bi-clock-history"></i> Registros de Auditoría</p>
+                    <div id="audit-cli-${id}" style="font-size:0.8rem; color:#64748b; font-style:italic;">Cargando...</div>
+                </div>
+            </div>`;
+
+        // Inicializar validadores RUT
+        const rutInput = $(`ec-rut-${id}`);
+        if (rutInput && rutInput.value) {
+            autoFmtRut(rutInput, `ec-rut-status-${id}`);
+        }
+
+        // Cargar auditoría del cliente
+        if (c.cliente_id || c.id) {
+            fetch(`/api/im/auditoria?entidad_id=${c.id||c.cliente_id}`)
+                .then(r=>r.json())
+                .then(logs => {
+                    const el2 = $(`audit-cli-${id}`);
+                    if (!el2) return;
+                    if (!logs||logs.length===0) { el2.textContent='Sin registros.'; return; }
+                    el2.innerHTML = logs.slice(0,5).map(l=>
+                        `<div style="padding:4px 0; border-bottom:1px solid #f1f5f9;">
+                            <strong>${escH(l.accion)}</strong> — ${escH(l.descripcion||'')}
+                            <span style="color:#94a3b8; font-size:0.75rem; display:block;">${new Date(l.fecha).toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${escH(l.usuario_nombre||'Sistema')}</span>
+                        </div>`).join('');
+                }).catch(()=>{});
+        }
+    }
+
+    function toggleConyugeExpand(id, val) {
+        const el = $(`ec-conyuge-${id}`);
+        if (el) el.style.display = (val==='Casado/a'||val==='Conviviente Civil') ? 'block':'none';
+    }
+
+    async function saveCliente(event, clienteId) {
+        event.preventDefault();
+        const btn = event.submitter || event.target.querySelector('[type="submit"]');
+        if (btn) { btn.disabled=true; btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...'; }
+        try {
+            const id = clienteId;
+            const rut = $(`ec-rut-${id}`).value;
+            if (!validarRut(rut)) {
+                showToast('El RUT no es válido (Módulo 11).','error','RUT inválido');
+                return;
+            }
+            const body = {
+                nombre_completo: $(`ec-nombre-${id}`).value,
+                rut:             rut,
+                email:           $(`ec-email-${id}`).value||null,
+                telefono:        $(`ec-tel-${id}`).value||null,
+                direccion:       $(`ec-dir-${id}`).value||null,
+                estado_civil:    $(`ec-civil-${id}`).value,
+                nombre_conyugue: $(`ec-con-nombre-${id}`).value||null,
+                rut_conyugue:    $(`ec-con-rut-${id}`).value||null
+            };
+            const res = await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+            if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.message||`Error ${res.status}`); }
+            showToast('Cliente actualizado correctamente.','success');
+            loadClientes();
+        } catch(e) { showToast(e.message,'error','No se pudo guardar'); }
+        finally { if (btn) { btn.disabled=false; btn.innerHTML='<i class="bi bi-save"></i> Guardar Cambios'; } }
+    }
+
+    // Búsqueda en tiempo real
+    let searchTimeout;
+    $('filter-q').addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadClientes, 350);
+    });
+
+    $('filter-proyecto').addEventListener('change', loadClientes);
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadProyectos();
+        loadClientes();
+    });
+    </script>
+</body>
+</html>

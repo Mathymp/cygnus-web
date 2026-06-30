@@ -26,7 +26,7 @@ const documentosController = require('../controllers/documentosController');
 // --- CONFIGURACIÓN DE UPLOAD ---
 const upload = require('../config/cloudinaryConfig');
 const multerLib2 = require('multer');
-const uploadDocMemory = multerLib2({ storage: multerLib2.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+const uploadDocMemory = multerLib2({ storage: multerLib2.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 const cloudinaryV2 = require('cloudinary').v2;
 const multerLib = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -263,6 +263,19 @@ router.get('/admin/inmobiliaria', requireAuth, async (req, res) => {
     if (!tieneAcceso) return res.redirect('/dashboard');
     res.render('admin/gestion-inmobiliaria', { user: req.session.user, page: 'inmobiliaria', puedeCrear });
 });
+router.get('/admin/inmobiliaria/clientes', requireAuth, async (req, res) => {
+    const isAdmin = req.session.user.role === 'admin';
+    let tieneAcceso = isAdmin;
+    if (!isAdmin) {
+        try {
+            const r = await pool.query('SELECT 1 FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
+            tieneAcceso = r.rows.length > 0;
+        } catch (_) {}
+    }
+    if (!tieneAcceso) return res.redirect('/dashboard');
+    res.render('admin/clientes-im', { user: req.session.user, page: 'clientes-im' });
+});
+
 router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, async (req, res) => {
     const isAdmin = req.session.user.role === 'admin';
     let puedeCrear = isAdmin;
@@ -304,9 +317,10 @@ router.post('/api/im/ventas', requireAuth, inmobiliariaController.createVenta);
 router.delete('/api/im/ventas/:id', requireAuth, inmobiliariaController.deleteVenta);
 
 // API – Documentos (Supabase Storage)
-router.get('/api/im/documentos', requireAuth, documentosController.getDocumentos);
-router.post('/api/im/documentos', requireAuth, uploadDocMemory.single('archivo'), documentosController.uploadDocumento);
-router.delete('/api/im/documentos/:id', requireAuth, documentosController.deleteDocumento);
+router.get('/api/im/documentos',          requireAuth, documentosController.getDocumentos);
+router.post('/api/im/documentos',         requireAuth, uploadDocMemory.single('archivo'), documentosController.uploadDocumento);
+router.patch('/api/im/documentos/:id',    requireAuth, documentosController.renameDocumento);
+router.delete('/api/im/documentos/:id',   requireAuth, documentosController.deleteDocumento);
 
 // API – Auditoría
 router.get('/api/im/auditoria', requireAuth, inmobiliariaController.getAuditoria);
