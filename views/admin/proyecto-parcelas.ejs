@@ -133,18 +133,20 @@
     </div>
 
     <!-- Pestañas principales -->
-    <div style="background:#fff;border-bottom:2px solid #e2e8f0;padding:0 20px;display:flex;align-items:center;gap:4px;">
+    <div style="background:#f1f5f9;border-bottom:2px solid #e2e8f0;padding:10px 24px;display:flex;align-items:center;gap:6px;">
         <button id="tab-btn-parcelas" onclick="setTab('parcelas')"
-            style="padding:12px 16px;border:none;background:none;font-size:.85rem;font-weight:700;color:#2563eb;border-bottom:2px solid #2563eb;margin-bottom:-2px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;">
+            style="padding:9px 18px;border:none;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:.84rem;font-weight:700;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .18s;box-shadow:0 2px 8px rgba(37,99,235,.25);">
             <i class="bi bi-grid-3x3-gap-fill"></i> Parcelas
         </button>
         <button id="tab-btn-documentos" onclick="setTab('documentos')"
-            style="padding:10px 16px;border:none;background:none;font-size:.85rem;font-weight:700;color:#64748b;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s;">
-            <span style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border-radius:7px;padding:4px 7px;display:inline-flex;align-items:center;justify-content:center;">
-                <i class="bi bi-folder2-open" style="color:#fff;font-size:.85rem;"></i>
+            style="padding:9px 18px;border:none;background:#fff;color:#475569;font-size:.84rem;font-weight:700;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .18s;border:1.5px solid #e2e8f0;"
+            onmouseover="if(this.dataset.active!=='1')this.style.background='#e0e7ff';if(this.dataset.active!=='1')this.style.color='#2563eb';"
+            onmouseout="if(this.dataset.active!=='1'){this.style.background='#fff';this.style.color='#475569';}">
+            <span style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border-radius:6px;padding:3px 6px;display:inline-flex;align-items:center;">
+                <i class="bi bi-folder2-open" style="color:#fff;font-size:.8rem;"></i>
             </span>
             Documentos del Proyecto
-            <span id="docs-tab-badge" style="display:none;background:#2563eb;color:#fff;border-radius:20px;padding:1px 8px;font-size:.7rem;font-weight:700;"></span>
+            <span id="docs-tab-badge" style="display:none;background:#2563eb;color:#fff;border-radius:20px;padding:1px 8px;font-size:.68rem;font-weight:700;"></span>
         </button>
     </div>
 
@@ -161,6 +163,12 @@
             <button class="filter-btn" data-estado="vendido" onclick="setFiltro('vendido',this)"><i class="bi bi-bag-check-fill"></i> Vendido</button>
         </div>
         <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+            <!-- Botón agregar parcela (solo admin/puede_crear) -->
+            <button id="btn-agregar-parcela" onclick="toggleAddPanel()" style="display:none;padding:9px 16px;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border:none;border-radius:10px;font-size:.83rem;font-weight:700;cursor:pointer;display:none;align-items:center;gap:7px;box-shadow:0 2px 8px rgba(22,163,74,.3);transition:all .15s;"
+                onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='brightness(1)'">
+                <i class="bi bi-plus-circle-fill"></i> Agregar Parcela
+            </button>
+            <div style="width:1px;height:24px;background:#e2e8f0;margin:0 2px;" id="sep-agregar" style="display:none;"></div>
             <button class="im-btn im-btn-ghost" id="btn-reporte" onclick="toggleReporte()" style="font-size:.8rem;">
                 <i class="bi bi-table"></i> Base de Ventas
             </button>
@@ -171,6 +179,39 @@
             <button class="view-btn active" id="btn-grid" title="Vista cuadrícula" onclick="setVista('grid')"><i class="bi bi-grid-3x3-gap-fill"></i></button>
             <button class="view-btn" id="btn-list" title="Vista lista" onclick="setVista('list')"><i class="bi bi-list-ul"></i></button>
         </div>
+    </div>
+
+    <!-- Formulario agregar parcela (se despliega bajo el toolbar) -->
+    <div id="add-panel-inline" style="display:none;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-bottom:2px solid #86efac;padding:18px 28px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+            <div style="background:linear-gradient(135deg,#16a34a,#15803d);border-radius:8px;padding:6px 9px;color:#fff;"><i class="bi bi-plus-circle-fill"></i></div>
+            <h4 style="margin:0;font-size:.92rem;font-weight:800;color:#14532d;">Nueva Parcela</h4>
+            <button onclick="toggleAddPanel()" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;line-height:1;">×</button>
+        </div>
+        <form id="form-add" onsubmit="crearParcela(event)">
+            <div class="add-form-row">
+                <div>
+                    <label>N° Parcela <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="ap-numero" placeholder="Ej: 5 ó 1-A" maxlength="20" oninput="this.value=this.value.toUpperCase()" required>
+                    <div id="ap-dup-warn" style="display:none;color:#f59e0b;font-size:.73rem;margin-top:3px;"><i class="bi bi-exclamation-triangle-fill"></i> <span></span></div>
+                </div>
+                <div>
+                    <label>N° Rol Parcela <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                    <input type="text" id="ap-rol" placeholder="Ej: 123-45">
+                </div>
+                <div>
+                    <label>Metraje (m²) <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                    <input type="number" id="ap-metraje" placeholder="Ej: 5000" min="0">
+                </div>
+                <div>
+                    <label>Precio Lista (CLP) <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                    <input type="text" id="ap-precio" placeholder="Ej: 15.000.000" oninput="fmtPrecio(this)">
+                </div>
+            </div>
+            <button type="submit" class="im-btn im-btn-success" id="btn-add" style="background:linear-gradient(135deg,#16a34a,#15803d);border:none;padding:10px 20px;font-size:.85rem;">
+                <i class="bi bi-plus-circle-fill"></i> Confirmar Parcela
+            </button>
+        </form>
     </div>
 
     <!-- Reporte Panel -->
@@ -188,44 +229,9 @@
 
     <!-- ─── TAB: PARCELAS ─── -->
     <div id="tab-parcelas">
-        <!-- Body -->
         <div class="pp-body">
             <div id="pp-content">
                 <div class="pp-empty"><i class="bi bi-hourglass-split"></i><p>Cargando parcelas...</p></div>
-            </div>
-
-            <!-- Panel agregar (admin only) -->
-            <div class="add-panel" id="add-panel" style="display:none;">
-                <div class="add-panel-header" onclick="toggleAddPanel()">
-                    <h4><i class="bi bi-plus-circle" style="color:#2563eb;"></i> Agregar Nueva Parcela</h4>
-                    <i class="bi bi-chevron-down" id="add-chevron"></i>
-                </div>
-                <div class="add-panel-body" id="add-panel-body">
-                    <form id="form-add" onsubmit="crearParcela(event)">
-                        <div class="add-form-row">
-                            <div>
-                                <label>N° Parcela <span style="color:#ef4444;">*</span></label>
-                                <input type="text" id="ap-numero" placeholder="Ej: 5 ó 1-A" maxlength="20" oninput="this.value=this.value.toUpperCase()" required>
-                                <div id="ap-dup-warn" style="display:none;color:#f59e0b;font-size:.73rem;margin-top:3px;"><i class="bi bi-exclamation-triangle-fill"></i> <span></span></div>
-                            </div>
-                            <div>
-                                <label>N° Rol Parcela <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                                <input type="text" id="ap-rol" placeholder="Ej: 123-45">
-                            </div>
-                            <div>
-                                <label>Metraje (m²) <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                                <input type="number" id="ap-metraje" placeholder="Ej: 5000" min="0">
-                            </div>
-                            <div>
-                                <label>Precio Lista (CLP) <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                                <input type="text" id="ap-precio" placeholder="Ej: 15.000.000" oninput="fmtPrecio(this)">
-                            </div>
-                        </div>
-                        <button type="submit" class="im-btn im-btn-success" id="btn-add">
-                            <i class="bi bi-plus-circle"></i> Agregar Parcela
-                        </button>
-                    </form>
-                </div>
             </div>
         </div>
     </div>
@@ -344,7 +350,10 @@ async function init(){
         if(proj) renderProyecto(proj);
         renderStats();
         applyFilters();
-        if(IS_ADMIN||PUEDE_CREAR) $('add-panel').style.display='block';
+        if(IS_ADMIN||PUEDE_CREAR){
+            const btn = $('btn-agregar-parcela');
+            if(btn){ btn.style.display='flex'; }
+        }
 
     }catch(e){
         $('pp-content').innerHTML=`
@@ -468,10 +477,19 @@ function renderList(parcelas){
 
 // ──── ADD PARCELA ────
 function toggleAddPanel(){
-    const body=$('add-panel-body');
-    const ch=$('add-chevron');
-    const open=body.classList.toggle('open');
-    ch.className=open?'bi bi-chevron-up':'bi bi-chevron-down';
+    const panel = $('add-panel-inline');
+    const btn   = $('btn-agregar-parcela');
+    if(!panel) return;
+    const open = panel.style.display === 'none' || panel.style.display === '';
+    panel.style.display = open ? 'block' : 'none';
+    if(btn){
+        btn.style.background = open
+            ? 'linear-gradient(135deg,#15803d,#166534)'
+            : 'linear-gradient(135deg,#16a34a,#15803d)';
+        btn.innerHTML = open
+            ? '<i class="bi bi-x-circle-fill"></i> Cancelar'
+            : '<i class="bi bi-plus-circle-fill"></i> Agregar Parcela';
+    }
 }
 
 async function crearParcela(e){
@@ -506,6 +524,7 @@ async function crearParcela(e){
             throw new Error(err.message||`No se pudo crear la parcela (HTTP ${res.status}).`);
         }
         document.getElementById('form-add').reset();
+        toggleAddPanel(); // cerrar panel tras crear
         showToast(`Parcela "${numStr}" creada correctamente.`,'success');
         await reloadParcelas();
     }catch(err){
@@ -679,21 +698,25 @@ function setTab(tab){
     const tabD = $('tab-documentos');
 
     if(tab === 'parcelas'){
-        btnP.style.color        = '#2563eb';
-        btnP.style.borderBottom = '2px solid #2563eb';
-        btnD.style.color        = '#94a3b8';
-        btnD.style.borderBottom = '2px solid transparent';
-        tabP.style.display      = 'block';
-        tabD.style.display      = 'none';
+        // Parcelas: botón activo (gradiente azul, sombra)
+        btnP.style.cssText = 'padding:9px 18px;border:none;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:.84rem;font-weight:700;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 2px 8px rgba(37,99,235,.3);transition:all .18s;';
+        btnP.dataset.active = '1';
+        // Documentos: botón inactivo
+        btnD.style.cssText = 'padding:9px 18px;border:none;background:#fff;color:#475569;font-size:.84rem;font-weight:700;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .18s;border:1.5px solid #e2e8f0;';
+        btnD.dataset.active = '0';
+        tabP.style.display  = 'block';
+        tabD.style.display  = 'none';
         if(tlbP) tlbP.style.display = 'flex';
         if(repP) repP.style.display = 'none';
     } else {
-        btnD.style.color        = '#1d4ed8';
-        btnD.style.borderBottom = '2px solid #2563eb';
-        btnP.style.color        = '#94a3b8';
-        btnP.style.borderBottom = '2px solid transparent';
-        tabD.style.display      = 'block';
-        tabP.style.display      = 'none';
+        // Documentos: botón activo
+        btnD.style.cssText = 'padding:9px 18px;border:none;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:.84rem;font-weight:700;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(37,99,235,.3);transition:all .18s;';
+        btnD.dataset.active = '1';
+        // Parcelas: botón inactivo
+        btnP.style.cssText = 'padding:9px 18px;border:none;background:#fff;color:#475569;font-size:.84rem;font-weight:700;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .18s;border:1.5px solid #e2e8f0;';
+        btnP.dataset.active = '0';
+        tabD.style.display  = 'block';
+        tabP.style.display  = 'none';
         if(tlbP) tlbP.style.display = 'none';
         if(repP) repP.style.display = 'none';
         if(!docsLoaded){ docsLoaded = true; loadProjDocs(); }
