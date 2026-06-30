@@ -348,11 +348,25 @@ exports.getClientes = async (req, res) => {
 
 exports.buscarClientePorRut = async (req, res) => {
     try {
-        const { rut } = req.query;
-        if (!rut) return res.status(400).json({ message: 'RUT requerido.' });
-        const result = await pool.query(`SELECT * FROM im_clientes WHERE rut = $1 LIMIT 1`, [rut]);
-        if (result.rows.length === 0) return res.status(404).json({ message: 'Cliente no encontrado.' });
-        res.json(result.rows[0]);
+        const { rut, q } = req.query;
+        const term = (rut || q || '').trim();
+        if (!term) return res.status(400).json({ message: 'Ingresa un RUT o nombre para buscar.' });
+
+        // Si parece RUT (contiene guion o solo dígitos+K), buscar por RUT exacto primero
+        const esRut = /[0-9kK][-]/.test(term) || /^\d{7,9}[kK\d]$/.test(term.replace(/\./g,''));
+        if (esRut) {
+            const r = await pool.query(`SELECT * FROM im_clientes WHERE rut = $1 LIMIT 1`, [term]);
+            if (r.rows.length > 0) return res.json(r.rows[0]);
+        }
+
+        // Búsqueda flexible por nombre o RUT parcial (devuelve hasta 8 resultados)
+        const result = await pool.query(
+            `SELECT * FROM im_clientes WHERE nombre_completo ILIKE $1 OR rut ILIKE $1 ORDER BY nombre_completo ASC LIMIT 8`,
+            [`%${term}%`]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ message: 'No se encontró ningún cliente con ese nombre o RUT.' });
+        if (result.rows.length === 1) return res.json(result.rows[0]);
+        res.json({ multiple: true, clientes: result.rows });
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 

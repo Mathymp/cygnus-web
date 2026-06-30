@@ -271,8 +271,10 @@
 
 .im-input-group { margin-bottom: 14px; }
 .im-input-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #334155; font-size: 0.82rem; }
-.im-input-group .styled-input { width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; font-family: inherit; transition: all 0.2s; background: #f8fafc; color: #0f172a; }
-.im-input-group .styled-input:focus { outline: none; border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.styled-input { width: 100%; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; font-family: inherit; transition: all 0.2s; background: #f8fafc; color: #0f172a; box-sizing: border-box; }
+.styled-input:focus { outline: none; border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+.styled-input::placeholder { color: #94a3b8; }
+.im-input-group .styled-input { width: 100%; }
 
 .im-checkbox-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
 .im-checkbox-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #2563eb; }

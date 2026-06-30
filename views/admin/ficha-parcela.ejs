@@ -236,15 +236,19 @@
 
                             <!-- PASO 1 -->
                             <div class="step-box">
-                                <p class="step-title"><span class="step-badge">1</span> Buscar Cliente Existente por RUT</p>
+                                <p class="step-title"><span class="step-badge">1</span> Buscar Cliente Existente</p>
                                 <div style="display:flex;gap:8px;align-items:center;">
-                                    <div class="rut-input-wrap" style="flex:1;">
-                                        <input type="text" id="buscar-rut" class="styled-input" placeholder="Ej: 12.345.678-9"
-                                            oninput="autoFmtRut(this,'buscar-rut-status')" style="padding-right:38px;">
-                                        <span id="buscar-rut-status" class="rut-status"></span>
+                                    <div style="flex:1;position:relative;">
+                                        <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.9rem;pointer-events:none;"></i>
+                                        <input type="text" id="buscar-rut"
+                                            style="padding-left:36px;"
+                                            class="styled-input"
+                                            placeholder="Nombre o RUT del cliente..."
+                                            onkeydown="if(event.key==='Enter'){event.preventDefault();buscarCliente();}">
                                     </div>
-                                    <button class="im-btn im-btn-ghost" onclick="buscarCliente()"><i class="bi bi-search"></i> Buscar</button>
+                                    <button class="im-btn im-btn-primary" onclick="buscarCliente()"><i class="bi bi-search"></i> Buscar</button>
                                 </div>
+                                <div style="margin-top:6px;font-size:.76rem;color:#94a3b8;"><i class="bi bi-info-circle"></i> Puedes buscar por RUT (ej: 12.345.678-9) o por nombre del cliente.</div>
                                 <div id="cliente-encontrado" style="margin-top:10px;display:none;"></div>
                             </div>
 
@@ -938,21 +942,37 @@ async function guardarParcela(event){
 }
 
 // ──────────────── BUSCAR CLIENTE ────────────────
+function clienteCard(c){
+    const data=JSON.stringify(c).replace(/"/g,'&quot;');
+    return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">
+        <div>
+            <div style="font-weight:700;font-size:.88rem;color:#0f172a;">${escH(c.nombre_completo)}</div>
+            <div style="font-size:.76rem;color:#64748b;">${escH(c.rut)}${c.estado_civil?' · '+escH(c.estado_civil):''}${c.telefono?' · '+escH(c.telefono):''}</div>
+        </div>
+        <button class="im-btn im-btn-sm im-btn-primary" onclick='cargarCliente(${data})'><i class="bi bi-person-check"></i> Usar</button>
+    </div>`;
+}
+
 async function buscarCliente(){
-    const rut=$('buscar-rut').value.trim();if(!rut)return;
+    const q=$('buscar-rut').value.trim();
+    if(!q){showToast('Escribe un nombre o RUT para buscar.','warning');return;}
     const el=$('cliente-encontrado');el.style.display='block';
-    el.innerHTML='<div style="color:#64748b;font-size:.82rem;"><i class="bi bi-hourglass-split"></i> Buscando...</div>';
+    el.innerHTML='<div style="color:#64748b;font-size:.82rem;padding:8px 0;"><i class="bi bi-hourglass-split"></i> Buscando...</div>';
     try{
-        const res=await fetch(`/api/im/clientes/buscar?rut=${encodeURIComponent(rut)}`);
-        if(res.status===404){el.innerHTML='<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:.85rem;color:#92400e;"><i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente con ese RUT. Puedes crearlo en el formulario de abajo.</div>';return;}
-        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`Error al buscar cliente (HTTP ${res.status}).`);}
-        const c=await res.json();
-        el.innerHTML=`<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-            <div><span style="font-size:.9rem;font-weight:700;color:#0f172a;">${escH(c.nombre_completo)}</span>
-            <span style="font-size:.8rem;color:#64748b;display:block;">${c.rut} · ${c.estado_civil}${c.email?' · '+c.email:''}</span></div>
-            <button class="im-btn im-btn-sm im-btn-primary" onclick='cargarCliente(${JSON.stringify(c)})'>
-                <i class="bi bi-person-check"></i> Usar este
-            </button></div>`;
+        const res=await fetch(`/api/im/clientes/buscar?q=${encodeURIComponent(q)}`);
+        if(res.status===404){
+            el.innerHTML=`<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:.84rem;color:#92400e;">
+                <i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente. Puedes crearlo directamente en el formulario de abajo.</div>`;
+            return;
+        }
+        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`Error ${res.status}`);}
+        const data=await res.json();
+        if(data.multiple){
+            el.innerHTML=`<div style="font-size:.78rem;color:#64748b;margin-bottom:6px;font-weight:600;">Se encontraron ${data.clientes.length} clientes — selecciona uno:</div>`
+                +data.clientes.map(clienteCard).join('');
+        } else {
+            el.innerHTML=`<div style="font-size:.78rem;color:#64748b;margin-bottom:6px;font-weight:600;">Cliente encontrado:</div>`+clienteCard(data);
+        }
     }catch(e){showToast(e.message,'error','Error al buscar');el.style.display='none';}
 }
 
