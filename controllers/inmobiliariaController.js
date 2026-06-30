@@ -735,6 +735,54 @@ exports.getUsuarios = async (req, res) => {
 //  AUDITORÍA
 // ==========================================
 
+exports.getReporte = async (req, res) => {
+    try {
+        const { proyectoId } = req.params;
+        const result = await pool.query(
+            `SELECT
+                pa.numero_parcela,
+                pa.numero_rol_parcela,
+                pa.metraje,
+                pa.estado_venta as estado_parcela,
+                c.nombre_completo,
+                c.rut,
+                c.email,
+                c.telefono,
+                c.direccion,
+                c.estado_civil,
+                c.regimen_matrimonial,
+                c.nombre_conyugue,
+                c.rut_conyugue,
+                c.email_conyugue,
+                c.telefono_conyugue,
+                v.id as venta_id,
+                v.fecha_venta,
+                v.tipo_pago,
+                v.precio_lista,
+                v.precio_acordado,
+                v.monto_pie,
+                v.numero_credito,
+                v.numero_cuotas,
+                v.monto_cuota,
+                v.condiciones_compra,
+                v.firmo_promesa,
+                v.firmo_compraventa,
+                v.agente_nombre,
+                v.estado as estado_contrato,
+                (SELECT COUNT(*) FROM im_cuotas q WHERE q.venta_id=v.id AND q.pagado=false) as cuotas_pendientes,
+                (SELECT COUNT(*) FROM im_cuotas q WHERE q.venta_id=v.id AND q.pagado=true)  as cuotas_pagadas,
+                (SELECT COALESCE(SUM(q.monto),0) FROM im_cuotas q WHERE q.venta_id=v.id AND q.pagado=false) as saldo_pendiente
+             FROM im_parcelas pa
+             LEFT JOIN im_ventas_lotes v ON v.parcela_id=pa.id AND v.estado='activa'
+             LEFT JOIN im_clientes c ON v.cliente_id=c.id
+             WHERE pa.proyecto_id=$1
+             ORDER BY LENGTH(pa.numero_parcela::TEXT) ASC, pa.numero_parcela ASC`,
+            [proyectoId]
+        );
+        res.json(result.rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
 exports.getAuditoria = async (req, res) => {
     try {
         const { entidad_id, tabla } = req.query;

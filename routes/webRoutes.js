@@ -321,6 +321,7 @@ router.delete('/api/im/proyectos/:id', requireAuth, inmobiliariaController.delet
 
 // API – Parcelas
 router.get('/api/im/proyectos/:proyectoId/parcelas', requireAuth, inmobiliariaController.getParcelas);
+router.get('/api/im/proyectos/:proyectoId/reporte',  requireAuth, inmobiliariaController.getReporte);
 router.get('/api/im/parcelas/:id', requireAuth, inmobiliariaController.getParcelaById);
 router.post('/api/im/parcelas', requireAuth, inmobiliariaController.createParcela);
 router.post('/api/im/parcelas/bulk', requireAuth, inmobiliariaController.createParcelasBulk);
