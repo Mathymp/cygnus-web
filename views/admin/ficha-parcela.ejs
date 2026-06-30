@@ -598,9 +598,9 @@ async function loadAgentes(){
         const sel=$('venta-agente-id');
         sel.innerHTML=`<option value="" data-nombre="">— Sin asignar / No se sabe —</option>`
             +usuariosList.map(u=>`<option value="${u.id}" data-nombre="${escH(u.name)}">${escH(u.name)} (${u.role==='admin'?'Admin':'Corredor'})</option>`).join('');
-        // Default: current user
-        sel.value=CURRENT_USER_ID;
-        $('venta-agente-nombre').value=CURRENT_USER_NAME;
+        // Default: sin asignar
+        sel.value='';
+        $('venta-agente-nombre').value='';
     }catch(_){}
 }
 
