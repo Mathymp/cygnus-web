@@ -232,7 +232,18 @@
                                 Las parcelas pueden ser vendidas antes de contar con rol propio asignado.
                             </div>
                             <div id="venta-actual" style="margin-bottom:16px;"></div>
+
+                            <!-- Botón para editar cuando ya hay venta -->
+                            <div id="btn-editar-venta-wrap" style="display:none;margin-bottom:14px;">
+                                <button class="im-btn im-btn-ghost" onclick="toggleFormVenta()" id="btn-toggle-form">
+                                    <i class="bi bi-pencil-square"></i> Editar datos de la venta / comprador
+                                </button>
+                            </div>
+
                             <div id="historial-ventas-section" style="display:none;margin-bottom:20px;"></div>
+
+                            <!-- Formulario (visible solo si no hay venta, o al editar) -->
+                            <div id="form-venta-wrapper">
 
                             <!-- PASO 1 -->
                             <div class="step-box">
@@ -425,6 +436,8 @@
                                 <button type="submit" class="im-btn im-btn-success im-btn-full"><i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta</button>
                             </form>
 
+                            </div><!-- /form-venta-wrapper -->
+
                             <!-- Sección de cuotas (solo visible si hay venta tipo crédito) -->
                             <div id="section-cuotas-venta" style="display:none;margin-top:20px;border-top:2px solid #e2e8f0;padding-top:16px;">
                                 <p class="step-title"><i class="bi bi-list-check"></i> Plan de Pagos / Cuotas</p>
@@ -523,6 +536,16 @@ function autoFmtTel(input){
     if(raw.length>7)f+=' '+raw.slice(7,11);
     input.value=f;
 }
+let formVentaVisible = false;
+function toggleFormVenta(){
+    formVentaVisible=!formVentaVisible;
+    $('form-venta-wrapper').style.display=formVentaVisible?'block':'none';
+    const btn=$('btn-toggle-form');
+    btn.innerHTML=formVentaVisible
+        ?'<i class="bi bi-chevron-up"></i> Ocultar formulario'
+        :'<i class="bi bi-pencil-square"></i> Editar datos de la venta / comprador';
+}
+
 function toggleConyuge(val){
     $('section-conyuge').style.display=(val==='Casado/a'||val==='Conviviente Civil')?'block':'none';
     const rb=$('box-regimen');if(rb)rb.style.display=(val==='Casado/a')?'flex':'none';
@@ -743,6 +766,11 @@ function renderParcela(data){
                 <a href="/admin/inmobiliaria/clientes" style="font-size:.75rem;color:#2563eb;text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-top:4px;"><i class="bi bi-arrow-up-right"></i> Ver ficha completa del cliente</a>
             </div>
         </div>`;
+
+        // Ocultar formulario y mostrar botón editar (ya hay venta)
+        $('form-venta-wrapper').style.display='none';
+        $('btn-editar-venta-wrap').style.display='block';
+        formVentaVisible=false;
 
         // Pre-fill form
         $('venta-cliente-id').value=venta.cliente_id;
