@@ -47,7 +47,7 @@
             </li>
         </ul>
 
-        <% if (user && user.role === 'admin') { %>
+        <% if (user && (user.role === 'admin' || (typeof imPuedeVer !== 'undefined' && imPuedeVer))) { %>
             
             <div class="nav-group-label">Gestión de Campos</div>
             <ul class="nav-list">
@@ -58,7 +58,9 @@
                     </a>
                 </li>
             </ul>
+        <% } %>
 
+        <% if (user && user.role === 'admin') { %>
             <div class="nav-group-label">Módulo Parcelas 360</div>
             <ul class="nav-list">
                 <li>

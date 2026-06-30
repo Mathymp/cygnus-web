@@ -7,6 +7,15 @@
 </head>
 <body class="dashboard-body">
     <%- include('../partials/alerts') %>
+
+    <!-- ====== TOAST ====== -->
+    <div id="im-toast" style="position:fixed; top:20px; right:20px; z-index:9999; pointer-events:none; opacity:0; transform:translateX(30px); transition:all 0.3s ease;">
+        <div id="im-toast-inner" style="padding:14px 18px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.15); display:flex; align-items:flex-start; gap:10px; min-width:250px; max-width:400px;">
+            <i id="im-toast-icon" class="bi" style="font-size:1.1rem; flex-shrink:0; margin-top:1px;"></i>
+            <div><div id="im-toast-title" style="font-weight:700; font-size:0.88rem;"></div><div id="im-toast-msg" style="font-size:0.82rem; margin-top:2px; opacity:0.85;"></div></div>
+        </div>
+    </div>
+
     <div class="app-layout">
         <%- include('../partials/sidebar-admin', { page: 'inmobiliaria' }) %>
 
@@ -274,6 +283,32 @@
     <script>
         const PARCELA_ID = '<%= parcelaId %>';
         const IS_ADMIN = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
+        const PUEDE_CREAR = '<%= typeof puedeCrear !== "undefined" && puedeCrear ? "true" : "false" %>' === 'true';
+
+        // ---- Toast ----
+        function showToast(msg, type='success', title='') {
+            const toast = document.getElementById('im-toast');
+            const inner = document.getElementById('im-toast-inner');
+            const icon  = document.getElementById('im-toast-icon');
+            const titleEl = document.getElementById('im-toast-title');
+            const msgEl = document.getElementById('im-toast-msg');
+            const cfg = {
+                success: { bg:'#dcfce7', color:'#166534', border:'#86efac', icon:'bi-check-circle-fill', def:'Éxito' },
+                error:   { bg:'#fee2e2', color:'#991b1b', border:'#fca5a5', icon:'bi-exclamation-triangle-fill', def:'Error' },
+                warning: { bg:'#fef3c7', color:'#92400e', border:'#fde68a', icon:'bi-exclamation-circle-fill', def:'Atención' },
+                info:    { bg:'#eff6ff', color:'#1e40af', border:'#bfdbfe', icon:'bi-info-circle-fill', def:'Info' }
+            };
+            const s = cfg[type] || cfg.info;
+            inner.style.cssText = `background:${s.bg}; color:${s.color}; border:1.5px solid ${s.border}; padding:14px 18px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.12); display:flex; align-items:flex-start; gap:10px; min-width:250px; max-width:400px;`;
+            icon.className = `bi ${s.icon}`;
+            titleEl.style.cssText = 'font-weight:700; font-size:0.88rem;';
+            msgEl.style.cssText = 'font-size:0.82rem; margin-top:2px; opacity:0.9; word-break:break-word;';
+            titleEl.textContent = title || s.def;
+            msgEl.textContent = msg;
+            toast.style.opacity = '1'; toast.style.transform = 'translateX(0)'; toast.style.pointerEvents = 'auto';
+            clearTimeout(toast._t);
+            toast._t = setTimeout(() => { toast.style.opacity='0'; toast.style.transform='translateX(30px)'; toast.style.pointerEvents='none'; }, 5000);
+        }
 
         let parcelaData = null;
         let ventaData = null;
@@ -449,19 +484,18 @@
             try {
                 const precioRaw = $('edit-precio').value.replace(/\./g,'');
                 const body = {
-                    numero_rol_parcela: $('edit-rol').value,
+                    numero_rol_parcela: $('edit-rol').value.trim() || null,
                     metraje: $('edit-metraje').value || null,
                     precio_actual: precioRaw || null,
                     estado_venta: $('edit-estado').value
                 };
                 const res = await fetch(`/api/im/parcelas/${PARCELA_ID}`, {
-                    method: 'PUT',
-                    headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify(body)
+                    method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
                 });
-                if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+                if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.message || `Error ${res.status}`); }
+                showToast('Parcela actualizada correctamente.', 'success');
                 init();
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { showToast(e.message, 'error', 'No se pudo guardar'); }
             finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Guardar Cambios'; }
         }
 
@@ -473,9 +507,10 @@
                 const res = await fetch(`/api/im/clientes/buscar?rut=${encodeURIComponent(rut)}`);
                 if (res.status === 404) {
                     $('cliente-encontrado').style.display = 'block';
-                    $('cliente-encontrado').innerHTML = '<span style="color:#92400e; font-size:0.85rem;"><i class="bi bi-exclamation-triangle"></i> Cliente no encontrado. Completa el formulario para crearlo.</span>';
+                    $('cliente-encontrado').innerHTML = '<div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:10px; font-size:0.85rem; color:#92400e;"><i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente con ese RUT. Completa el formulario de abajo para crearlo.</div>';
                     return;
                 }
+                if (!res.ok) throw new Error(`Error ${res.status}`);
                 const c = await res.json();
                 $('cliente-encontrado').style.display = 'block';
                 $('cliente-encontrado').innerHTML = `
@@ -488,7 +523,7 @@
                             <i class="bi bi-person-check"></i> Usar este
                         </button>
                     </div>`;
-            } catch (e) { alert('Error buscando cliente: ' + e.message); }
+            } catch (e) { showToast(e.message, 'error', 'Error al buscar cliente'); }
         }
 
         function cargarClienteEnForm(clienteId) {
@@ -533,7 +568,7 @@
                     const cRes = await fetch('/api/im/clientes', {
                         method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(clienteBody)
                     });
-                    if (!cRes.ok) { const err = await cRes.json(); throw new Error(err.message); }
+                    if (!cRes.ok) { const err = await cRes.json().catch(()=>({})); throw new Error(err.message || `Error ${cRes.status}`); }
                     const cData = await cRes.json();
                     clienteId = cData.id;
                     $('venta-cliente-id').value = clienteId;
@@ -545,16 +580,17 @@
                     cliente_id: clienteId,
                     firmo_promesa: $('venta-promesa').checked,
                     firmo_compraventa: $('venta-compraventa').checked,
-                    forma_pago: $('venta-forma-pago').value,
+                    forma_pago: $('venta-forma-pago').value || null,
                     fecha_venta: $('venta-fecha').value
                 };
                 const vRes = await fetch('/api/im/ventas', {
                     method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(ventaBody)
                 });
-                if (!vRes.ok) { const err = await vRes.json(); throw new Error(err.message); }
+                if (!vRes.ok) { const err = await vRes.json().catch(()=>({})); throw new Error(err.message || `Error ${vRes.status}`); }
 
+                showToast('Comprador asignado correctamente.', 'success');
                 init();
-            } catch (err) { alert('Error: ' + err.message); }
+            } catch (err) { showToast(err.message, 'error', 'No se pudo guardar'); }
             finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-person-check-fill"></i> Asignar Comprador y Registrar Venta'; } }
         });
 
@@ -562,11 +598,12 @@
         async function liberarParcela() {
             try {
                 const vRes = await fetch(`/api/im/ventas/${ventaData.id}`, { method: 'DELETE' });
-                if (!vRes.ok) throw new Error('No se pudo liberar.');
+                if (!vRes.ok) { const err = await vRes.json().catch(()=>({})); throw new Error(err.message || 'No se pudo liberar.'); }
                 closeModal('liberar');
                 currentClienteId = null;
+                showToast('Parcela liberada. Estado: Disponible.', 'info');
                 init();
-            } catch (e) { alert('Error: ' + e.message); }
+            } catch (e) { showToast(e.message, 'error'); }
         }
 
         // ---- Documentos ----
@@ -612,18 +649,21 @@
             e.preventDefault();
             const form = e.target;
             const btn = form.querySelector('[type="submit"]');
-            btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Subiendo...';
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Subiendo...'; }
             try {
                 const fd = new FormData(form);
                 fd.append('tipo_asociacion', tipo);
                 fd.append('asociacion_id', asociacionId);
                 const res = await fetch('/api/im/documentos', { method: 'POST', body: fd });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.message || err.detail); }
+                if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.message || err.detail || `Error ${res.status}`); }
                 form.reset();
-                $(`fname-${tipo}`)?.style && ($(`fname-${tipo}`).style.display = 'none');
+                const fnameEl = $(`fname-${tipo}`);
+                if (fnameEl) { fnameEl.textContent = ''; fnameEl.style.display = 'none'; }
+                showToast('Documento subido correctamente.', 'success');
                 loadDocs(tipo, asociacionId);
-            } catch (err) { alert('Error: ' + err.message); }
-            finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload"></i> Subir Documento'; }
+                loadAuditoria();
+            } catch (err) { showToast(err.message, 'error', 'Error al subir documento'); }
+            finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload"></i> Subir Documento'; } }
         }
 
         async function loadDocs(tipo, asociacionId) {
@@ -665,13 +705,14 @@
         }
 
         async function eliminarDoc(id, tipo, asociacionId) {
-            if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
+            if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
             try {
                 const res = await fetch(`/api/im/documentos/${id}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error('Error al eliminar.');
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+                showToast('Documento eliminado.', 'success');
                 loadDocs(tipo, asociacionId);
                 loadAuditoria();
-            } catch (e) { alert(e.message); }
+            } catch (e) { showToast(e.message, 'error'); }
         }
 
         // ---- Auditoría ----

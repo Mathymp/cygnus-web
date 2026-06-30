@@ -48,6 +48,34 @@ const requireAuth = (req, res, next) => {
     next();
 };
 
+// --- MIDDLEWARE: Inyecta flags de acceso al módulo inmobiliaria en res.locals ---
+const setImAcceso = async (req, res, next) => {
+    if (!req.session || !req.session.user) {
+        res.locals.imPuedeVer = false;
+        res.locals.imPuedeCrear = false;
+        return next();
+    }
+    if (req.session.user.role === 'admin') {
+        res.locals.imPuedeVer = true;
+        res.locals.imPuedeCrear = true;
+        return next();
+    }
+    try {
+        const r = await pool.query(
+            'SELECT puede_crear FROM im_accesos WHERE user_id = $1', [req.session.user.id]
+        );
+        res.locals.imPuedeVer   = r.rows.length > 0;
+        res.locals.imPuedeCrear = r.rows.length > 0 && r.rows[0].puede_crear;
+    } catch (_) {
+        res.locals.imPuedeVer   = false;
+        res.locals.imPuedeCrear = false;
+    }
+    next();
+};
+
+// Aplicar a todas las rutas /admin (para que el sidebar siempre tenga los flags)
+router.use('/admin', setImAcceso);
+
 // ==========================================
 //              RUTAS PÚBLICAS
 // ==========================================
@@ -221,11 +249,33 @@ router.get('/admin/marca', requireAuth, (req, res) => {
 // ==========================================
 
 // Vistas
-router.get('/admin/inmobiliaria', requireAuth, (req, res) => {
-    res.render('admin/gestion-inmobiliaria', { user: req.session.user, page: 'inmobiliaria' });
+router.get('/admin/inmobiliaria', requireAuth, async (req, res) => {
+    const isAdmin = req.session.user.role === 'admin';
+    let puedeCrear = isAdmin;
+    let tieneAcceso = isAdmin;
+    if (!isAdmin) {
+        try {
+            const r = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
+            tieneAcceso = r.rows.length > 0;
+            puedeCrear  = r.rows.length > 0 && r.rows[0].puede_crear;
+        } catch (_) {}
+    }
+    if (!tieneAcceso) return res.redirect('/dashboard');
+    res.render('admin/gestion-inmobiliaria', { user: req.session.user, page: 'inmobiliaria', puedeCrear });
 });
-router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, (req, res) => {
-    res.render('admin/ficha-parcela', { user: req.session.user, page: 'inmobiliaria', parcelaId: req.params.parcelaId });
+router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, async (req, res) => {
+    const isAdmin = req.session.user.role === 'admin';
+    let puedeCrear = isAdmin;
+    let tieneAcceso = isAdmin;
+    if (!isAdmin) {
+        try {
+            const r = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
+            tieneAcceso = r.rows.length > 0;
+            puedeCrear  = r.rows.length > 0 && r.rows[0].puede_crear;
+        } catch (_) {}
+    }
+    if (!tieneAcceso) return res.redirect('/dashboard');
+    res.render('admin/ficha-parcela', { user: req.session.user, page: 'inmobiliaria', parcelaId: req.params.parcelaId, puedeCrear });
 });
 
 // API – Proyectos Inmobiliaria
@@ -260,6 +310,11 @@ router.delete('/api/im/documentos/:id', requireAuth, documentosController.delete
 
 // API – Auditoría
 router.get('/api/im/auditoria', requireAuth, inmobiliariaController.getAuditoria);
+
+// API – Accesos (admin gestiona qué usuarios ven el módulo)
+router.get('/api/im/accesos',              requireAuth, inmobiliariaController.getAccesos);
+router.post('/api/im/accesos',             requireAuth, inmobiliariaController.setAcceso);
+router.delete('/api/im/accesos/:userId',   requireAuth, inmobiliariaController.deleteAcceso);
 
 router.post('/recover-password', authController.recoverPassword);
 router.get('/update-password', authController.showUpdatePassword);

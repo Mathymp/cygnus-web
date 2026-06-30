@@ -7,6 +7,18 @@
 </head>
 <body class="dashboard-body">
     <%- include('../partials/alerts') %>
+
+    <!-- ====== TOAST NOTIFICATION ====== -->
+    <div id="im-toast" style="position:fixed; top:20px; right:20px; z-index:9999; pointer-events:none; opacity:0; transform:translateX(30px); transition:all 0.3s ease;">
+        <div id="im-toast-inner" style="padding:14px 18px; border-radius:12px; min-width:260px; max-width:420px; box-shadow:0 8px 30px rgba(0,0,0,0.15); display:flex; align-items:flex-start; gap:10px;">
+            <i id="im-toast-icon" class="bi" style="font-size:1.15rem; flex-shrink:0; margin-top:1px;"></i>
+            <div style="flex:1;">
+                <div id="im-toast-title" style="font-weight:700; font-size:0.88rem;"></div>
+                <div id="im-toast-msg" style="font-size:0.82rem; margin-top:2px; opacity:0.85;"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="app-layout">
         <%- include('../partials/sidebar-admin', { page: 'inmobiliaria' }) %>
 
@@ -18,24 +30,29 @@
                         <h1><i class="bi bi-geo-alt-fill" style="color:#2563eb;"></i> Gestión de Campos</h1>
                         <p>Proyectos de venta de campos y parcelas · Cygnus Group</p>
                     </div>
-                    <% if (user && user.role === 'admin') { %>
-                    <button class="im-btn im-btn-primary" onclick="openModal_create()">
-                        <i class="bi bi-plus-lg"></i> Generar Proyecto
-                    </button>
-                    <% } %>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <% if (user && user.role === 'admin') { %>
+                        <button class="im-btn im-btn-ghost" onclick="openModal('accesos')" title="Gestionar accesos">
+                            <i class="bi bi-person-gear"></i> Accesos
+                        </button>
+                        <% } %>
+                        <% if (puedeCrear) { %>
+                        <button class="im-btn im-btn-primary" onclick="openModalCreate()">
+                            <i class="bi bi-plus-lg"></i> Generar Proyecto
+                        </button>
+                        <% } %>
+                    </div>
                 </div>
 
-                <!-- Leyenda -->
                 <div class="im-legend">
                     <div class="im-legend-item"><div class="im-legend-dot disponible"></div> Disponible</div>
                     <div class="im-legend-item"><div class="im-legend-dot reservado"></div> Reservado</div>
                     <div class="im-legend-item"><div class="im-legend-dot vendido"></div> Vendido</div>
                 </div>
 
-                <!-- Grid de proyectos -->
                 <div id="im-grid" class="im-projects-grid">
-                    <div style="grid-column:1/-1; text-align:center; padding:40px; color:#94a3b8;">
-                        <i class="bi bi-hourglass-split" style="font-size:1.5rem; display:block; margin-bottom:8px;"></i>
+                    <div style="grid-column:1/-1; text-align:center; padding:50px; color:#94a3b8;">
+                        <i class="bi bi-hourglass-split" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
                         Cargando proyectos...
                     </div>
                 </div>
@@ -51,43 +68,41 @@
                 <h3 id="modal-proj-title"><i class="bi bi-folder-plus"></i> Nuevo Proyecto</h3>
                 <button class="btn-close" onclick="closeModal('project')"><i class="bi bi-x-lg"></i></button>
             </div>
-            <form id="form-project">
+            <form id="form-project" autocomplete="off">
                 <input type="hidden" id="proj-id">
                 <div class="im-modal-body">
-                    <div class="im-form-row">
-                        <div class="im-input-group" style="grid-column: 1/-1;">
-                            <label>Nombre del Proyecto *</label>
-                            <input type="text" name="nombre" id="proj-nombre" class="styled-input" placeholder="Ej: Fundo Los Robles" required>
-                        </div>
+                    <div class="im-input-group">
+                        <label>Nombre del Proyecto <span style="color:#ef4444;">*</span></label>
+                        <input type="text" id="proj-nombre" class="styled-input" placeholder="Ej: Fundo Los Robles" required>
                     </div>
                     <div class="im-form-row">
                         <div class="im-input-group">
                             <label>Estado</label>
-                            <select name="estado" id="proj-estado" class="styled-input">
+                            <select id="proj-estado" class="styled-input">
                                 <option value="activo">Activo</option>
                                 <option value="inactivo">Inactivo</option>
                                 <option value="cerrado">Cerrado</option>
                             </select>
                         </div>
                         <div class="im-input-group" id="grupo-total-parcelas">
-                            <label>Total de Parcelas</label>
-                            <input type="number" name="total_parcelas" id="proj-total" class="styled-input" min="0" placeholder="Ej: 20">
-                            <small style="color:#94a3b8; font-size:0.75rem;">Se auto-generarán al crear</small>
+                            <label>Total de Parcelas <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
+                            <input type="number" id="proj-total" class="styled-input" min="0" placeholder="Ej: 20">
+                            <small style="color:#94a3b8; font-size:0.72rem;">Se auto-generarán al guardar</small>
                         </div>
                     </div>
                     <div class="im-form-row">
                         <div class="im-input-group">
-                            <label>N° Rol 1</label>
-                            <input type="text" name="numero_rol_1" id="proj-rol1" class="styled-input" placeholder="Ej: 123-45">
+                            <label>N° Rol 1 <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
+                            <input type="text" id="proj-rol1" class="styled-input" placeholder="Ej: 123-45">
                         </div>
                         <div class="im-input-group">
-                            <label>N° Rol 2 <span style="color:#94a3b8;">(opcional)</span></label>
-                            <input type="text" name="numero_rol_2" id="proj-rol2" class="styled-input" placeholder="Ej: 678-90">
+                            <label>N° Rol 2 <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
+                            <input type="text" id="proj-rol2" class="styled-input" placeholder="Ej: 678-90">
                         </div>
                     </div>
                     <div class="im-input-group">
-                        <label>N° Matriz</label>
-                        <input type="text" name="numero_matriz" id="proj-matriz" class="styled-input" placeholder="Ej: 99-99">
+                        <label>N° Matriz <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
+                        <input type="text" id="proj-matriz" class="styled-input" placeholder="Ej: 99-99">
                     </div>
                 </div>
                 <div class="im-modal-footer">
@@ -102,64 +117,116 @@
 
     <!-- ====== MODAL PARCELAS DEL PROYECTO ====== -->
     <div id="modal-parcelas" class="im-modal-overlay">
-        <div class="im-modal-card wide">
+        <div class="im-modal-card wide" style="max-width:860px;">
             <div class="im-modal-header">
                 <div>
                     <h3 id="modal-parc-title"><i class="bi bi-grid-3x3-gap"></i> Parcelas</h3>
                     <p id="modal-parc-sub" style="margin:4px 0 0; font-size:0.8rem; color:#64748b;"></p>
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <% if (user && user.role === 'admin') { %>
-                    <button class="im-btn im-btn-sm im-btn-ghost" onclick="openAddParcela()">
-                        <i class="bi bi-plus"></i> Añadir
-                    </button>
-                    <% } %>
                     <button class="btn-close" onclick="closeModal('parcelas')"><i class="bi bi-x-lg"></i></button>
                 </div>
             </div>
-            <div class="im-modal-body">
-                <div class="im-legend" style="margin-bottom:16px;">
-                    <div class="im-legend-item"><div class="im-legend-dot disponible"></div> Disponible</div>
-                    <div class="im-legend-item"><div class="im-legend-dot reservado"></div> Reservado</div>
-                    <div class="im-legend-item"><div class="im-legend-dot vendido"></div> Vendido</div>
+            <div class="im-modal-body" style="padding:0;">
+                <!-- Tabs dentro del modal de parcelas -->
+                <div class="im-tabs-header" style="padding:0 22px; border-radius:0;">
+                    <button class="im-tab-btn active" onclick="switchParcelasTab('lista', this)">
+                        <i class="bi bi-grid-3x3-gap"></i> Parcelas
+                    </button>
+                    <button class="im-tab-btn" onclick="switchParcelasTab('docs', this)">
+                        <i class="bi bi-folder2"></i> Docs del Proyecto
+                    </button>
+                    <% if (puedeCrear) { %>
+                    <button class="im-tab-btn" onclick="switchParcelasTab('agregar', this)">
+                        <i class="bi bi-plus-circle"></i> Agregar Parcela
+                    </button>
+                    <% } %>
                 </div>
-                <div id="parc-stats" style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;"></div>
-                <div id="parcelas-grid-modal" class="im-parcelas-grid">
-                    <div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>
+
+                <!-- Tab: Lista de parcelas -->
+                <div id="tab-parc-lista" class="im-tab-content active" style="padding:20px 22px;">
+                    <div id="parc-stats" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;"></div>
+                    <div id="parcelas-grid-modal" class="im-parcelas-grid">
+                        <div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>
+                    </div>
+                </div>
+
+                <!-- Tab: Documentos del proyecto -->
+                <div id="tab-parc-docs" class="im-tab-content" style="padding:20px 22px;">
+                    <div id="proj-doc-uploader" style="margin-bottom:16px;"></div>
+                    <div id="proj-doc-list" class="im-doc-list"></div>
+                </div>
+
+                <!-- Tab: Agregar parcela individual -->
+                <div id="tab-parc-agregar" class="im-tab-content" style="padding:20px 22px;">
+                    <p style="font-size:0.82rem; color:#64748b; margin:0 0 14px;">
+                        <i class="bi bi-info-circle"></i> Agrega una parcela específica con todos sus datos, o un rango de una sola vez.
+                    </p>
+                    <form id="form-add-individual">
+                        <div class="im-form-row" style="align-items:end;">
+                            <div class="im-input-group">
+                                <label>Número de Parcela <span style="color:#ef4444;">*</span></label>
+                                <input type="number" id="ind-numero" class="styled-input" min="1" placeholder="Ej: 5" required>
+                            </div>
+                            <div class="im-input-group">
+                                <label>N° Rol Parcela <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
+                                <input type="text" id="ind-rol" class="styled-input" placeholder="Ej: 123-45-05">
+                            </div>
+                        </div>
+                        <div class="im-form-row">
+                            <div class="im-input-group">
+                                <label>Metraje (m²) <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
+                                <input type="number" id="ind-metraje" class="styled-input" step="0.01" placeholder="Ej: 5000">
+                            </div>
+                            <div class="im-input-group">
+                                <label>Precio (CLP) <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
+                                <input type="text" id="ind-precio" class="styled-input" placeholder="Ej: 25.000.000" oninput="fmtPrecio(this)">
+                            </div>
+                        </div>
+                        <button type="submit" class="im-btn im-btn-primary" style="margin-top:4px;">
+                            <i class="bi bi-plus-circle"></i> Agregar Esta Parcela
+                        </button>
+                    </form>
+                    <div style="height:1px; background:#e2e8f0; margin:20px 0;"></div>
+                    <p style="font-size:0.82rem; font-weight:700; color:#334155; margin:0 0 10px;">O generar un rango</p>
+                    <form id="form-add-rango">
+                        <div class="im-form-row" style="align-items:end;">
+                            <div class="im-input-group">
+                                <label>Desde N°</label>
+                                <input type="number" id="rango-desde" class="styled-input" min="1" placeholder="Ej: 1">
+                            </div>
+                            <div class="im-input-group">
+                                <label>Hasta N°</label>
+                                <input type="number" id="rango-hasta" class="styled-input" min="1" placeholder="Ej: 20">
+                            </div>
+                            <div style="padding-bottom:14px;">
+                                <button type="submit" class="im-btn im-btn-ghost">
+                                    <i class="bi bi-stack"></i> Generar Rango
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ====== MODAL AÑADIR PARCELA ====== -->
-    <div id="modal-add-parc" class="im-modal-overlay">
-        <div class="im-modal-card">
+    <!-- ====== MODAL ACCESOS ====== -->
+    <div id="modal-accesos" class="im-modal-overlay">
+        <div class="im-modal-card wide">
             <div class="im-modal-header">
-                <h3><i class="bi bi-plus-square"></i> Añadir Parcela</h3>
-                <button class="btn-close" onclick="closeModal('add-parc')"><i class="bi bi-x-lg"></i></button>
+                <h3><i class="bi bi-person-gear"></i> Gestión de Accesos al Módulo</h3>
+                <button class="btn-close" onclick="closeModal('accesos')"><i class="bi bi-x-lg"></i></button>
             </div>
-            <form id="form-add-parc">
-                <input type="hidden" id="addparc-proyecto-id">
-                <div class="im-modal-body">
-                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px; margin-bottom:16px; font-size:0.85rem; color:#1e40af;">
-                        <i class="bi bi-info-circle-fill"></i> Puedes añadir un rango de parcelas de una vez.
-                    </div>
-                    <div class="im-form-row">
-                        <div class="im-input-group">
-                            <label>Desde N°</label>
-                            <input type="number" id="addparc-desde" class="styled-input" min="1" required>
-                        </div>
-                        <div class="im-input-group">
-                            <label>Hasta N°</label>
-                            <input type="number" id="addparc-hasta" class="styled-input" min="1" required>
-                        </div>
-                    </div>
+            <div class="im-modal-body">
+                <p style="font-size:0.85rem; color:#64748b; margin:0 0 16px;">
+                    Selecciona qué usuarios del equipo pueden acceder al módulo de Gestión de Campos. 
+                    Activa "Puede crear" para permitirles generar proyectos y parcelas.
+                </p>
+                <div id="accesos-list">
+                    <div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando usuarios...</p></div>
                 </div>
-                <div class="im-modal-footer">
-                    <button type="button" class="im-btn im-btn-ghost" onclick="closeModal('add-parc')">Cancelar</button>
-                    <button type="submit" class="im-btn im-btn-primary"><i class="bi bi-check-lg"></i> Generar Parcelas</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -167,7 +234,7 @@
     <div id="modal-delete" class="im-modal-overlay">
         <div class="im-modal-card" style="max-width:420px;">
             <div class="im-modal-header">
-                <h3><i class="bi bi-exclamation-triangle"></i> Eliminar Proyecto</h3>
+                <h3><i class="bi bi-exclamation-triangle" style="color:#ef4444;"></i> Eliminar Proyecto</h3>
                 <button class="btn-close" onclick="closeModal('delete')"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="im-modal-body" style="text-align:center; padding:30px 22px;">
@@ -186,26 +253,86 @@
     </div>
 
     <script>
-        const isAdmin = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
+        const IS_ADMIN = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
+        const PUEDE_CREAR = '<%= puedeCrear ? "true" : "false" %>' === 'true';
         let proyectosData = [];
         let currentProyectoId = null;
+        let currentProyectoNombre = '';
+
+        // ---- Toast ----
+        function showToast(msg, type = 'success', title = '') {
+            const toast = document.getElementById('im-toast');
+            const inner = document.getElementById('im-toast-inner');
+            const icon  = document.getElementById('im-toast-icon');
+            const titleEl = document.getElementById('im-toast-title');
+            const msgEl = document.getElementById('im-toast-msg');
+
+            const cfg = {
+                success: { bg: '#dcfce7', color: '#166534', border: '#86efac', icon: 'bi-check-circle-fill', def: 'Éxito' },
+                error:   { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5', icon: 'bi-exclamation-triangle-fill', def: 'Error' },
+                warning: { bg: '#fef3c7', color: '#92400e', border: '#fde68a', icon: 'bi-exclamation-circle-fill', def: 'Atención' },
+                info:    { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe', icon: 'bi-info-circle-fill', def: 'Info' }
+            };
+            const s = cfg[type] || cfg.info;
+            inner.style.cssText = `background:${s.bg}; color:${s.color}; border:1.5px solid ${s.border}; padding:14px 18px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.12); display:flex; align-items:flex-start; gap:10px; min-width:260px; max-width:420px;`;
+            icon.className = `bi ${s.icon}`;
+            icon.style.cssText = `font-size:1.1rem; flex-shrink:0; margin-top:1px;`;
+            titleEl.style.cssText = `font-weight:700; font-size:0.88rem;`;
+            msgEl.style.cssText = `font-size:0.82rem; margin-top:2px; opacity:0.9; word-break:break-word;`;
+            titleEl.textContent = title || s.def;
+            msgEl.textContent = msg;
+
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(0)';
+            toast.style.pointerEvents = 'auto';
+
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(30px)';
+                toast.style.pointerEvents = 'none';
+            }, 5000);
+        }
 
         // ---- Helpers ----
         function fmt(n) { return Math.floor(n).toLocaleString('es-CL'); }
+        function escapeHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
         function openModal(id)  { document.getElementById(`modal-${id}`).classList.add('show'); }
         function closeModal(id) { document.getElementById(`modal-${id}`).classList.remove('show'); }
+        function fmtPrecio(input) { input.value = input.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+
+        function switchParcelasTab(name, btn) {
+            document.querySelectorAll('#modal-parcelas .im-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#modal-parcelas .im-tab-content').forEach(c => c.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            document.getElementById(`tab-parc-${name}`).classList.add('active');
+
+            if (name === 'docs' && currentProyectoId) {
+                initProjDocs(currentProyectoId);
+            }
+        }
 
         // ---- Cargar proyectos ----
         async function loadProyectos() {
             const grid = document.getElementById('im-grid');
-            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:#94a3b8;"><i class="bi bi-hourglass-split" style="font-size:1.5rem; display:block; margin-bottom:8px;"></i>Cargando...</div>';
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#94a3b8;"><i class="bi bi-hourglass-split" style="font-size:2rem; display:block; margin-bottom:8px;"></i>Cargando...</div>';
             try {
                 const res = await fetch('/api/im/proyectos');
-                if (!res.ok) throw new Error('Error al cargar proyectos');
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                    throw new Error(err.error || err.message || `Error HTTP ${res.status}`);
+                }
                 proyectosData = await res.json();
                 renderGrid();
             } catch (e) {
-                grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#ef4444;">${e.message}</div>`;
+                grid.innerHTML = `<div style="grid-column:1/-1;">
+                    <div style="background:#fee2e2; border:1px solid #fca5a5; border-radius:12px; padding:24px; text-align:center; color:#991b1b; max-width:600px; margin:0 auto;">
+                        <i class="bi bi-exclamation-triangle-fill" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                        <p style="font-weight:700; margin:0 0 6px;">Error al cargar proyectos</p>
+                        <p style="font-size:0.85rem; opacity:0.85; margin:0 0 12px;">${escapeHtml(e.message)}</p>
+                        <button class="im-btn im-btn-danger" onclick="loadProyectos()"><i class="bi bi-arrow-clockwise"></i> Reintentar</button>
+                    </div>
+                </div>`;
             }
         }
 
@@ -214,9 +341,10 @@
             grid.innerHTML = '';
 
             if (proyectosData.length === 0) {
-                grid.innerHTML = `<div style="grid-column:1/-1;" class="im-empty">
-                    <i class="bi bi-folder-x"></i>
-                    <p>No hay proyectos creados todavía.<br><small>Haz clic en "Generar Proyecto" para empezar.</small></p>
+                grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:#94a3b8;">
+                    <i class="bi bi-folder-x" style="font-size:3rem; display:block; margin-bottom:12px;"></i>
+                    <p style="font-size:1rem; font-weight:600; margin:0 0 6px; color:#64748b;">No hay proyectos todavía</p>
+                    ${PUEDE_CREAR ? '<p style="font-size:0.85rem; margin:0;">Haz clic en <strong>Generar Proyecto</strong> para comenzar.</p>' : '<p style="font-size:0.85rem; margin:0;">El administrador aún no ha creado proyectos.</p>'}
                 </div>`;
                 return;
             }
@@ -226,13 +354,13 @@
                 const card = document.createElement('div');
                 card.className = 'im-project-card';
                 card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                         <span class="im-card-badge ${badgeClass}">
-                            <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> ${p.estado.toUpperCase()}
+                            <i class="bi bi-circle-fill" style="font-size:0.45rem;"></i> ${p.estado}
                         </span>
-                        ${isAdmin ? `
-                        <div style="display:flex; gap:6px;">
-                            <button class="im-btn im-btn-sm im-btn-ghost" onclick="openModal('project'); setEditMode('${p.id}')" title="Editar">
+                        ${IS_ADMIN ? `
+                        <div style="display:flex; gap:5px; flex-shrink:0;">
+                            <button class="im-btn im-btn-sm im-btn-ghost" onclick='openModalEdit(${JSON.stringify(p)})' title="Editar proyecto">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <button class="im-btn im-btn-sm im-btn-danger" onclick="prepareDelete('${p.id}','${escapeHtml(p.nombre)}')" title="Eliminar">
@@ -240,7 +368,7 @@
                             </button>
                         </div>` : ''}
                     </div>
-                    <p class="im-card-title">${escapeHtml(p.nombre)}</p>
+                    <p class="im-card-title" style="margin:0;">${escapeHtml(p.nombre)}</p>
                     <div class="im-card-meta">
                         <div class="im-meta-item">
                             <span class="im-meta-label">Parcelas</span>
@@ -263,18 +391,13 @@
                         <button class="im-btn im-btn-primary" style="flex:1;" onclick="abrirParcelas('${p.id}', '${escapeHtml(p.nombre)}')">
                             <i class="bi bi-grid-3x3-gap"></i> Ver Parcelas
                         </button>
-                    </div>
-                `;
+                    </div>`;
                 grid.appendChild(card);
             });
         }
 
-        function escapeHtml(str) {
-            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        }
-
-        // ---- Crear / Editar proyecto ----
-        function openModal_create() {
+        // ---- Crear proyecto ----
+        function openModalCreate() {
             document.getElementById('form-project').reset();
             document.getElementById('proj-id').value = '';
             document.getElementById('modal-proj-title').innerHTML = '<i class="bi bi-folder-plus"></i> Nuevo Proyecto';
@@ -283,9 +406,8 @@
             openModal('project');
         }
 
-        function setEditMode(id) {
-            const p = proyectosData.find(x => x.id === id);
-            if (!p) return;
+        // ---- Editar proyecto ----
+        function openModalEdit(p) {
             document.getElementById('proj-id').value = p.id;
             document.getElementById('proj-nombre').value = p.nombre;
             document.getElementById('proj-estado').value = p.estado;
@@ -295,30 +417,41 @@
             document.getElementById('modal-proj-title').innerHTML = '<i class="bi bi-pencil-fill"></i> Editar Proyecto';
             document.getElementById('btn-save-proj').innerHTML = '<i class="bi bi-check-lg"></i> Guardar Cambios';
             document.getElementById('grupo-total-parcelas').style.display = 'none';
+            openModal('project');
         }
 
         document.getElementById('form-project').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-save-proj');
-            btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
             try {
                 const id = document.getElementById('proj-id').value;
+                const totalStr = document.getElementById('proj-total').value;
                 const body = {
-                    nombre: document.getElementById('proj-nombre').value,
+                    nombre: document.getElementById('proj-nombre').value.trim(),
                     estado: document.getElementById('proj-estado').value,
-                    total_parcelas: document.getElementById('proj-total').value || 0,
-                    numero_rol_1: document.getElementById('proj-rol1').value,
-                    numero_rol_2: document.getElementById('proj-rol2').value,
-                    numero_matriz: document.getElementById('proj-matriz').value
+                    total_parcelas: totalStr ? parseInt(totalStr, 10) : 0,
+                    numero_rol_1:  document.getElementById('proj-rol1').value.trim() || null,
+                    numero_rol_2:  document.getElementById('proj-rol2').value.trim() || null,
+                    numero_matriz: document.getElementById('proj-matriz').value.trim() || null
                 };
-                const url = id ? `/api/im/proyectos/${id}` : '/api/im/proyectos';
+                const url    = id ? `/api/im/proyectos/${id}` : '/api/im/proyectos';
                 const method = id ? 'PUT' : 'POST';
                 const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Error al guardar.'); }
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                    throw new Error(err.message || err.error || `Error ${res.status}`);
+                }
                 closeModal('project');
+                showToast(id ? 'Proyecto actualizado correctamente.' : 'Proyecto creado correctamente.', 'success');
                 loadProyectos();
-            } catch (err) { alert('Error: ' + err.message); }
-            finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Guardar'; }
+            } catch (err) {
+                showToast(err.message, 'error', 'No se pudo guardar');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = document.getElementById('proj-id').value ? '<i class="bi bi-check-lg"></i> Guardar Cambios' : '<i class="bi bi-check-lg"></i> Crear Proyecto';
+            }
         });
 
         // ---- Eliminar proyecto ----
@@ -332,89 +465,338 @@
             const id = document.getElementById('del-proj-id').value;
             try {
                 const res = await fetch(`/api/im/proyectos/${id}`, { method: 'DELETE' });
-                if (!res.ok && res.status !== 204) {
-                    const err = await res.json();
-                    throw new Error(err.message);
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.message || `Error ${res.status}`);
                 }
                 closeModal('delete');
+                showToast('Proyecto eliminado.', 'success');
                 loadProyectos();
-            } catch (err) { alert('Error: ' + err.message); }
+            } catch (err) {
+                showToast(err.message, 'error', 'No se pudo eliminar');
+            }
         }
 
-        // ---- Modal Parcelas ----
+        // ---- Abrir parcelas ----
         async function abrirParcelas(proyectoId, nombre) {
             currentProyectoId = proyectoId;
-            document.getElementById('modal-parc-title').innerHTML = `<i class="bi bi-grid-3x3-gap"></i> Parcelas — ${escapeHtml(nombre)}`;
+            currentProyectoNombre = nombre;
+            document.getElementById('modal-parc-title').innerHTML = `<i class="bi bi-grid-3x3-gap"></i> ${escapeHtml(nombre)}`;
+            document.getElementById('modal-parc-sub').textContent = '';
             document.getElementById('parcelas-grid-modal').innerHTML = '<div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
             document.getElementById('parc-stats').innerHTML = '';
+
+            // Reset tabs
+            document.querySelectorAll('#modal-parcelas .im-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#modal-parcelas .im-tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector('#modal-parcelas .im-tab-btn').classList.add('active');
+            document.getElementById('tab-parc-lista').classList.add('active');
+
             openModal('parcelas');
+            await loadParcelasModal(proyectoId);
+        }
+
+        async function loadParcelasModal(proyectoId) {
             try {
                 const res = await fetch(`/api/im/proyectos/${proyectoId}/parcelas`);
+                if (!res.ok) throw new Error(`Error ${res.status}`);
                 const parcelas = await res.json();
                 renderParcelasModal(parcelas);
             } catch (e) {
-                document.getElementById('parcelas-grid-modal').innerHTML = `<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${e.message}</p></div>`;
+                document.getElementById('parcelas-grid-modal').innerHTML = `<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${escapeHtml(e.message)}</p></div>`;
             }
         }
 
         function renderParcelasModal(parcelas) {
             const grid = document.getElementById('parcelas-grid-modal');
             const stats = document.getElementById('parc-stats');
-
-            const disp = parcelas.filter(p => p.estado_venta === 'disponible').length;
-            const res = parcelas.filter(p => p.estado_venta === 'reservado').length;
-            const vend = parcelas.filter(p => p.estado_venta === 'vendido').length;
+            const disp  = parcelas.filter(p => p.estado_venta === 'disponible').length;
+            const res2  = parcelas.filter(p => p.estado_venta === 'reservado').length;
+            const vend  = parcelas.filter(p => p.estado_venta === 'vendido').length;
 
             stats.innerHTML = `
                 <span style="background:#dcfce7; color:#166534; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700;">${disp} Disponibles</span>
-                <span style="background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700;">${res} Reservadas</span>
+                <span style="background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700;">${res2} Reservadas</span>
                 <span style="background:#fee2e2; color:#991b1b; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700;">${vend} Vendidas</span>
-            `;
+                <span style="background:#f1f5f9; color:#475569; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700;">${parcelas.length} Total</span>`;
 
             if (parcelas.length === 0) {
-                grid.innerHTML = '<div class="im-empty"><i class="bi bi-inbox"></i><p>No hay parcelas en este proyecto.</p></div>';
+                grid.innerHTML = `<div class="im-empty" style="grid-column:1/-1;">
+                    <i class="bi bi-inbox"></i>
+                    <p>No hay parcelas. ${PUEDE_CREAR ? 'Ve a la pestaña <strong>Agregar Parcela</strong>.' : ''}</p>
+                </div>`;
                 return;
             }
-
             grid.innerHTML = '';
             parcelas.forEach(p => {
                 const chip = document.createElement('a');
-                chip.href = `/admin/inmobiliaria/parcela/${p.id}`;
+                chip.href  = `/admin/inmobiliaria/parcela/${p.id}`;
                 chip.className = `im-parcela-chip estado-${p.estado_venta}`;
                 chip.innerHTML = `
                     <span class="im-parcela-num">${p.numero_parcela}</span>
-                    ${p.numero_rol_parcela ? `<span class="im-parcela-rol">${p.numero_rol_parcela}</span>` : ''}
+                    ${p.numero_rol_parcela ? `<span class="im-parcela-rol">${escapeHtml(p.numero_rol_parcela)}</span>` : ''}
                     ${p.precio_actual ? `<span class="im-parcela-precio">$${fmt(p.precio_actual)}</span>` : ''}
-                    ${p.cliente_nombre ? `<span style="font-size:0.65rem; color:#64748b; margin-top:2px;">${escapeHtml(p.cliente_nombre.split(' ')[0])}</span>` : ''}
-                `;
+                    ${p.cliente_nombre ? `<span style="font-size:0.63rem; color:#64748b; text-align:center; margin-top:2px;">${escapeHtml(p.cliente_nombre.split(' ')[0])}</span>` : ''}`;
                 grid.appendChild(chip);
             });
         }
 
-        // ---- Modal añadir parcela (bulk) ----
-        function openAddParcela() {
-            document.getElementById('addparc-proyecto-id').value = currentProyectoId;
-            document.getElementById('addparc-desde').value = '';
-            document.getElementById('addparc-hasta').value = '';
-            openModal('add-parc');
-        }
-
-        document.getElementById('form-add-parc').addEventListener('submit', async (e) => {
+        // ---- Agregar parcela individual ----
+        document.getElementById('form-add-individual').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = e.submitter || e.target.querySelector('[type="submit"]');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...'; }
             try {
+                const precioRaw = document.getElementById('ind-precio').value.replace(/\./g, '');
                 const body = {
-                    proyecto_id: document.getElementById('addparc-proyecto-id').value,
-                    desde: document.getElementById('addparc-desde').value,
-                    hasta: document.getElementById('addparc-hasta').value
+                    proyecto_id: currentProyectoId,
+                    numero_parcela: parseInt(document.getElementById('ind-numero').value, 10),
+                    numero_rol_parcela: document.getElementById('ind-rol').value.trim() || null,
+                    metraje: document.getElementById('ind-metraje').value || null,
+                    precio_actual: precioRaw || null
                 };
-                const res = await fetch('/api/im/parcelas/bulk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.message); }
-                closeModal('add-parc');
-                abrirParcelas(currentProyectoId, '');
+                const res = await fetch('/api/im/parcelas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.message || `Error ${res.status}`); }
+                document.getElementById('form-add-individual').reset();
+                showToast(`Parcela N° ${body.numero_parcela} creada.`, 'success');
+                await loadParcelasModal(currentProyectoId);
                 loadProyectos();
-            } catch (err) { alert('Error: ' + err.message); }
+            } catch (err) {
+                showToast(err.message, 'error', 'No se pudo crear la parcela');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-plus-circle"></i> Agregar Esta Parcela'; }
+            }
         });
 
+        // ---- Agregar rango de parcelas ----
+        document.getElementById('form-add-rango').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.submitter || e.target.querySelector('[type="submit"]');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i>...'; }
+            try {
+                const body = {
+                    proyecto_id: currentProyectoId,
+                    desde: parseInt(document.getElementById('rango-desde').value, 10),
+                    hasta: parseInt(document.getElementById('rango-hasta').value, 10)
+                };
+                if (isNaN(body.desde) || isNaN(body.hasta)) throw new Error('Ingresa valores numéricos.');
+                if (body.desde > body.hasta) throw new Error('El inicio debe ser menor al fin.');
+                const res = await fetch('/api/im/parcelas/bulk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.message || `Error ${res.status}`); }
+                const data = await res.json();
+                document.getElementById('form-add-rango').reset();
+                showToast(data.message || 'Parcelas creadas.', 'success');
+                await loadParcelasModal(currentProyectoId);
+                loadProyectos();
+            } catch (err) {
+                showToast(err.message, 'error', 'No se pudo crear el rango');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-stack"></i> Generar Rango'; }
+            }
+        });
+
+        // ---- Documentos del Proyecto ----
+        function buildUploaderHtml(tipo, asociacionId) {
+            return `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:14px;">
+                <p style="font-size:0.78rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.4px; margin:0 0 12px;">
+                    <i class="bi bi-cloud-upload"></i> Subir Documento
+                </p>
+                <form id="doc-form-${tipo}-${asociacionId}" enctype="multipart/form-data">
+                    <div class="im-input-group">
+                        <label>Nombre del Documento <span style="color:#ef4444;">*</span></label>
+                        <input type="text" name="nombre_personalizado" class="styled-input" placeholder="Ej: Escritura de propiedad, Plano..." required>
+                    </div>
+                    <div class="im-upload-zone" id="zone-${tipo}">
+                        <input type="file" name="archivo" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" required
+                            onchange="document.getElementById('fname-${tipo}').textContent = this.files[0]?.name || ''; document.getElementById('fname-${tipo}').style.display = this.files[0] ? 'block' : 'none';">
+                        <i class="bi bi-cloud-arrow-up im-upload-icon"></i>
+                        <p class="im-upload-text">Arrastra el archivo o haz clic aquí</p>
+                        <p class="im-upload-hint">PDF, imagen, Word, Excel · máx. 20 MB</p>
+                        <span id="fname-${tipo}" style="display:none; margin-top:4px; font-size:0.78rem; font-weight:700; color:#2563eb;"></span>
+                    </div>
+                    <button type="submit" class="im-btn im-btn-primary im-btn-full" style="margin-top:12px;">
+                        <i class="bi bi-upload"></i> Subir Documento
+                    </button>
+                </form>
+            </div>`;
+        }
+
+        let projDocsInit = false;
+        async function initProjDocs(proyectoId) {
+            const uploader = document.getElementById('proj-doc-uploader');
+            const list = document.getElementById('proj-doc-list');
+
+            if (!projDocsInit) {
+                uploader.innerHTML = buildUploaderHtml('proyecto', proyectoId);
+                document.getElementById(`doc-form-proyecto-${proyectoId}`).addEventListener('submit', (e) => handleDocSubmit(e, 'proyecto', proyectoId));
+                projDocsInit = true;
+            }
+            await loadDocs('proyecto', proyectoId, list);
+        }
+
+        async function handleDocSubmit(e, tipo, asociacionId) {
+            e.preventDefault();
+            const form = e.target;
+            const btn = form.querySelector('[type="submit"]');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Subiendo...'; }
+            try {
+                const fd = new FormData(form);
+                fd.append('tipo_asociacion', tipo);
+                fd.append('asociacion_id', asociacionId);
+                const res = await fetch('/api/im/documentos', { method: 'POST', body: fd });
+                if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.message || err.detail || `Error ${res.status}`); }
+                form.reset();
+                const fnameEl = document.getElementById(`fname-${tipo}`);
+                if (fnameEl) { fnameEl.textContent = ''; fnameEl.style.display = 'none'; }
+                showToast('Documento subido correctamente.', 'success');
+                const listEl = tipo === 'proyecto' ? document.getElementById('proj-doc-list') : null;
+                if (listEl) loadDocs(tipo, asociacionId, listEl);
+            } catch (err) {
+                showToast(err.message, 'error', 'Error al subir documento');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-upload"></i> Subir Documento'; }
+            }
+        }
+
+        async function loadDocs(tipo, asociacionId, container) {
+            if (!container) return;
+            container.innerHTML = '<div style="text-align:center; padding:10px; color:#94a3b8; font-size:0.82rem;"><i class="bi bi-hourglass-split"></i> Cargando...</div>';
+            try {
+                const res = await fetch(`/api/im/documentos?tipo_asociacion=${tipo}&asociacion_id=${asociacionId}`);
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+                const docs = await res.json();
+
+                if (docs.length === 0) {
+                    container.innerHTML = '<div class="im-empty" style="padding:20px;"><i class="bi bi-folder2-open"></i><p>Sin documentos.</p></div>';
+                    return;
+                }
+                container.innerHTML = docs.map(doc => {
+                    const ext  = (doc.storage_path || '').split('.').pop().toLowerCase();
+                    const icon = ['pdf'].includes(ext) ? 'bi-file-earmark-pdf' :
+                                 ['jpg','jpeg','png','webp','gif'].includes(ext) ? 'bi-file-earmark-image' :
+                                 ['doc','docx'].includes(ext) ? 'bi-file-earmark-word' : 'bi-file-earmark';
+                    const fecha = new Date(doc.creado_at).toLocaleDateString('es-CL', { day:'2-digit', month:'short', year:'numeric' });
+                    return `<div class="im-doc-item">
+                        <i class="bi ${icon} im-doc-icon"></i>
+                        <div class="im-doc-info">
+                            <div class="im-doc-name">${escapeHtml(doc.nombre_personalizado)}</div>
+                            <div class="im-doc-date">${fecha}</div>
+                        </div>
+                        <div class="im-doc-actions">
+                            <a href="${escapeHtml(doc.url_storage)}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Ver">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            ${IS_ADMIN ? `<button class="im-btn im-btn-sm im-btn-danger" onclick="eliminarDoc(${doc.id}, '${tipo}', '${asociacionId}')"><i class="bi bi-trash3"></i></button>` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (err) {
+                container.innerHTML = `<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${escapeHtml(err.message)}</p></div>`;
+            }
+        }
+
+        async function eliminarDoc(id, tipo, asociacionId) {
+            if (!confirm('¿Eliminar este documento? No se puede deshacer.')) return;
+            try {
+                const res = await fetch(`/api/im/documentos/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+                showToast('Documento eliminado.', 'success');
+                const listEl = tipo === 'proyecto' ? document.getElementById('proj-doc-list') : null;
+                if (listEl) loadDocs(tipo, asociacionId, listEl);
+            } catch (e) { showToast(e.message, 'error'); }
+        }
+
+        // ---- Gestión de Accesos ----
+        async function loadAccesos() {
+            const list = document.getElementById('accesos-list');
+            list.innerHTML = '<div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
+            try {
+                const res = await fetch('/api/im/accesos');
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+                const users = await res.json();
+
+                if (users.length === 0) {
+                    list.innerHTML = '<div class="im-empty"><i class="bi bi-people"></i><p>No hay usuarios en el equipo.</p></div>';
+                    return;
+                }
+
+                list.innerHTML = `<div class="management-table" style="border-radius:12px; border:1px solid #e2e8f0; overflow:hidden;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:#f8fafc;">
+                            <tr>
+                                <th style="padding:12px 16px; text-align:left; font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Usuario</th>
+                                <th style="padding:12px 16px; text-align:center; font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Ver Módulo</th>
+                                <th style="padding:12px 16px; text-align:center; font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Puede Crear</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accesos-tbody"></tbody>
+                    </table>
+                </div>`;
+
+                const tbody = document.getElementById('accesos-tbody');
+                users.forEach(u => {
+                    if (u.role === 'admin') return; // Los admins siempre tienen acceso
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid #f1f5f9';
+                    tr.innerHTML = `
+                        <td style="padding:12px 16px;">
+                            <span style="font-weight:600; color:#0f172a; font-size:0.88rem;">${escapeHtml(u.name)}</span>
+                            <span style="display:block; font-size:0.75rem; color:#94a3b8;">${escapeHtml(u.email)}</span>
+                        </td>
+                        <td style="padding:12px 16px; text-align:center;">
+                            <label style="position:relative; display:inline-flex; align-items:center; cursor:pointer; gap:6px;">
+                                <input type="checkbox" id="ac-ver-${u.id}" ${u.tiene_acceso ? 'checked' : ''} 
+                                    onchange="toggleAcceso('${u.id}', this.checked, document.getElementById('ac-crear-${u.id}').checked)"
+                                    style="width:18px; height:18px; cursor:pointer; accent-color:#2563eb;">
+                            </label>
+                        </td>
+                        <td style="padding:12px 16px; text-align:center;">
+                            <label style="position:relative; display:inline-flex; align-items:center; cursor:pointer; gap:6px;">
+                                <input type="checkbox" id="ac-crear-${u.id}" ${u.puede_crear ? 'checked' : ''} ${!u.tiene_acceso ? 'disabled' : ''}
+                                    onchange="toggleAcceso('${u.id}', true, this.checked)"
+                                    style="width:18px; height:18px; cursor:pointer; accent-color:#10b981;">
+                            </label>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                list.innerHTML = `<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${escapeHtml(e.message)}</p></div>`;
+            }
+        }
+
+        async function toggleAcceso(userId, tieneAcceso, puedeCrear) {
+            const verEl   = document.getElementById(`ac-ver-${userId}`);
+            const crearEl = document.getElementById(`ac-crear-${userId}`);
+            try {
+                if (tieneAcceso) {
+                    await fetch('/api/im/accesos', {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({ user_id: userId, puede_crear: puedeCrear })
+                    });
+                    if (crearEl) crearEl.disabled = false;
+                    showToast('Acceso actualizado.', 'success');
+                } else {
+                    await fetch(`/api/im/accesos/${userId}`, { method: 'DELETE' });
+                    if (crearEl) { crearEl.checked = false; crearEl.disabled = true; }
+                    showToast('Acceso revocado.', 'info');
+                }
+            } catch (e) {
+                showToast(e.message, 'error');
+                if (verEl) verEl.checked = !tieneAcceso;
+            }
+        }
+
+        // Abrir modal de accesos y cargar datos
+        const _origOpenModal = openModal;
+        function openModal(id) {
+            _origOpenModal(id);
+            if (id === 'accesos') setTimeout(loadAccesos, 50);
+            if (id === 'parcelas') { projDocsInit = false; }
+        }
+
+        // ---- Init ----
         document.addEventListener('DOMContentLoaded', loadProyectos);
     </script>
 </body>

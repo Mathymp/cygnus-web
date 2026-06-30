@@ -449,6 +449,50 @@ exports.deleteVenta = async (req, res) => {
 };
 
 // ==========================================
+//  ACCESOS AL MÓDULO (CONTROL DE USUARIOS)
+// ==========================================
+
+exports.getAccesos = async (req, res) => {
+    if (!isAdmin(req)) return res.status(403).json({ message: 'Solo administradores.' });
+    try {
+        const result = await pool.query(`
+            SELECT u.id, u.name, u.email, u.role,
+                   a.puede_crear,
+                   CASE WHEN a.user_id IS NOT NULL THEN true ELSE false END as tiene_acceso
+            FROM users u
+            LEFT JOIN im_accesos a ON a.user_id = u.id
+            WHERE u.role <> 'superadmin'
+            ORDER BY tiene_acceso DESC, u.name ASC
+        `);
+        res.json(result.rows);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.setAcceso = async (req, res) => {
+    if (!isAdmin(req)) return res.status(403).json({ message: 'Solo administradores.' });
+    try {
+        const { user_id, puede_crear } = req.body;
+        if (!user_id) return res.status(400).json({ message: 'user_id requerido.' });
+        const result = await pool.query(
+            `INSERT INTO im_accesos (user_id, puede_crear)
+             VALUES ($1, $2)
+             ON CONFLICT (user_id) DO UPDATE SET puede_crear = $2
+             RETURNING *`,
+            [user_id, puede_crear === true || puede_crear === 'true']
+        );
+        res.json(result.rows[0]);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.deleteAcceso = async (req, res) => {
+    if (!isAdmin(req)) return res.status(403).json({ message: 'Solo administradores.' });
+    try {
+        await pool.query('DELETE FROM im_accesos WHERE user_id = $1', [req.params.userId]);
+        res.sendStatus(204);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+// ==========================================
 //  AUDITORÍA
 // ==========================================
 
