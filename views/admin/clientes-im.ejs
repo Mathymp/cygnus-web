@@ -5,77 +5,184 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/inmobiliaria.css">
     <style>
+        /* ── Input base (funciona sin im-input-group wrapper) ── */
+        .si { width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:10px; font-size:.88rem; font-family:inherit; transition:all .2s; background:#f8fafc; color:#0f172a; box-sizing:border-box; }
+        .si:focus { outline:none; border-color:#2563eb; background:#fff; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+        select.si { cursor:pointer; }
+        textarea.si { resize:vertical; }
+
+        .field-lbl { display:block; font-size:.78rem; font-weight:700; color:#475569; margin-bottom:5px; }
+
         .cli-table { width:100%; border-collapse:collapse; }
-        .cli-table th { background:#f1f5f9; font-size:0.75rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px; padding:10px 14px; text-align:left; border-bottom:2px solid #e2e8f0; }
-        .cli-table td { padding:12px 14px; border-bottom:1px solid #f1f5f9; font-size:0.85rem; color:#334155; vertical-align:middle; }
+        .cli-table th { background:#f1f5f9; font-size:.73rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.5px; padding:10px 14px; text-align:left; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+        .cli-table td { padding:12px 14px; border-bottom:1px solid #f1f5f9; font-size:.85rem; color:#334155; vertical-align:middle; }
         .cli-table tr:hover td { background:#f8fafc; }
         .cli-table tr.expanded td { background:#eff6ff; }
         .cli-expand { background:#eff6ff; border-bottom:2px solid #bfdbfe; }
         .cli-expand td { padding:0; }
-        .cli-expand-inner { padding:18px 20px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-        .cli-expand-section { background:white; border-radius:10px; border:1px solid #e2e8f0; padding:14px; }
-        .cli-expand-section p.label { font-size:0.72rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.4px; margin:0 0 8px; }
-        .cli-edit-form { display:flex; flex-direction:column; gap:10px; }
-        .cli-form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-        @media (max-width:640px) { .cli-expand-inner { grid-template-columns:1fr; } .cli-form-row { grid-template-columns:1fr; } }
-        .badge-proyecto { display:inline-flex; align-items:center; gap:5px; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:20px; padding:3px 10px; font-size:0.75rem; font-weight:600; }
-        .filters-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-        .rut-input-wrap { position:relative; }
-        .rut-status { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:0.9rem; }
+        .cli-expand-inner { padding:18px 20px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+        .cli-expand-section { background:#fff; border-radius:10px; border:1px solid #e2e8f0; padding:16px; }
+        .section-label { font-size:.72rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.5px; margin:0 0 10px; }
+        .cli-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .cli-form-field { display:flex; flex-direction:column; gap:4px; }
+        .cli-form-field.full { grid-column:1/-1; }
+        .badge-proyecto { display:inline-flex; align-items:center; gap:5px; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:20px; padding:3px 10px; font-size:.73rem; font-weight:600; }
+        .badge-contado { background:#f0fdf4; color:#166534; border:1px solid #86efac; }
+        .badge-credito  { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+        .rut-wrap { position:relative; }
+        .rut-icon { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:.88rem; pointer-events:none; }
         .no-results { text-align:center; padding:40px 20px; color:#94a3b8; }
         .no-results i { font-size:2.5rem; display:block; margin-bottom:10px; }
+        .conyuge-box { border-top:1px solid #e2e8f0; padding-top:12px; margin-top:6px; }
+        .conyuge-box .section-label { color:#8b5cf6; }
+
+        /* Modal */
+        .cm-overlay { position:fixed; inset:0; background:rgba(15,23,42,.7); backdrop-filter:blur(6px); display:flex; align-items:flex-start; justify-content:center; padding-top:5vh; z-index:1000; opacity:0; pointer-events:none; transition:.3s; }
+        .cm-overlay.show { opacity:1; pointer-events:auto; }
+        .cm-card { background:#fff; width:100%; max-width:620px; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,.4); max-height:90vh; display:flex; flex-direction:column; transform:translateY(20px); transition:transform .3s; overflow:hidden; }
+        .cm-overlay.show .cm-card { transform:translateY(0); }
+        .cm-header { padding:18px 22px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+        .cm-header h3 { margin:0; font-size:1.1rem; font-weight:700; color:#0f172a; }
+        .cm-body { flex-grow:1; overflow-y:auto; padding:20px 22px; }
+        .cm-footer { padding:14px 22px; border-top:1px solid #f1f5f9; display:flex; justify-content:flex-end; gap:10px; flex-shrink:0; }
+
+        @media(max-width:640px){ .cli-expand-inner,.cli-form-grid{grid-template-columns:1fr;} }
     </style>
 </head>
 <body class="dashboard-body">
     <%- include('../partials/alerts') %>
 
     <!-- Toast -->
-    <div id="im-toast" style="position:fixed; top:20px; right:20px; z-index:9999; pointer-events:none; opacity:0; transform:translateX(30px); transition:all 0.3s ease; max-width:420px;">
-        <div id="im-toast-inner" style="padding:14px 18px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.15); display:flex; align-items:flex-start; gap:10px;"></div>
+    <div id="im-toast" style="position:fixed;top:20px;right:20px;z-index:9999;pointer-events:none;opacity:0;transform:translateX(30px);transition:all .3s ease;max-width:400px;">
+        <div id="im-toast-inner" style="padding:13px 16px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);display:flex;align-items:flex-start;gap:10px;"></div>
+    </div>
+
+    <!-- Modal Nuevo Cliente -->
+    <div id="modal-nuevo-cliente" class="cm-overlay">
+        <div class="cm-card">
+            <div class="cm-header">
+                <h3><i class="bi bi-person-plus-fill" style="color:#2563eb;"></i> Nuevo Cliente</h3>
+                <button onclick="closeNuevo()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:1.2rem;"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="cm-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+                    <div class="cli-form-field full">
+                        <label class="field-lbl">Nombre Completo <span style="color:#ef4444;">*</span></label>
+                        <input type="text" id="nc-nombre" class="si" placeholder="Nombre y apellidos">
+                    </div>
+
+                    <div class="cli-form-field">
+                        <label class="field-lbl">RUT <span style="color:#ef4444;">*</span></label>
+                        <div class="rut-wrap">
+                            <input type="text" id="nc-rut" class="si" placeholder="12.345.678-9"
+                                oninput="autoFmtRut(this,'nc-rut-ic')" style="padding-right:36px;">
+                            <span id="nc-rut-ic" class="rut-icon"></span>
+                        </div>
+                    </div>
+
+                    <div class="cli-form-field">
+                        <label class="field-lbl">Teléfono</label>
+                        <input type="tel" id="nc-tel" class="si" placeholder="+56 9 1234 5678">
+                    </div>
+
+                    <div class="cli-form-field full">
+                        <label class="field-lbl">Correo Electrónico</label>
+                        <input type="email" id="nc-email" class="si" placeholder="correo@ejemplo.cl">
+                    </div>
+
+                    <div class="cli-form-field full">
+                        <label class="field-lbl">Dirección</label>
+                        <textarea id="nc-direccion" class="si" rows="2" placeholder="Calle, número, ciudad, región"></textarea>
+                    </div>
+
+                    <div class="cli-form-field">
+                        <label class="field-lbl">Estado Civil</label>
+                        <select id="nc-civil" class="si" onchange="toggleNcConyuge(this.value)">
+                            <option value="Soltero/a">Soltero/a</option>
+                            <option value="Casado/a">Casado/a</option>
+                            <option value="Divorciado/a">Divorciado/a</option>
+                            <option value="Viudo/a">Viudo/a</option>
+                            <option value="Conviviente Civil">Conviviente Civil</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Cónyuge / Conviviente -->
+                <div id="nc-conyuge-box" style="display:none;margin-top:14px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:14px;">
+                    <p style="font-size:.78rem;font-weight:700;color:#7c3aed;margin:0 0 10px;"><i class="bi bi-people-fill"></i> Cónyuge / Conviviente Civil</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div class="cli-form-field">
+                            <label class="field-lbl">Nombre Cónyuge</label>
+                            <input type="text" id="nc-con-nombre" class="si" placeholder="Nombre y apellidos">
+                        </div>
+                        <div class="cli-form-field">
+                            <label class="field-lbl">RUT Cónyuge</label>
+                            <div class="rut-wrap">
+                                <input type="text" id="nc-con-rut" class="si" placeholder="12.345.678-9"
+                                    oninput="autoFmtRut(this,'nc-con-rut-ic')" style="padding-right:36px;">
+                                <span id="nc-con-rut-ic" class="rut-icon"></span>
+                            </div>
+                        </div>
+                        <div class="cli-form-field">
+                            <label class="field-lbl">Email Cónyuge <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                            <input type="email" id="nc-con-email" class="si" placeholder="email@ejemplo.cl">
+                        </div>
+                        <div class="cli-form-field">
+                            <label class="field-lbl">Teléfono Cónyuge <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                            <input type="tel" id="nc-con-tel" class="si" placeholder="+56 9 ...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="cm-footer">
+                <button class="im-btn im-btn-ghost" onclick="closeNuevo()">Cancelar</button>
+                <button class="im-btn im-btn-success" onclick="crearCliente()"><i class="bi bi-person-check-fill"></i> Crear Cliente</button>
+            </div>
+        </div>
     </div>
 
     <div class="app-layout">
-        <%- include('../partials/sidebar-admin', { page: 'inmobiliaria' }) %>
+        <%- include('../partials/sidebar-admin', { page: 'clientes-im' }) %>
 
         <main class="main-content">
             <div class="dashboard-scroll">
 
                 <!-- Breadcrumb -->
-                <div style="display:flex; align-items:center; gap:8px; margin-top:16px; margin-bottom:16px; font-size:0.85rem; color:#64748b;">
-                    <a href="/admin/inmobiliaria" style="color:#2563eb; text-decoration:none; font-weight:600;">
-                        <i class="bi bi-arrow-left"></i> Gestión de Campos
-                    </a>
-                    <span>›</span>
-                    <b style="color:#0f172a;">Clientes</b>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:16px;margin-bottom:16px;font-size:.85rem;color:#64748b;">
+                    <a href="/admin/inmobiliaria" style="color:#2563eb;text-decoration:none;font-weight:600;"><i class="bi bi-arrow-left"></i> Gestión de Campos</a>
+                    <span>›</span><b style="color:#0f172a;">Clientes</b>
                 </div>
 
                 <!-- Header -->
-                <div class="im-page-header" style="margin-top:0; margin-bottom:20px;">
+                <div class="im-page-header" style="margin-top:0;margin-bottom:20px;">
                     <div>
                         <h1 style="font-size:1.5rem;">Clientes Inmobiliarios</h1>
-                        <p style="color:#64748b; font-size:0.85rem; margin:4px 0 0;">Todos los compradores registrados en el sistema.</p>
+                        <p style="color:#64748b;font-size:.85rem;margin:4px 0 0;">Todos los compradores registrados en el sistema.</p>
                     </div>
-                    <div id="header-count" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 18px; text-align:center;">
-                        <span id="total-count" style="font-size:1.5rem; font-weight:800; color:#2563eb;">—</span>
-                        <span style="display:block; font-size:0.75rem; color:#64748b; font-weight:600;">clientes</span>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 18px;text-align:center;">
+                            <span id="total-count" style="font-size:1.5rem;font-weight:800;color:#2563eb;">—</span>
+                            <span style="display:block;font-size:.73rem;color:#64748b;font-weight:600;">clientes</span>
+                        </div>
+                        <button class="im-btn im-btn-success" onclick="openNuevo()">
+                            <i class="bi bi-person-plus-fill"></i> Nuevo Cliente
+                        </button>
                     </div>
                 </div>
 
                 <!-- Filtros -->
-                <div class="im-panel" style="margin-bottom:16px; padding:14px 18px;">
-                    <div class="filters-bar">
-                        <div style="flex:1; min-width:220px; position:relative;">
-                            <i class="bi bi-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
-                            <input type="text" id="filter-q" class="styled-input" style="padding-left:36px;" placeholder="Buscar por nombre, RUT o email...">
+                <div class="im-panel" style="margin-bottom:16px;padding:14px 18px;">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                        <div style="flex:1;min-width:220px;position:relative;">
+                            <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;"></i>
+                            <input type="text" id="filter-q" class="si" style="padding-left:36px;" placeholder="Buscar por nombre, RUT o email...">
                         </div>
                         <div style="min-width:200px;">
-                            <select id="filter-proyecto" class="styled-input">
+                            <select id="filter-proyecto" class="si">
                                 <option value="">Todos los proyectos</option>
                             </select>
                         </div>
-                        <button class="im-btn im-btn-primary" onclick="loadClientes()">
-                            <i class="bi bi-funnel"></i> Filtrar
-                        </button>
                         <button class="im-btn im-btn-ghost" onclick="clearFilters()">
                             <i class="bi bi-x-circle"></i> Limpiar
                         </button>
@@ -83,7 +190,7 @@
                 </div>
 
                 <!-- Tabla -->
-                <div class="im-panel" style="overflow:hidden; padding:0;">
+                <div class="im-panel" style="overflow:hidden;padding:0;">
                     <div style="overflow-x:auto;">
                         <table class="cli-table">
                             <thead>
@@ -93,7 +200,7 @@
                                     <th>Contacto</th>
                                     <th>Estado Civil</th>
                                     <th>Proyecto / Parcela</th>
-                                    <th style="width:50px;"></th>
+                                    <th style="width:40px;"></th>
                                 </tr>
                             </thead>
                             <tbody id="clientes-tbody">
@@ -107,335 +214,300 @@
         </main>
     </div>
 
-    <script>
-    const IS_ADMIN = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
+<script>
+const IS_ADMIN = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
 
-    function showToast(msg, type='success', title='') {
-        const t = document.getElementById('im-toast');
-        const i = document.getElementById('im-toast-inner');
-        const cfg = {
-            success:{ bg:'#dcfce7', c:'#166534', b:'#86efac', ic:'bi-check-circle-fill', d:'Éxito' },
-            error:  { bg:'#fee2e2', c:'#991b1b', b:'#fca5a5', ic:'bi-exclamation-triangle-fill', d:'Error' },
-            warning:{ bg:'#fef3c7', c:'#92400e', b:'#fde68a', ic:'bi-exclamation-circle-fill', d:'Atención' },
-            info:   { bg:'#eff6ff', c:'#1e40af', b:'#bfdbfe', ic:'bi-info-circle-fill', d:'Info' }
+// ── Toast ──
+function showToast(msg,type='success',title=''){
+    const t=document.getElementById('im-toast'),i=document.getElementById('im-toast-inner');
+    const cfg={success:{bg:'#dcfce7',c:'#166534',b:'#86efac',ic:'bi-check-circle-fill',d:'Éxito'},error:{bg:'#fee2e2',c:'#991b1b',b:'#fca5a5',ic:'bi-exclamation-triangle-fill',d:'Error'},warning:{bg:'#fef3c7',c:'#92400e',b:'#fde68a',ic:'bi-exclamation-circle-fill',d:'Atención'},info:{bg:'#eff6ff',c:'#1e40af',b:'#bfdbfe',ic:'bi-info-circle-fill',d:'Info'}};
+    const s=cfg[type]||cfg.info;
+    i.style.cssText=`background:${s.bg};color:${s.c};border:1.5px solid ${s.b};padding:13px 16px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.12);display:flex;align-items:flex-start;gap:10px;`;
+    i.innerHTML=`<i class="bi ${s.ic}" style="font-size:1.1rem;flex-shrink:0;margin-top:1px;"></i><div><div style="font-weight:700;font-size:.86rem;">${title||s.d}</div><div style="font-size:.8rem;margin-top:2px;opacity:.9;">${escH(msg)}</div></div>`;
+    t.style.opacity='1';t.style.transform='translateX(0)';t.style.pointerEvents='auto';
+    clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(30px)';t.style.pointerEvents='none';},5000);
+}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+const $=id=>document.getElementById(id);
+
+// ── RUT helpers ──
+function autoFmtRut(input,statusId){
+    let v=input.value.replace(/[^0-9kK]/g,'').toUpperCase();
+    if(v.length>1)v=v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'-'+v.slice(-1);
+    input.value=v;
+    const el=$(statusId);if(!el)return;
+    if(v.length<3){el.textContent='';input.style.borderColor='';return;}
+    const ok=validarRut(v);el.textContent=ok?'✅':'❌';
+    input.style.borderColor=ok?'#10b981':(v.length>4?'#ef4444':'');
+}
+function validarRut(rut){
+    const c=rut.replace(/[^0-9kK]/g,'').toUpperCase();if(c.length<2)return false;
+    const body=c.slice(0,-1),dv=c.slice(-1);let s=0,m=2;
+    for(let i=body.length-1;i>=0;i--){s+=parseInt(body[i],10)*m;m=m>=7?2:m+1;}
+    const r=11-(s%11);return dv===(r===11?'0':r===10?'K':String(r));
+}
+
+// ── Modal Nuevo Cliente ──
+function openNuevo(){
+    ['nc-nombre','nc-rut','nc-tel','nc-email','nc-direccion','nc-con-nombre','nc-con-rut','nc-con-email','nc-con-tel'].forEach(id=>{const el=$(id);if(el)el.value='';});
+    $('nc-civil').value='Soltero/a';
+    $('nc-conyuge-box').style.display='none';
+    $('modal-nuevo-cliente').classList.add('show');
+    setTimeout(()=>$('nc-nombre').focus(),150);
+}
+function closeNuevo(){$('modal-nuevo-cliente').classList.remove('show');}
+function toggleNcConyuge(val){$('nc-conyuge-box').style.display=(val==='Casado/a'||val==='Conviviente Civil')?'grid':'none';$('nc-conyuge-box').style.display=(val==='Casado/a'||val==='Conviviente Civil')?'block':'none';}
+
+async function crearCliente(){
+    const nombre=$('nc-nombre').value.trim();
+    const rut=$('nc-rut').value.trim();
+    if(!nombre||!rut){showToast('Nombre y RUT son obligatorios.','warning');return;}
+    if(!validarRut(rut)){showToast('El RUT no es válido (Módulo 11).','error','RUT inválido');return;}
+    const btn=document.querySelector('#modal-nuevo-cliente .cm-footer button:last-child');
+    btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...';
+    try{
+        const body={
+            nombre_completo:nombre, rut,
+            email:$('nc-email').value||null,
+            telefono:$('nc-tel').value||null,
+            direccion:$('nc-direccion').value||null,
+            estado_civil:$('nc-civil').value,
+            nombre_conyugue:$('nc-con-nombre').value||null,
+            rut_conyugue:$('nc-con-rut').value||null,
+            email_conyugue:$('nc-con-email').value||null,
+            telefono_conyugue:$('nc-con-tel').value||null
         };
-        const s = cfg[type]||cfg.info;
-        i.style.cssText = `background:${s.bg};color:${s.c};border:1.5px solid ${s.b};padding:14px 18px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);display:flex;align-items:flex-start;gap:10px;`;
-        i.innerHTML = `<i class="bi ${s.ic}" style="font-size:1.1rem;flex-shrink:0;margin-top:1px;"></i>
-            <div><div style="font-weight:700;font-size:0.88rem;">${title||s.d}</div>
-            <div style="font-size:0.82rem;margin-top:2px;opacity:0.9;">${escH(msg)}</div></div>`;
-        t.style.opacity='1'; t.style.transform='translateX(0)'; t.style.pointerEvents='auto';
-        clearTimeout(t._t);
-        t._t = setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(30px)'; t.style.pointerEvents='none'; }, 5000);
-    }
-
-    const $ = id => document.getElementById(id);
-    function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    function fmtPrecio(input) { input.value = input.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
-
-    function autoFmtRut(input, statusId) {
-        let v = input.value.replace(/[^0-9kK]/g,'').toUpperCase();
-        if (v.length > 1) v = v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.') + '-' + v.slice(-1);
-        input.value = v;
-        const statusEl = $(statusId);
-        if (!statusEl) return;
-        if (v.length < 3) { statusEl.textContent=''; return; }
-        const esValido = validarRut(v);
-        statusEl.textContent = esValido ? '✅' : '❌';
-        input.style.borderColor = esValido ? '#10b981' : (v.length > 4 ? '#ef4444' : '');
-    }
-
-    function validarRut(rut) {
-        const clean = rut.replace(/[^0-9kK]/g,'').toUpperCase();
-        if (clean.length < 2) return false;
-        const body = clean.slice(0,-1);
-        const dv   = clean.slice(-1);
-        let suma=0, mul=2;
-        for (let i=body.length-1; i>=0; i--) {
-            suma += parseInt(body[i],10) * mul;
-            mul = mul >= 7 ? 2 : mul+1;
-        }
-        const rest = 11 - (suma % 11);
-        const dvCalc = rest===11?'0': rest===10?'K': String(rest);
-        return dv === dvCalc;
-    }
-
-    let allClientes = [];
-    let expandedRow = null;
-    let proyectos   = [];
-
-    async function loadProyectos() {
-        try {
-            const res = await fetch('/api/im/proyectos');
-            if (!res.ok) return;
-            proyectos = await res.json();
-            const sel = $('filter-proyecto');
-            proyectos.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                opt.textContent = p.nombre;
-                sel.appendChild(opt);
-            });
-        } catch(_) {}
-    }
-
-    async function loadClientes() {
-        const tbody = $('clientes-tbody');
-        tbody.innerHTML = '<tr><td colspan="6" class="no-results"><i class="bi bi-hourglass-split"></i>Cargando clientes...</td></tr>';
-        const q       = $('filter-q').value.trim();
-        const proj    = $('filter-proyecto').value;
-
-        let url = '/api/im/clientes?';
-        if (q)    url += `q=${encodeURIComponent(q)}&`;
-        if (proj) url += `proyecto_id=${encodeURIComponent(proj)}&`;
-
-        try {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`Error ${res.status}`);
-            allClientes = await res.json();
-            $('total-count').textContent = allClientes.length;
-            renderTable(allClientes);
-        } catch(e) {
-            tbody.innerHTML = `<tr><td colspan="6" class="no-results" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i>${escH(e.message)}</td></tr>`;
-        }
-    }
-
-    function clearFilters() {
-        $('filter-q').value = '';
-        $('filter-proyecto').value = '';
+        const res=await fetch('/api/im/clientes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
+        closeNuevo();
+        showToast(`Cliente "${nombre}" creado correctamente.`,'success');
         loadClientes();
-    }
+    }catch(e){showToast(e.message,'error','No se pudo crear');}
+    finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-person-check-fill"></i> Crear Cliente';}
+}
 
-    function renderTable(list) {
-        const tbody = $('clientes-tbody');
-        if (list.length===0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="no-results"><i class="bi bi-people"></i><br>No se encontraron clientes con esos filtros.</td></tr>';
-            return;
-        }
-        tbody.innerHTML = list.map((c,idx)=> {
-            const ventas = c.ventas || [];
-            const parcelas = ventas.map(v => `<span class="badge-proyecto" style="margin:2px;"><i class="bi bi-geo-alt"></i>${escH(v.proyecto_nombre)} · P${v.parcela_numero}</span>`).join('');
-            return `
-            <tr id="row-${c.id}" onclick="toggleExpand('${c.id}', ${idx})" style="cursor:pointer;">
-                <td>
-                    <strong>${escH(c.nombre_completo)}</strong>
-                    ${parseInt(c.total_compras) > 1 ? `<span style="margin-left:6px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:20px;padding:1px 8px;font-size:.7rem;font-weight:700;">${c.total_compras} parcelas</span>` : ''}
-                </td>
-                <td><span style="font-family:monospace;font-size:0.8rem;background:#f1f5f9;padding:2px 7px;border-radius:4px;">${escH(c.rut)}</span></td>
-                <td>
-                    ${c.email ? `<div style="font-size:0.8rem;"><i class="bi bi-envelope" style="color:#64748b;"></i> ${escH(c.email)}</div>` : ''}
-                    ${c.telefono ? `<div style="font-size:0.8rem;"><i class="bi bi-telephone" style="color:#64748b;"></i> ${escH(c.telefono)}</div>` : ''}
-                    ${!c.email && !c.telefono ? '<span style="color:#94a3b8;font-size:0.8rem;">—</span>' : ''}
-                </td>
-                <td>${escH(c.estado_civil)}</td>
-                <td>
-                    ${ventas.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:2px;">${parcelas}</div>` : '<span style="color:#94a3b8;font-size:0.8rem;">Sin asignar</span>'}
-                </td>
-                <td style="text-align:center;">
-                    <i class="bi bi-chevron-down" id="chevron-${c.id}" style="color:#94a3b8;transition:transform 0.2s;"></i>
-                </td>
-            </tr>
-            <tr class="cli-expand" id="expand-${c.id}" style="display:none;">
-                <td colspan="6">
-                    <div class="cli-expand-inner" id="expand-inner-${c.id}"></div>
-                </td>
-            </tr>`;
-        }).join('');
-    }
+// Cerrar modal al clickear fuera
+$('modal-nuevo-cliente').addEventListener('click',e=>{if(e.target===$('modal-nuevo-cliente'))closeNuevo();});
 
-    function toggleExpand(id, idx) {
-        const row    = $(`expand-${id}`);
-        const chev   = $(`chevron-${id}`);
-        const mainRow = $(`row-${id}`);
-        const isOpen = row.style.display !== 'none';
+// ── Datos ──
+let allClientes=[], expandedRow=null, proyectos=[];
 
-        // Cerrar el anterior
-        if (expandedRow && expandedRow !== id) {
-            $(`expand-${expandedRow}`).style.display='none';
-            $(`chevron-${expandedRow}`).style.transform='';
-            $(`row-${expandedRow}`).classList.remove('expanded');
-        }
+async function loadProyectos(){
+    try{
+        const res=await fetch('/api/im/proyectos');if(!res.ok)return;
+        proyectos=await res.json();
+        const sel=$('filter-proyecto');
+        proyectos.forEach(p=>{const opt=document.createElement('option');opt.value=p.id;opt.textContent=p.nombre;sel.appendChild(opt);});
+    }catch(_){}
+}
 
-        if (isOpen) {
-            row.style.display='none';
-            chev.style.transform='';
-            mainRow.classList.remove('expanded');
-            expandedRow = null;
-        } else {
-            row.style.display='table-row';
-            chev.style.transform='rotate(180deg)';
-            mainRow.classList.add('expanded');
-            expandedRow = id;
-            const c = allClientes[idx];
-            renderExpand(id, c);
-        }
-    }
+async function loadClientes(){
+    const tbody=$('clientes-tbody');
+    tbody.innerHTML='<tr><td colspan="6" class="no-results"><i class="bi bi-hourglass-split"></i>Cargando...</td></tr>';
+    const q=$('filter-q').value.trim(),proj=$('filter-proyecto').value;
+    let url='/api/im/clientes?';
+    if(q)url+=`q=${encodeURIComponent(q)}&`;
+    if(proj)url+=`proyecto_id=${encodeURIComponent(proj)}&`;
+    try{
+        const res=await fetch(url);if(!res.ok)throw new Error(`Error ${res.status}`);
+        allClientes=await res.json();
+        $('total-count').textContent=allClientes.length;
+        renderTable(allClientes);
+    }catch(e){tbody.innerHTML=`<tr><td colspan="6" class="no-results" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i>${escH(e.message)}</td></tr>`;}
+}
 
-    function renderExpand(id, c) {
-        const el = $(`expand-inner-${id}`);
-        el.innerHTML = `
-            <!-- Datos del cliente -->
-            <div class="cli-expand-section">
-                <p class="label"><i class="bi bi-person-fill"></i> Datos del Cliente</p>
-                <form class="cli-edit-form" onsubmit="saveCliente(event,'${c.id}')">
-                    <div class="im-input-group">
-                        <label>Nombre Completo</label>
-                        <input type="text" id="ec-nombre-${id}" class="styled-input" value="${escH(c.nombre_completo)}" required>
+function clearFilters(){$('filter-q').value='';$('filter-proyecto').value='';loadClientes();}
+
+function renderTable(list){
+    const tbody=$('clientes-tbody');
+    if(list.length===0){tbody.innerHTML='<tr><td colspan="6" class="no-results"><i class="bi bi-people"></i><br>No se encontraron clientes con esos filtros.<br><button class="im-btn im-btn-primary" style="margin-top:12px;" onclick="openNuevo()"><i class="bi bi-person-plus-fill"></i> Crear primer cliente</button></td></tr>';return;}
+    tbody.innerHTML=list.map((c,idx)=>{
+        const ventas=c.ventas||[];
+        const parcelas=ventas.map(v=>`<span class="badge-proyecto" style="margin:2px;"><i class="bi bi-geo-alt"></i>${escH(v.proyecto_nombre)} · P${v.parcela_numero}</span>`).join('');
+        const totalC=parseInt(c.total_compras)||0;
+        return `
+        <tr id="row-${c.id}" onclick="toggleExpand('${c.id}',${idx})" style="cursor:pointer;">
+            <td>
+                <strong>${escH(c.nombre_completo)}</strong>
+                ${totalC>1?`<span style="margin-left:6px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:20px;padding:1px 8px;font-size:.7rem;font-weight:700;">${totalC} parcelas</span>`:''}
+            </td>
+            <td><span style="font-family:monospace;font-size:.82rem;background:#f1f5f9;padding:2px 8px;border-radius:5px;">${escH(c.rut)}</span></td>
+            <td>
+                ${c.email?`<div style="font-size:.8rem;"><i class="bi bi-envelope" style="color:#64748b;"></i> ${escH(c.email)}</div>`:''}
+                ${c.telefono?`<div style="font-size:.8rem;"><i class="bi bi-telephone" style="color:#64748b;"></i> ${escH(c.telefono)}</div>`:''}
+                ${!c.email&&!c.telefono?'<span style="color:#94a3b8;font-size:.8rem;">—</span>':''}
+            </td>
+            <td>${escH(c.estado_civil)}</td>
+            <td>${ventas.length>0?`<div style="display:flex;flex-wrap:wrap;gap:2px;">${parcelas}</div>`:'<span style="color:#94a3b8;font-size:.8rem;">Sin asignar</span>'}</td>
+            <td style="text-align:center;"><i class="bi bi-chevron-down" id="chevron-${c.id}" style="color:#94a3b8;transition:transform .2s;"></i></td>
+        </tr>
+        <tr class="cli-expand" id="expand-${c.id}" style="display:none;"><td colspan="6"><div class="cli-expand-inner" id="expand-inner-${c.id}"></div></td></tr>`;
+    }).join('');
+}
+
+function toggleExpand(id,idx){
+    const row=$(`expand-${id}`),chev=$(`chevron-${id}`),mainRow=$(`row-${id}`),isOpen=row.style.display!=='none';
+    if(expandedRow&&expandedRow!==id){$(`expand-${expandedRow}`).style.display='none';const oc=$(`chevron-${expandedRow}`);if(oc)oc.style.transform='';const or=$(`row-${expandedRow}`);if(or)or.classList.remove('expanded');}
+    if(isOpen){row.style.display='none';chev.style.transform='';mainRow.classList.remove('expanded');expandedRow=null;}
+    else{row.style.display='table-row';chev.style.transform='rotate(180deg)';mainRow.classList.add('expanded');expandedRow=id;renderExpand(id,allClientes[idx]);}
+}
+
+function renderExpand(id,c){
+    const el=$(`expand-inner-${id}`);
+    const tieneC=c.estado_civil==='Casado/a'||c.estado_civil==='Conviviente Civil';
+    const ventas=c.ventas||[];
+
+    el.innerHTML=`
+    <!-- Datos del cliente -->
+    <div class="cli-expand-section" style="grid-column:1/-1;">
+        <p class="section-label"><i class="bi bi-person-fill"></i> Datos del Cliente</p>
+        <form onsubmit="saveCliente(event,'${c.id}')">
+            <div class="cli-form-grid">
+                <div class="cli-form-field full">
+                    <label class="field-lbl">Nombre Completo</label>
+                    <input type="text" id="ec-nombre-${id}" class="si" value="${escH(c.nombre_completo)}" required>
+                </div>
+                <div class="cli-form-field">
+                    <label class="field-lbl">RUT</label>
+                    <div class="rut-wrap">
+                        <input type="text" id="ec-rut-${id}" class="si" value="${escH(c.rut)}"
+                            oninput="autoFmtRut(this,'ec-rut-ic-${id}')" style="padding-right:36px;">
+                        <span id="ec-rut-ic-${id}" class="rut-icon">${validarRut(c.rut)?'✅':''}</span>
                     </div>
-                    <div class="cli-form-row">
-                        <div class="im-input-group">
-                            <label>RUT</label>
-                            <div class="rut-input-wrap">
-                                <input type="text" id="ec-rut-${id}" class="styled-input" value="${escH(c.rut)}"
-                                    oninput="autoFmtRut(this,'ec-rut-status-${id}')" style="padding-right:36px;">
-                                <span id="ec-rut-status-${id}" class="rut-status"></span>
-                            </div>
-                        </div>
-                        <div class="im-input-group">
-                            <label>Teléfono</label>
-                            <input type="tel" id="ec-tel-${id}" class="styled-input" value="${escH(c.telefono||'')}">
-                        </div>
-                    </div>
-                    <div class="im-input-group">
-                        <label>Email</label>
-                        <input type="email" id="ec-email-${id}" class="styled-input" value="${escH(c.email||'')}">
-                    </div>
-                    <div class="im-input-group">
-                        <label>Dirección</label>
-                        <textarea id="ec-dir-${id}" class="styled-input" rows="2" style="resize:vertical;">${escH(c.direccion||'')}</textarea>
-                    </div>
-                    <div class="cli-form-row">
-                        <div class="im-input-group">
-                            <label>Estado Civil</label>
-                            <select id="ec-civil-${id}" class="styled-input" onchange="toggleConyugeExpand('${id}', this.value)">
-                                ${['Soltero/a','Casado/a','Divorciado/a','Viudo/a','Conviviente Civil'].map(op=>
-                                    `<option value="${op}" ${c.estado_civil===op?'selected':''}>${op}</option>`
-                                ).join('')}
-                            </select>
-                        </div>
-                    </div>
-                    <div id="ec-conyuge-${id}" style="display:${c.estado_civil==='Casado/a'||c.estado_civil==='Conviviente Civil'?'block':'none'}; border-top:1px solid #e2e8f0; padding-top:10px;">
-                        <p style="font-size:0.75rem; font-weight:700; color:#64748b; margin:0 0 8px;">Cónyuge / Conviviente</p>
-                        <div class="cli-form-row">
-                            <div class="im-input-group">
-                                <label>Nombre</label>
-                                <input type="text" id="ec-con-nombre-${id}" class="styled-input" value="${escH(c.nombre_conyugue||'')}">
-                            </div>
-                            <div class="im-input-group">
-                                <label>RUT</label>
-                                <div class="rut-input-wrap">
-                                    <input type="text" id="ec-con-rut-${id}" class="styled-input" value="${escH(c.rut_conyugue||'')}"
-                                        oninput="autoFmtRut(this,'ec-con-rut-status-${id}')" style="padding-right:36px;">
-                                    <span id="ec-con-rut-status-${id}" class="rut-status"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="submit" class="im-btn im-btn-success" style="align-self:flex-start;">
-                        <i class="bi bi-save"></i> Guardar Cambios
-                    </button>
-                </form>
+                </div>
+                <div class="cli-form-field">
+                    <label class="field-lbl">Teléfono</label>
+                    <input type="tel" id="ec-tel-${id}" class="si" value="${escH(c.telefono||'')}">
+                </div>
+                <div class="cli-form-field full">
+                    <label class="field-lbl">Correo Electrónico</label>
+                    <input type="email" id="ec-email-${id}" class="si" value="${escH(c.email||'')}">
+                </div>
+                <div class="cli-form-field full">
+                    <label class="field-lbl">Dirección</label>
+                    <textarea id="ec-dir-${id}" class="si" rows="2">${escH(c.direccion||'')}</textarea>
+                </div>
+                <div class="cli-form-field">
+                    <label class="field-lbl">Estado Civil</label>
+                    <select id="ec-civil-${id}" class="si" onchange="toggleConyugeExpand('${id}',this.value)">
+                        ${['Soltero/a','Casado/a','Divorciado/a','Viudo/a','Conviviente Civil'].map(op=>`<option value="${op}" ${c.estado_civil===op?'selected':''}>${op}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="cli-form-field" style="align-self:flex-end;">
+                    <button type="submit" class="im-btn im-btn-success" style="width:100%;"><i class="bi bi-save"></i> Guardar Cambios</button>
+                </div>
             </div>
 
-            <!-- Info adicional -->
-            <div style="display:flex; flex-direction:column; gap:12px;">
-                ${c.ventas && c.ventas.length > 0 ? `
-                <div class="cli-expand-section">
-                    <p class="label"><i class="bi bi-geo-alt-fill"></i> Parcelas Adquiridas (${c.ventas.length})</p>
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                        ${c.ventas.map(v => {
-                            const tipoBadge = v.tipo_pago === 'credito' ? '<span style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:20px;padding:2px 8px;font-size:.7rem;font-weight:700;">Crédito</span>' : '<span style="background:#f0fdf4;color:#166534;border:1px solid #86efac;border-radius:20px;padding:2px 8px;font-size:.7rem;font-weight:700;">Contado</span>';
-                            return `<div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;">
-                                <div>
-                                    <span style="font-weight:700;color:#0f172a;">${escH(v.proyecto_nombre)}</span>
-                                    <span style="color:#64748b;font-size:.82rem;"> · Parcela N° ${v.parcela_numero}</span>
-                                    <div style="margin-top:4px;display:flex;gap:6px;align-items:center;">
-                                        ${tipoBadge}
-                                        ${v.precio_acordado ? `<span style="font-size:.78rem;color:#475569;">$${Math.floor(parseFloat(v.precio_acordado)).toLocaleString('es-CL')}</span>` : ''}
-                                        ${v.fecha_venta ? `<span style="font-size:.72rem;color:#94a3b8;">${new Date(v.fecha_venta).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'})}</span>` : ''}
-                                    </div>
-                                </div>
-                                <a href="/admin/inmobiliaria/parcela/${v.parcela_id}" class="im-btn im-btn-sm im-btn-ghost"><i class="bi bi-arrow-up-right"></i> Ver</a>
-                            </div>`;
-                        }).join('')}
+            <!-- Cónyuge -->
+            <div id="ec-conyuge-${id}" style="display:${tieneC?'block':'none'};margin-top:14px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:14px;">
+                <p class="section-label" style="color:#7c3aed;"><i class="bi bi-people-fill"></i> Cónyuge / Conviviente Civil</p>
+                <div class="cli-form-grid">
+                    <div class="cli-form-field">
+                        <label class="field-lbl">Nombre</label>
+                        <input type="text" id="ec-con-nombre-${id}" class="si" value="${escH(c.nombre_conyugue||'')}">
                     </div>
-                </div>` : ''}
-                <div class="cli-expand-section">
-                    <p class="label"><i class="bi bi-clock-history"></i> Registros de Auditoría</p>
-                    <div id="audit-cli-${id}" style="font-size:0.8rem; color:#64748b; font-style:italic;">Cargando...</div>
+                    <div class="cli-form-field">
+                        <label class="field-lbl">RUT</label>
+                        <div class="rut-wrap">
+                            <input type="text" id="ec-con-rut-${id}" class="si" value="${escH(c.rut_conyugue||'')}"
+                                oninput="autoFmtRut(this,'ec-con-rut-ic-${id}')" style="padding-right:36px;">
+                            <span id="ec-con-rut-ic-${id}" class="rut-icon">${c.rut_conyugue&&validarRut(c.rut_conyugue)?'✅':''}</span>
+                        </div>
+                    </div>
+                    <div class="cli-form-field">
+                        <label class="field-lbl">Email <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                        <input type="email" id="ec-con-email-${id}" class="si" value="${escH(c.email_conyugue||'')}">
+                    </div>
+                    <div class="cli-form-field">
+                        <label class="field-lbl">Teléfono <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                        <input type="tel" id="ec-con-tel-${id}" class="si" value="${escH(c.telefono_conyugue||'')}">
+                    </div>
                 </div>
-            </div>`;
+            </div>
+        </form>
+    </div>
 
-        // Inicializar validadores RUT
-        const rutInput = $(`ec-rut-${id}`);
-        if (rutInput && rutInput.value) {
-            autoFmtRut(rutInput, `ec-rut-status-${id}`);
-        }
+    <!-- Parcelas + auditoría -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+        ${ventas.length>0?`
+        <div class="cli-expand-section">
+            <p class="section-label"><i class="bi bi-geo-alt-fill"></i> Parcelas Adquiridas (${ventas.length})</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                ${ventas.map(v=>{
+                    const tb=v.tipo_pago==='credito'?`<span class="badge-credito badge-proyecto">Crédito</span>`:`<span class="badge-contado badge-proyecto">Contado</span>`;
+                    return `<div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;">
+                        <div>
+                            <span style="font-weight:700;color:#0f172a;">${escH(v.proyecto_nombre)}</span>
+                            <span style="color:#64748b;font-size:.82rem;"> · Parcela N° ${v.parcela_numero}</span>
+                            <div style="margin-top:4px;display:flex;gap:6px;align-items:center;">
+                                ${tb}
+                                ${v.precio_acordado?`<span style="font-size:.78rem;color:#475569;">$${Math.floor(parseFloat(v.precio_acordado)).toLocaleString('es-CL')}</span>`:''}
+                                ${v.fecha_venta?`<span style="font-size:.72rem;color:#94a3b8;">${new Date(v.fecha_venta).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'})}</span>`:''}
+                            </div>
+                        </div>
+                        <a href="/admin/inmobiliaria/parcela/${v.parcela_id}" class="im-btn im-btn-sm im-btn-ghost"><i class="bi bi-arrow-up-right"></i> Ver</a>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`:''}
+        <div class="cli-expand-section">
+            <p class="section-label"><i class="bi bi-clock-history"></i> Actividad Reciente</p>
+            <div id="audit-cli-${id}" style="font-size:.8rem;color:#64748b;">Cargando...</div>
+        </div>
+    </div>`;
 
-        // Cargar auditoría del cliente
-        if (c.cliente_id || c.id) {
-            fetch(`/api/im/auditoria?entidad_id=${c.id||c.cliente_id}`)
-                .then(r=>r.json())
-                .then(logs => {
-                    const el2 = $(`audit-cli-${id}`);
-                    if (!el2) return;
-                    if (!logs||logs.length===0) { el2.textContent='Sin registros.'; return; }
-                    el2.innerHTML = logs.slice(0,5).map(l=>
-                        `<div style="padding:4px 0; border-bottom:1px solid #f1f5f9;">
-                            <strong>${escH(l.accion)}</strong> — ${escH(l.descripcion||'')}
-                            <span style="color:#94a3b8; font-size:0.75rem; display:block;">${new Date(l.fecha).toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${escH(l.usuario_nombre||'Sistema')}</span>
-                        </div>`).join('');
-                }).catch(()=>{});
-        }
-    }
+    // Auditoría
+    fetch(`/api/im/auditoria?entidad_id=${c.id}`)
+        .then(r=>r.json()).then(logs=>{
+            const el2=$(`audit-cli-${id}`);if(!el2)return;
+            if(!logs||logs.length===0){el2.textContent='Sin actividad registrada.';return;}
+            el2.innerHTML=logs.slice(0,6).map(l=>`<div style="padding:5px 0;border-bottom:1px solid #f1f5f9;">
+                <span style="font-weight:700;color:#334155;">${escH(l.accion)}</span>
+                ${l.descripcion?` — ${escH(l.descripcion)}`:''}
+                <span style="color:#94a3b8;font-size:.72rem;display:block;">${new Date(l.fecha).toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${escH(l.usuario_nombre||'Sistema')}</span>
+            </div>`).join('');
+        }).catch(()=>{});
+}
 
-    function toggleConyugeExpand(id, val) {
-        const el = $(`ec-conyuge-${id}`);
-        if (el) el.style.display = (val==='Casado/a'||val==='Conviviente Civil') ? 'block':'none';
-    }
+function toggleConyugeExpand(id,val){
+    const el=$(`ec-conyuge-${id}`);
+    if(el)el.style.display=(val==='Casado/a'||val==='Conviviente Civil')?'block':'none';
+}
 
-    async function saveCliente(event, clienteId) {
-        event.preventDefault();
-        const btn = event.submitter || event.target.querySelector('[type="submit"]');
-        if (btn) { btn.disabled=true; btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...'; }
-        try {
-            const id = clienteId;
-            const rut = $(`ec-rut-${id}`).value;
-            if (!validarRut(rut)) {
-                showToast('El RUT no es válido (Módulo 11).','error','RUT inválido');
-                return;
-            }
-            const body = {
-                nombre_completo: $(`ec-nombre-${id}`).value,
-                rut:             rut,
-                email:           $(`ec-email-${id}`).value||null,
-                telefono:        $(`ec-tel-${id}`).value||null,
-                direccion:       $(`ec-dir-${id}`).value||null,
-                estado_civil:    $(`ec-civil-${id}`).value,
-                nombre_conyugue: $(`ec-con-nombre-${id}`).value||null,
-                rut_conyugue:    $(`ec-con-rut-${id}`).value||null
-            };
-            const res = await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-            if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.message||`Error ${res.status}`); }
-            showToast('Cliente actualizado correctamente.','success');
-            loadClientes();
-        } catch(e) { showToast(e.message,'error','No se pudo guardar'); }
-        finally { if (btn) { btn.disabled=false; btn.innerHTML='<i class="bi bi-save"></i> Guardar Cambios'; } }
-    }
-
-    // Búsqueda en tiempo real
-    let searchTimeout;
-    $('filter-q').addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(loadClientes, 350);
-    });
-
-    $('filter-proyecto').addEventListener('change', loadClientes);
-
-    document.addEventListener('DOMContentLoaded', async () => {
-        await loadProyectos();
+async function saveCliente(event,clienteId){
+    event.preventDefault();
+    const btn=event.submitter||event.target.querySelector('[type="submit"]');
+    if(btn){btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...';}
+    try{
+        const id=clienteId;
+        const rut=$(`ec-rut-${id}`).value;
+        if(!validarRut(rut)){showToast('RUT inválido (Módulo 11).','error','RUT inválido');return;}
+        const body={
+            nombre_completo:$(`ec-nombre-${id}`).value,
+            rut,
+            email:$(`ec-email-${id}`).value||null,
+            telefono:$(`ec-tel-${id}`).value||null,
+            direccion:$(`ec-dir-${id}`).value||null,
+            estado_civil:$(`ec-civil-${id}`).value,
+            nombre_conyugue:$(`ec-con-nombre-${id}`).value||null,
+            rut_conyugue:$(`ec-con-rut-${id}`).value||null,
+            email_conyugue:$(`ec-con-email-${id}`).value||null,
+            telefono_conyugue:$(`ec-con-tel-${id}`).value||null
+        };
+        const res=await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
+        showToast('Cliente actualizado correctamente.','success');
         loadClientes();
-    });
-    </script>
+    }catch(e){showToast(e.message,'error','No se pudo guardar');}
+    finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-save"></i> Guardar Cambios';}}
+}
+
+// ── Búsqueda en tiempo real ──
+let searchTimeout;
+$('filter-q').addEventListener('input',()=>{clearTimeout(searchTimeout);searchTimeout=setTimeout(loadClientes,350);});
+$('filter-proyecto').addEventListener('change',loadClientes);
+
+document.addEventListener('DOMContentLoaded',async()=>{await loadProyectos();loadClientes();});
+</script>
 </body>
 </html>

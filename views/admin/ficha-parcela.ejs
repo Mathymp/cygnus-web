@@ -236,13 +236,23 @@
                                             <option value="Conviviente Civil">Conviviente Civil</option>
                                         </select>
                                     </div>
-                                    <div id="section-conyuge" style="display:none;border-top:1px solid #bbf7d0;padding-top:10px;margin-top:6px;">
-                                        <p style="font-size:.78rem;font-weight:700;color:#166534;margin:0 0 8px;"><i class="bi bi-people-fill"></i> Datos del Cónyuge / Conviviente</p>
+                                    <div id="section-conyuge" style="display:none;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin-top:8px;">
+                                        <p style="font-size:.78rem;font-weight:700;color:#7c3aed;margin:0 0 10px;"><i class="bi bi-people-fill"></i> Cónyuge / Conviviente Civil</p>
                                         <div class="im-form-row">
                                             <div class="im-input-group"><label>Nombre Cónyuge</label><input type="text" id="cli-conyuge-nombre" class="styled-input" placeholder="Nombre y apellidos"></div>
                                             <div class="im-input-group">
                                                 <label>RUT Cónyuge</label>
                                                 <div class="rut-input-wrap"><input type="text" id="cli-conyuge-rut" class="styled-input" placeholder="12.345.678-9" oninput="autoFmtRut(this,'conyuge-rut-status')" style="padding-right:38px;"><span id="conyuge-rut-status" class="rut-status"></span></div>
+                                            </div>
+                                        </div>
+                                        <div class="im-form-row">
+                                            <div class="im-input-group">
+                                                <label>Email Cónyuge <span style="color:#94a3b8;font-weight:400;font-size:.75rem;">(opcional)</span></label>
+                                                <input type="email" id="cli-conyuge-email" class="styled-input" placeholder="email@ejemplo.cl">
+                                            </div>
+                                            <div class="im-input-group">
+                                                <label>Teléfono Cónyuge <span style="color:#94a3b8;font-weight:400;font-size:.75rem;">(opcional)</span></label>
+                                                <input type="tel" id="cli-conyuge-tel" class="styled-input" placeholder="+56 9 ...">
                                             </div>
                                         </div>
                                     </div>
@@ -574,7 +584,7 @@ function renderParcela(data){
                     ['Nombre',venta.nombre_completo],['RUT',venta.rut],
                     ['Email',venta.email||'—'],['Teléfono',venta.telefono||'—'],
                     ['Estado Civil',venta.estado_civil],
-                    venta.nombre_conyugue?['Cónyuge',`${venta.nombre_conyugue} (${venta.rut_conyugue||'S/R'})`]:null,
+                    venta.nombre_conyugue?['Cónyuge',`${venta.nombre_conyugue} · ${venta.rut_conyugue||'S/R'}${venta.email_conyugue?' · '+venta.email_conyugue:''}${venta.telefono_conyugue?' · '+venta.telefono_conyugue:''}`]:null,
                     ['Agente',venta.agente_nombre||'—'],
                     ['Modalidad',tipoPago==='contado'?'💵 Al Contado':'🏦 Crédito / Cuotas'],
                     ['Precio Lista',venta.precio_lista?`$${fmt(venta.precio_lista)}`:'—'],
@@ -607,6 +617,8 @@ function renderParcela(data){
         toggleConyuge(venta.estado_civil);
         $('cli-conyuge-nombre').value=venta.nombre_conyugue||'';
         $('cli-conyuge-rut').value=venta.rut_conyugue||'';
+        $('cli-conyuge-email').value=venta.email_conyugue||'';
+        $('cli-conyuge-tel').value=venta.telefono_conyugue||'';
         $('venta-fecha').value=venta.fecha_venta?venta.fecha_venta.split('T')[0]:'';
         $('venta-promesa').checked=venta.firmo_promesa;
         $('venta-compraventa').checked=venta.firmo_compraventa;
@@ -763,7 +775,7 @@ $('form-venta').addEventListener('submit',async(e)=>{
     try{
         if(!validarRut($('cli-rut').value)){showToast('RUT del comprador inválido (Módulo 11).','error','RUT inválido');return;}
         let clienteId=$('venta-cliente-id').value;
-        const clienteBody={nombre_completo:$('cli-nombre').value,rut:$('cli-rut').value,email:$('cli-email').value||null,telefono:$('cli-telefono').value||null,direccion:$('cli-direccion').value||null,estado_civil:$('cli-estado-civil').value,nombre_conyugue:$('cli-conyuge-nombre').value||null,rut_conyugue:$('cli-conyuge-rut').value||null};
+            const clienteBody={nombre_completo:$('cli-nombre').value,rut:$('cli-rut').value,email:$('cli-email').value||null,telefono:$('cli-telefono').value||null,direccion:$('cli-direccion').value||null,estado_civil:$('cli-estado-civil').value,nombre_conyugue:$('cli-conyuge-nombre').value||null,rut_conyugue:$('cli-conyuge-rut').value||null,email_conyugue:$('cli-conyuge-email').value||null,telefono_conyugue:$('cli-conyuge-tel').value||null};
         if(clienteId){
             const r=await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(clienteBody)});
             if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.message||`Error ${r.status}`);}
