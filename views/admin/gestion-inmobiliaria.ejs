@@ -77,6 +77,13 @@
                     </div>
                     <div class="im-form-row">
                         <div class="im-input-group">
+                            <label>Tipo de Proyecto</label>
+                            <select id="proj-tipo" class="styled-input">
+                                <option value="en_verde">En Verde (sin rol propio aún)</option>
+                                <option value="con_rol_propio">Con Rol Propio asignado</option>
+                            </select>
+                        </div>
+                        <div class="im-input-group">
                             <label>Estado</label>
                             <select id="proj-estado" class="styled-input">
                                 <option value="activo">Activo</option>
@@ -84,6 +91,8 @@
                                 <option value="cerrado">Cerrado</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="im-form-row">
                         <div class="im-input-group" id="grupo-total-parcelas">
                             <label>Total de Parcelas <span style="color:#94a3b8; font-weight:400;">(opcional)</span></label>
                             <input type="number" id="proj-total" class="styled-input" min="0" placeholder="Ej: 20">
@@ -375,7 +384,12 @@
                             </button>
                         </div>` : ''}
                     </div>
-                    <p class="im-card-title" style="margin:0;">${escapeHtml(p.nombre)}</p>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <p class="im-card-title" style="margin:0;">${escapeHtml(p.nombre)}</p>
+                        ${p.tipo_proyecto==='con_rol_propio'
+                            ? `<span style="font-size:0.68rem;font-weight:600;padding:2px 7px;border-radius:999px;background:#d1fae5;color:#065f46;">Con Rol</span>`
+                            : `<span style="font-size:0.68rem;font-weight:600;padding:2px 7px;border-radius:999px;background:#fef9c3;color:#713f12;">En Verde</span>`}
+                    </div>
                     <div class="im-card-meta">
                         <div class="im-meta-item">
                             <span class="im-meta-label">Parcelas</span>
@@ -417,6 +431,7 @@
         function openModalEdit(p) {
             document.getElementById('proj-id').value = p.id;
             document.getElementById('proj-nombre').value = p.nombre;
+            document.getElementById('proj-tipo').value  = p.tipo_proyecto || 'en_verde';
             document.getElementById('proj-estado').value = p.estado;
             document.getElementById('proj-rol1').value = p.numero_rol_1 || '';
             document.getElementById('proj-rol2').value = p.numero_rol_2 || '';
@@ -436,12 +451,13 @@
                 const id = document.getElementById('proj-id').value;
                 const totalStr = document.getElementById('proj-total').value;
                 const body = {
-                    nombre: document.getElementById('proj-nombre').value.trim(),
-                    estado: document.getElementById('proj-estado').value,
+                    nombre:         document.getElementById('proj-nombre').value.trim(),
+                    tipo_proyecto:  document.getElementById('proj-tipo').value,
+                    estado:         document.getElementById('proj-estado').value,
                     total_parcelas: totalStr ? parseInt(totalStr, 10) : 0,
-                    numero_rol_1:  document.getElementById('proj-rol1').value.trim() || null,
-                    numero_rol_2:  document.getElementById('proj-rol2').value.trim() || null,
-                    numero_matriz: document.getElementById('proj-matriz').value.trim() || null
+                    numero_rol_1:   document.getElementById('proj-rol1').value.trim() || null,
+                    numero_rol_2:   document.getElementById('proj-rol2').value.trim() || null,
+                    numero_matriz:  document.getElementById('proj-matriz').value.trim() || null
                 };
                 const url    = id ? `/api/im/proyectos/${id}` : '/api/im/proyectos';
                 const method = id ? 'PUT' : 'POST';

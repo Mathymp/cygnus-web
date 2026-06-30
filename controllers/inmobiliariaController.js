@@ -35,14 +35,15 @@ exports.createProyecto = async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const { nombre, estado, total_parcelas, numero_rol_1, numero_rol_2, numero_matriz } = req.body;
+        const { nombre, estado, total_parcelas, numero_rol_1, numero_rol_2, numero_matriz, tipo_proyecto } = req.body;
         if (!nombre || !nombre.trim()) return res.status(400).json({ message: 'El nombre es obligatorio.' });
         const totalParcelas = parseInt(total_parcelas, 10) || 0;
         const proyectoRes = await client.query(
-            `INSERT INTO im_proyectos (nombre, estado, total_parcelas, numero_rol_1, numero_rol_2, numero_matriz)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            `INSERT INTO im_proyectos (nombre, estado, total_parcelas, numero_rol_1, numero_rol_2, numero_matriz, tipo_proyecto)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
             [nombre.trim(), estado || 'activo', totalParcelas,
-             numero_rol_1 || null, numero_rol_2 || null, numero_matriz || null]
+             numero_rol_1 || null, numero_rol_2 || null, numero_matriz || null,
+             tipo_proyecto || 'en_verde']
         );
         const proyecto = proyectoRes.rows[0];
         if (totalParcelas > 0) {
@@ -68,11 +69,12 @@ exports.updateProyecto = async (req, res) => {
     try {
         await client.query('BEGIN');
         const { id } = req.params;
-        const { nombre, estado, numero_rol_1, numero_rol_2, numero_matriz } = req.body;
+        const { nombre, estado, numero_rol_1, numero_rol_2, numero_matriz, tipo_proyecto } = req.body;
         const result = await client.query(
-            `UPDATE im_proyectos SET nombre=$1, estado=$2, numero_rol_1=$3, numero_rol_2=$4, numero_matriz=$5
-             WHERE id=$6 RETURNING *`,
-            [nombre, estado, numero_rol_1 || null, numero_rol_2 || null, numero_matriz || null, id]
+            `UPDATE im_proyectos SET nombre=$1, estado=$2, numero_rol_1=$3, numero_rol_2=$4,
+             numero_matriz=$5, tipo_proyecto=$6 WHERE id=$7 RETURNING *`,
+            [nombre, estado, numero_rol_1 || null, numero_rol_2 || null, numero_matriz || null,
+             tipo_proyecto || 'en_verde', id]
         );
         if (result.rows.length === 0) return res.status(404).json({ message: 'Proyecto no encontrado.' });
         await auditLog(client, { tabla: 'im_proyectos', entidadId: id,
@@ -137,7 +139,7 @@ exports.getParcelaById = async (req, res) => {
                          c.email_conyugue, c.telefono_conyugue,
                          c.direccion, c.id as cliente_id, v.agente_id, v.agente_nombre
                  FROM im_ventas_lotes v JOIN im_clientes c ON v.cliente_id = c.id
-                 WHERE v.parcela_id=$1 ORDER BY v.creado_at DESC LIMIT 1`, [id]
+                 WHERE v.parcela_id=$1 AND v.estado='activa' ORDER BY v.creado_at DESC LIMIT 1`, [id]
             )
         ]);
         if (parcelaRes.rows.length === 0) return res.status(404).json({ message: 'Parcela no encontrada.' });
@@ -151,7 +153,28 @@ exports.getParcelaById = async (req, res) => {
             cuotas = cuotasRes.rows;
         }
 
-        res.json({ parcela: parcelaRes.rows[0], historial_precios: historialRes.rows, venta, cuotas });
+        // Historial de todas las ventas anteriores (resciliadas / liberadas)
+        const historialVentasRes = await pool.query(
+            `SELECT v.id, v.estado, v.tipo_pago, v.precio_acordado, v.fecha_venta,
+                    v.firmo_promesa, v.firmo_compraventa, v.agente_nombre, v.condiciones_compra,
+                    v.creado_at,
+                    c.nombre_completo, c.rut,
+                    r.id as resc_id, r.fecha as resc_fecha, r.motivo as resc_motivo,
+                    r.notas as resc_notas, r.creado_por_nombre as resc_agente
+             FROM im_ventas_lotes v
+             JOIN im_clientes c ON v.cliente_id = c.id
+             LEFT JOIN im_resciliaciones r ON r.venta_id = v.id
+             WHERE v.parcela_id=$1 AND v.estado <> 'activa'
+             ORDER BY v.creado_at DESC`, [id]
+        );
+
+        res.json({
+            parcela: parcelaRes.rows[0],
+            historial_precios: historialRes.rows,
+            venta,
+            cuotas,
+            historial_ventas: historialVentasRes.rows
+        });
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 
@@ -390,11 +413,11 @@ exports.createVenta = async (req, res) => {
 
         const cleanNum = (v) => v && String(v).trim() ? parseFloat(String(v).replace(/\./g,'').replace(',','.')) : null;
 
-        // Preserve existing venta id to keep cuotas linked
-        const existingRes = await client.query(`SELECT id FROM im_ventas_lotes WHERE parcela_id=$1`, [parcela_id]);
-        if (existingRes.rows.length > 0) {
-            await client.query(`DELETE FROM im_ventas_lotes WHERE parcela_id=$1`, [parcela_id]);
-        }
+        // Marcar ventas activas anteriores como 'liberada' (no eliminar — preservar historial)
+        await client.query(
+            `UPDATE im_ventas_lotes SET estado='liberada' WHERE parcela_id=$1 AND estado='activa'`,
+            [parcela_id]
+        );
 
         // Agente: usar el que viene en el body (admin puede elegir otro) o el usuario actual
         const agenteId   = agente_id   || req.session.user.id;
@@ -405,8 +428,8 @@ exports.createVenta = async (req, res) => {
                 parcela_id, cliente_id, firmo_promesa, firmo_compraventa, forma_pago,
                 fecha_venta, precio_lista, precio_acordado, notas,
                 tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota, condiciones_compra,
-                agente_id, agente_nombre
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+                agente_id, agente_nombre, estado
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'activa') RETURNING *`,
             [
                 parcela_id, cliente_id,
                 firmo_promesa || false, firmo_compraventa || false,
@@ -465,6 +488,52 @@ exports.deleteVenta = async (req, res) => {
             accion: 'ELIMINAR', descripcion: 'Venta eliminada. Parcela devuelta a disponible.', req });
         await client.query('COMMIT');
         res.sendStatus(204);
+    } catch (e) {
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: e.message });
+    } finally { client.release(); }
+};
+
+exports.resciliarVenta = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { id } = req.params;
+        const { fecha, motivo, notas } = req.body;
+
+        const ventaRes = await client.query(
+            `SELECT parcela_id FROM im_ventas_lotes WHERE id=$1 AND estado='activa'`, [id]
+        );
+        if (ventaRes.rows.length === 0)
+            return res.status(404).json({ message: 'Venta activa no encontrada.' });
+
+        const parcela_id = ventaRes.rows[0].parcela_id;
+        const agente = req.session.user ? req.session.user.name : 'Sistema';
+
+        // Crear registro de resciliación
+        const rescRes = await client.query(
+            `INSERT INTO im_resciliaciones (venta_id, parcela_id, fecha, motivo, notas, creado_por_nombre)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [id, parcela_id, fecha || new Date().toISOString().split('T')[0], motivo || null, notas || null, agente]
+        );
+
+        // Marcar venta como resciliada
+        await client.query(
+            `UPDATE im_ventas_lotes SET estado='resciliada' WHERE id=$1`, [id]
+        );
+
+        // Liberar parcela
+        await client.query(
+            `UPDATE im_parcelas SET estado_venta='disponible' WHERE id=$1`, [parcela_id]
+        );
+
+        await auditLog(client, { tabla: 'im_ventas_lotes', entidadId: id,
+            accion: 'RESCILIACION',
+            descripcion: `Contrato resciliado por ${agente}. Motivo: ${motivo || 'no especificado'}. Parcela devuelta a disponible.`,
+            req });
+
+        await client.query('COMMIT');
+        res.status(201).json(rescRes.rows[0]);
     } catch (e) {
         await client.query('ROLLBACK');
         res.status(500).json({ error: e.message });

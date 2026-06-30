@@ -315,6 +315,7 @@ router.put('/api/im/clientes/:id', requireAuth, inmobiliariaController.updateCli
 router.get('/api/im/ventas',  requireAuth, inmobiliariaController.getVentas);
 router.post('/api/im/ventas', requireAuth, inmobiliariaController.createVenta);
 router.delete('/api/im/ventas/:id', requireAuth, inmobiliariaController.deleteVenta);
+router.post('/api/im/ventas/:id/resciliar',   requireAuth, inmobiliariaController.resciliarVenta);
 router.post('/api/im/ventas/:id/comprobante', requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteVenta);
 
 // API – Cuotas de pago

@@ -57,21 +57,56 @@
         </div>
     </div>
 
-    <!-- Liberar parcela modal -->
+    <!-- Resciliar contrato modal -->
     <div id="modal-liberar" class="im-modal-overlay">
-        <div class="im-modal-card" style="max-width:400px;">
+        <div class="im-modal-card" style="max-width:520px;">
             <div class="im-modal-header">
-                <h3><i class="bi bi-unlock"></i> Liberar Parcela</h3>
+                <h3><i class="bi bi-file-earmark-x"></i> Resciliar Contrato</h3>
                 <button class="btn-close" onclick="closeModal('liberar')"><i class="bi bi-x-lg"></i></button>
             </div>
-            <div class="im-modal-body" style="text-align:center;padding:28px 22px;">
-                <i class="bi bi-arrow-counterclockwise" style="font-size:2.5rem;color:#f59e0b;display:block;margin-bottom:10px;"></i>
-                <p style="font-weight:700;color:#0f172a;margin-bottom:6px;">¿Liberar esta parcela?</p>
-                <p style="font-size:.85rem;color:#64748b;">Se eliminará la venta y la parcela vuelve a <strong>Disponible</strong>.</p>
+            <div class="im-modal-body" style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+                <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;font-size:.83rem;color:#92400e;">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    Esta operación registrará formalmente la <strong>resciliación del contrato</strong>.
+                    La parcela volverá al estado <strong>Disponible</strong> y quedará un historial completo de la operación.
+                    <strong>No se elimina ningún dato.</strong>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                        <label style="font-size:.78rem;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Fecha de Resciliación</label>
+                        <input type="date" id="resc-fecha" class="styled-input">
+                    </div>
+                    <div>
+                        <label style="font-size:.78rem;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Motivo</label>
+                        <select id="resc-motivo" class="styled-input">
+                            <option value="Desistimiento del comprador">Desistimiento del comprador</option>
+                            <option value="Incumplimiento de pago">Incumplimiento de pago</option>
+                            <option value="Acuerdo mutuo">Acuerdo mutuo</option>
+                            <option value="Resolución judicial">Resolución judicial</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:.78rem;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Notas adicionales <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
+                    <textarea id="resc-notas" class="styled-input" rows="3" placeholder="Observaciones, acuerdos, referencias a documentos..."></textarea>
+                </div>
+                <div>
+                    <label style="font-size:.78rem;font-weight:600;color:#475569;display:block;margin-bottom:6px;"><i class="bi bi-paperclip"></i> Documentos de resciliación <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
+                    <p style="font-size:.76rem;color:#64748b;margin:0 0 8px;">Escritura de resciliación, notificaciones, comprobantes. Se guardarán en la carpeta del lote.</p>
+                    <div class="im-upload-zone" style="padding:14px;" onclick="document.getElementById('resc-file-input').click()">
+                        <input type="file" id="resc-file-input" multiple accept="image/*,.pdf,.doc,.docx" style="display:none">
+                        <i class="bi bi-cloud-arrow-up" style="font-size:1.6rem;color:#94a3b8;"></i>
+                        <p style="font-size:.8rem;color:#64748b;margin:4px 0 0;">Haz clic o arrastra archivos aquí</p>
+                    </div>
+                    <div id="resc-file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:4px;"></div>
+                </div>
             </div>
             <div class="im-modal-footer">
                 <button class="im-btn im-btn-ghost" onclick="closeModal('liberar')">Cancelar</button>
-                <button class="im-btn im-btn-danger" onclick="liberarParcela()"><i class="bi bi-unlock"></i> Liberar</button>
+                <button class="im-btn im-btn-danger" id="btn-resciliar" onclick="resciliarContrato()">
+                    <i class="bi bi-file-earmark-x"></i> Confirmar Resciliación
+                </button>
             </div>
         </div>
     </div>
@@ -190,7 +225,13 @@
 
                         <!-- ─── TAB COMPRADOR ─── -->
                         <div id="tab-comprador" class="im-tab-content active">
+                            <div id="banner-en-verde" style="display:none;background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.83rem;color:#713f12;">
+                                <i class="bi bi-tree-fill" style="color:#65a30d;"></i>
+                                <strong>Proyecto en Verde</strong> — Este proyecto se encuentra en proceso de tramitación.
+                                Las parcelas pueden ser vendidas antes de contar con rol propio asignado.
+                            </div>
                             <div id="venta-actual" style="margin-bottom:16px;"></div>
+                            <div id="historial-ventas-section" style="display:none;margin-bottom:20px;"></div>
 
                             <!-- PASO 1 -->
                             <div class="step-box">
@@ -551,7 +592,11 @@ async function init(){
 }
 
 function renderParcela(data){
-    const p=data.parcela,venta=data.venta,hist=data.historial_precios||[],cuotas=data.cuotas||[];
+    const p=data.parcela,venta=data.venta,hist=data.historial_precios||[],cuotas=data.cuotas||[],histVentas=data.historial_ventas||[];
+
+    // Banner en verde
+    const bannerEl=$('banner-en-verde');
+    if(bannerEl) bannerEl.style.display=(p.tipo_proyecto==='en_verde')?'block':'none';
 
     $('bc-proyecto').textContent=p.proyecto_nombre||'Proyecto';
     $('bc-parcela').textContent=`Parcela N° ${p.numero_parcela}`;
@@ -560,7 +605,9 @@ function renderParcela(data){
     const eMap={disponible:{cl:'disponible',ic:'bi-circle-fill',t:'Disponible'},reservado:{cl:'reservado',ic:'bi-clock-history',t:'Reservado'},vendido:{cl:'vendido',ic:'bi-bag-check-fill',t:'Vendido'}};
     const e=eMap[p.estado_venta]||eMap.disponible;
     $('parcela-estado-badge').innerHTML=`<span class="im-status-badge ${e.cl}"><i class="bi ${e.ic}"></i> ${e.t}</span>`;
-    $('header-actions').innerHTML=(IS_ADMIN&&venta)?`<button class="im-btn im-btn-danger" onclick="openModal('liberar')"><i class="bi bi-unlock"></i> Liberar Parcela</button>`:'';
+    $('header-actions').innerHTML=(IS_ADMIN&&venta)
+        ?`<button class="im-btn im-btn-warning" onclick="openResciliarModal()" style="background:#f59e0b;color:#fff;border-color:#f59e0b;">
+            <i class="bi bi-file-earmark-x"></i> Resciliar Contrato</button>`:'';
 
     const rows=[['N° Parcela',p.numero_parcela],['N° Rol Parcela',p.numero_rol_parcela||'—'],['Metraje',p.metraje?`${Number(p.metraje).toLocaleString('es-CL')} m²`:'—'],['Precio de Lista',p.precio_actual?`$${fmt(p.precio_actual)}`:'—'],['Proyecto',p.proyecto_nombre],['N° Rol 1',p.numero_rol_1||'—'],['N° Rol 2',p.numero_rol_2||'—'],['N° Matriz',p.numero_matriz||'—']];
     $('detalle-rows').innerHTML=rows.map(([k,v])=>`<div class="im-detail-row"><span class="im-detail-key">${k}</span><span class="im-detail-val">${v}</span></div>`).join('');
@@ -670,6 +717,60 @@ function renderParcela(data){
         $('venta-fecha').value=new Date().toISOString().split('T')[0];
         if(p.precio_actual)$('venta-precio-lista').value=Number(p.precio_actual).toLocaleString('es-CL');
     }
+
+    renderHistorialVentas(histVentas);
+}
+
+function renderHistorialVentas(histVentas){
+    const sec=$('historial-ventas-section');
+    if(!sec)return;
+    if(!histVentas||histVentas.length===0){sec.style.display='none';return;}
+    sec.style.display='block';
+    const estadoBadge=estado=>{
+        if(estado==='resciliada')return`<span style="font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#fee2e2;color:#991b1b;">Resciliada</span>`;
+        if(estado==='liberada')return`<span style="font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#64748b;">Liberada</span>`;
+        return`<span style="font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#fef3c7;color:#92400e;">${estado}</span>`;
+    };
+    sec.innerHTML=`
+    <details style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;" open>
+        <summary style="padding:12px 16px;cursor:pointer;background:#f8fafc;font-size:.82rem;font-weight:700;color:#475569;display:flex;align-items:center;gap:8px;list-style:none;">
+            <i class="bi bi-clock-history" style="color:#f59e0b;"></i>
+            Historial de Operaciones Anteriores
+            <span style="margin-left:auto;font-size:.73rem;font-weight:400;color:#94a3b8;">${histVentas.length} registro${histVentas.length!==1?'s':''}</span>
+        </summary>
+        <div style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+        ${histVentas.map(v=>{
+            const fechaVenta=v.fecha_venta?new Date(v.fecha_venta).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';
+            const precio=v.precio_acordado?'$'+fmt(v.precio_acordado):'—';
+            const modPago=v.tipo_pago==='credito'?'🏦 Crédito':'💵 Contado';
+            const rescInfo=v.resc_id?`
+                <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #fca5a5;font-size:.78rem;color:#7f1d1d;">
+                    <i class="bi bi-file-earmark-x-fill" style="color:#ef4444;"></i>
+                    <strong>Resciliación:</strong>
+                    ${v.resc_fecha?new Date(v.resc_fecha+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—'}
+                    — ${escH(v.resc_motivo||'Sin motivo')}
+                    ${v.resc_agente?`<span style="color:#94a3b8;"> · Por: ${escH(v.resc_agente)}</span>`:''}
+                    ${v.resc_notas?`<div style="margin-top:4px;color:#92400e;font-style:italic;">${escH(v.resc_notas)}</div>`:''}
+                </div>`:'';
+            return`<div style="border:1px solid ${v.estado==='resciliada'?'#fca5a5':'#e2e8f0'};border-radius:8px;padding:12px;background:${v.estado==='resciliada'?'#fff5f5':'#fafafa'};">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    ${estadoBadge(v.estado)}
+                    <span style="font-size:.82rem;font-weight:600;color:#0f172a;">${escH(v.nombre_completo)}</span>
+                    <span style="font-size:.78rem;color:#64748b;">RUT ${escH(v.rut)}</span>
+                    <span style="margin-left:auto;font-size:.78rem;color:#64748b;">${fechaVenta}</span>
+                </div>
+                <div style="display:flex;gap:12px;font-size:.79rem;color:#64748b;flex-wrap:wrap;">
+                    <span><i class="bi bi-cash"></i> ${precio}</span>
+                    <span>${modPago}</span>
+                    ${v.agente_nombre?`<span><i class="bi bi-person"></i> ${escH(v.agente_nombre)}</span>`:''}
+                    ${v.firmo_promesa?`<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Promesa</span>`:''}
+                    ${v.firmo_compraventa?`<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Compraventa</span>`:''}
+                </div>
+                ${rescInfo}
+            </div>`;
+        }).join('')}
+        </div>
+    </details>`;
 }
 
 function renderCuotasPanel(venta,cuotas){
@@ -841,14 +942,59 @@ $('form-venta').addEventListener('submit',async(e)=>{
     finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta';}}
 });
 
-// ──────────────── LIBERAR ────────────────
-async function liberarParcela(){
+// ──────────────── RESCILIACIÓN ────────────────
+function openResciliarModal(){
+    $('resc-fecha').value=new Date().toISOString().split('T')[0];
+    $('resc-motivo').value='Desistimiento del comprador';
+    $('resc-notas').value='';
+    $('resc-file-list').innerHTML='';
+    openModal('liberar');
+}
+
+document.getElementById('resc-file-input').addEventListener('change',function(){
+    const list=$('resc-file-list');
+    list.innerHTML=Array.from(this.files).map((f,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;background:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:.78rem;">
+            <i class="bi bi-paperclip" style="color:#2563eb;"></i>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(f.name)}</span>
+            <span style="color:#94a3b8;">${(f.size/1024/1024).toFixed(1)}MB</span>
+        </div>`).join('');
+});
+
+async function resciliarContrato(){
+    if(!ventaData){showToast('No hay venta activa para resciliar.','error');return;}
+    const btn=$('btn-resciliar');
+    btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Procesando...';
     try{
-        const res=await fetch(`/api/im/ventas/${ventaData.id}`,{method:'DELETE'});
-        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||'No se pudo liberar.');}
-        closeModal('liberar');currentClienteId=null;
-        showToast('Parcela liberada. Estado: Disponible.','info');init();
+        const body={
+            fecha:  $('resc-fecha').value,
+            motivo: $('resc-motivo').value,
+            notas:  $('resc-notas').value.trim()||null
+        };
+        const res=await fetch(`/api/im/ventas/${ventaData.id}/resciliar`,{
+            method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
+        });
+        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
+
+        // Subir documentos de resciliación al lote (si hay)
+        const files=$('resc-file-input').files;
+        if(files.length>0){
+            for(const f of files){
+                const fd=new FormData();
+                fd.append('archivo',f);
+                fd.append('nombre_personalizado',`Resciliación — ${f.name.replace(/\.[^/.]+$/,'')}`);
+                fd.append('tipo_asociacion','parcela');
+                fd.append('asociacion_id',PARCELA_ID);
+                await fetch('/api/im/documentos',{method:'POST',body:fd});
+            }
+        }
+
+        closeModal('liberar');
+        currentClienteId=null;
+        showToast('Resciliación registrada. La parcela volvió a Disponible.','success');
+        init();
     }catch(e){showToast(e.message,'error');}
+    finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-file-earmark-x"></i> Confirmar Resciliación';}
 }
 
 // ──────────────── DOCUMENT MANAGER ────────────────
