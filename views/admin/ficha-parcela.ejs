@@ -1228,26 +1228,44 @@ async function handleFileSelect(tipo,asociacionId,files){
     let ok=0,fail=0;
 
     for(const f of Array.from(files)){
-        const uid='f'+Date.now()+Math.random().toString(36).slice(2);
-        const ext=f.name.split('.').pop().toLowerCase();
-        const size=(f.file?f.file.size:f.size)/1024/1024;
-        const nombre=f.name.replace(/\.[^/.]+$/,'').replace(/[_-]/g,' ');
+        const uid='u'+Date.now()+Math.random().toString(36).slice(2,7);
+        const ext=(f.name||'').split('.').pop().toLowerCase();
+        const sizeMB=(f.size/1024/1024).toFixed(1);
+        const nombre=(f.name||'archivo').replace(/\.[^/.]+$/,'').replace(/[_-]/g,' ');
 
-        // Agregar fila de progreso
+        // Crear fila de progreso con referencias directas a subelementos
         const row=document.createElement('div');
-        row.id=`urow-${uid}`;
-        row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;';
-        row.innerHTML=`
-            <i class="bi ${ext2icon(ext)}" style="font-size:1.3rem;color:#2563eb;flex-shrink:0;"></i>
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:.82rem;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escH(nombre)}</div>
-                <div style="font-size:.72rem;color:#94a3b8;">${size.toFixed(1)} MB · Subiendo...</div>
-                <div style="height:4px;background:#e2e8f0;border-radius:2px;margin-top:4px;overflow:hidden;">
-                    <div id="pbar-${uid}" style="height:100%;width:0%;background:#2563eb;border-radius:2px;transition:width .3s;"></div>
-                </div>
-            </div>`;
+        row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;margin-bottom:6px;transition:all .3s;';
+
+        const statusEl=document.createElement('div');
+        statusEl.style.cssText='font-size:.72rem;color:#94a3b8;margin-top:2px;';
+        statusEl.textContent=`${sizeMB} MB · Subiendo...`;
+
+        const pbarEl=document.createElement('div');
+        pbarEl.style.cssText='height:100%;width:15%;background:#2563eb;border-radius:2px;transition:width .4s;';
+
+        const progWrap=document.createElement('div');
+        progWrap.style.cssText='height:4px;background:#e2e8f0;border-radius:2px;margin-top:4px;overflow:hidden;';
+        progWrap.appendChild(pbarEl);
+
+        const info=document.createElement('div');
+        info.style.cssText='flex:1;min-width:0;';
+        const nameEl=document.createElement('div');
+        nameEl.style.cssText='font-size:.82rem;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+        nameEl.textContent=nombre;
+        info.appendChild(nameEl);
+        info.appendChild(statusEl);
+        info.appendChild(progWrap);
+
+        const iconEl=document.createElement('i');
+        iconEl.className=`bi ${ext2icon(ext)}`;
+        iconEl.style.cssText='font-size:1.3rem;color:#2563eb;flex-shrink:0;';
+
+        row.appendChild(iconEl);
+        row.appendChild(info);
         if(qEl)qEl.appendChild(row);
-        const pbar=$(`pbar-${uid}`);if(pbar)pbar.style.width='25%';
+
+        pbarEl.style.width='25%';
 
         try{
             const fd=new FormData();
@@ -1255,25 +1273,36 @@ async function handleFileSelect(tipo,asociacionId,files){
             fd.append('nombre_personalizado',nombre);
             fd.append('tipo_asociacion',tipoApi);
             fd.append('asociacion_id',asociacionId);
-            if(pbar)pbar.style.width='60%';
+            pbarEl.style.width='60%';
             const res=await fetch('/api/im/documentos',{method:'POST',body:fd});
-            if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
-            if(pbar){pbar.style.width='100%';pbar.style.background='#16a34a';}
-            row.style.borderColor='#86efac';row.style.background='#f0fdf4';
-            row.querySelector('div>div:nth-child(2)').textContent=`${size.toFixed(1)} MB · ¡Subido!`;
+            if(!res.ok){
+                const err=await res.json().catch(()=>({}));
+                throw new Error(err.message||`Error ${res.status}`);
+            }
+            pbarEl.style.width='100%';
+            pbarEl.style.background='#16a34a';
+            row.style.borderColor='#86efac';
+            row.style.background='#f0fdf4';
+            iconEl.style.color='#16a34a';
+            statusEl.textContent=`${sizeMB} MB · ¡Subido!`;
+            statusEl.style.color='#16a34a';
             ok++;
-        }catch(e){
-            if(pbar){pbar.style.width='100%';pbar.style.background='#ef4444';}
-            row.style.borderColor='#fca5a5';row.style.background='#fff5f5';
-            row.querySelector('div>div:nth-child(2)').textContent=`Error: ${e.message}`;
+        }catch(err){
+            pbarEl.style.width='100%';
+            pbarEl.style.background='#ef4444';
+            row.style.borderColor='#fca5a5';
+            row.style.background='#fff5f5';
+            iconEl.style.color='#ef4444';
+            statusEl.textContent=`Error: ${err.message}`;
+            statusEl.style.color='#ef4444';
             fail++;
         }
-        setTimeout(()=>row.remove(),3000);
+        setTimeout(()=>{ try{row.remove();}catch(_){} },3500);
     }
 
-    if(ok>0){showToast(`${ok} documento${ok>1?'s':''} subido${ok>1?'s':''}  correctamente.`,'success');}
-    if(fail>0){showToast(`${fail} archivo${fail>1?'s':''} no se pudo${fail>1?'ron':''} subir.`,'error');}
-    loadDocs(tipoApi,asociacionId);
+    if(ok>0) showToast(`${ok} documento${ok>1?'s':''} subido${ok>1?'s':''} correctamente.`,'success');
+    if(fail>0) showToast(`${fail} archivo${fail>1?'s':''} no se pudo${fail>1?'ron':''} subir.`,'error');
+    await loadDocs(tipoApi,asociacionId);
 }
 
 async function loadDocs(tipo_asociacion,asociacionId){

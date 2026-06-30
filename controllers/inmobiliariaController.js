@@ -688,8 +688,8 @@ exports.uploadComprobanteCuota = async (req, res) => {
         const userId = req.session.user ? req.session.user.id : null;
         await pool.query(
             `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
-             VALUES ($1, $2, 'venta', $3, $4, $5)`,
-            [nombreDoc, url, cuota.venta_id, userId, storagePath]
+             VALUES ($1, $2, 'venta', $3::text, $4, $5)`,
+            [nombreDoc, url, String(cuota.venta_id), userId, storagePath]
         ).catch(() => {}); // no bloquear si falla
 
         res.json(cuota);
@@ -731,8 +731,8 @@ exports.uploadComprobanteVenta = async (req, res) => {
         const userId = req.session.user ? req.session.user.id : null;
         await pool.query(
             `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
-             VALUES ($1, $2, 'venta', $3, $4, $5)`,
-            ['Comprobante de Pago', url, id, userId, storagePath]
+             VALUES ($1, $2, 'venta', $3::text, $4, $5)`,
+            ['Comprobante de Pago', url, String(id), userId, storagePath]
         ).catch(() => {});
 
         res.json(result.rows[0]);

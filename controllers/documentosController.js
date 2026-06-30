@@ -66,8 +66,8 @@ exports.uploadDocumento = async (req, res) => {
 
         const dbResult = await pool.query(
             `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [nombreFinal, url_storage, tipo_asociacion, asociacion_id, req.session.user.id, filePath]
+             VALUES ($1, $2, $3, $4::text, $5, $6) RETURNING *`,
+            [nombreFinal, url_storage, tipo_asociacion, String(asociacion_id), req.session.user?.id || null, filePath]
         );
 
         await insertarAuditoria(pool, {
@@ -89,8 +89,8 @@ exports.getDocumentos = async (req, res) => {
         const { tipo_asociacion, asociacion_id } = req.query;
         if (!asociacion_id) return res.status(400).json({ message: 'asociacion_id es requerido.' });
 
-        let query = `SELECT * FROM im_documentos WHERE asociacion_id=$1`;
-        const params = [asociacion_id];
+        let query = `SELECT * FROM im_documentos WHERE asociacion_id::text=$1`;
+        const params = [String(asociacion_id)];
         if (tipo_asociacion) { params.push(tipo_asociacion); query += ` AND tipo_asociacion=$2`; }
         query += ` ORDER BY creado_at DESC`;
 
