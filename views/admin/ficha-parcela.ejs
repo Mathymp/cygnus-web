@@ -217,9 +217,10 @@
                     <div class="im-panel" style="min-height:600px;">
                         <div class="im-tabs-header">
                             <button class="im-tab-btn active" onclick="switchTab('comprador',this)"><i class="bi bi-person-fill"></i> Comprador</button>
-                            <button class="im-tab-btn" onclick="switchTab('docs-proyecto',this)"><i class="bi bi-folder2"></i> Proyecto</button>
-                            <button class="im-tab-btn" onclick="switchTab('docs-lote',this)"><i class="bi bi-file-earmark-text"></i> Lote</button>
-                            <button class="im-tab-btn" onclick="switchTab('docs-persona',this)"><i class="bi bi-person-vcard"></i> Persona</button>
+                            <button class="im-tab-btn" onclick="switchTab('docs-venta',this)"><i class="bi bi-receipt"></i> Docs Venta</button>
+                            <button class="im-tab-btn" onclick="switchTab('docs-persona',this)"><i class="bi bi-person-vcard"></i> Docs Cliente</button>
+                            <button class="im-tab-btn" onclick="switchTab('docs-lote',this)"><i class="bi bi-file-earmark-text"></i> Docs Lote</button>
+                            <button class="im-tab-btn" onclick="switchTab('docs-proyecto',this)"><i class="bi bi-folder2"></i> Docs Proyecto</button>
                             <button class="im-tab-btn" onclick="switchTab('auditoria',this)"><i class="bi bi-clock-history"></i> Auditoría</button>
                         </div>
 
@@ -428,19 +429,27 @@
                             </div>
                         </div>
 
-                        <!-- ─── TAB DOCS PROYECTO ─── -->
-                        <div id="tab-docs-proyecto" class="im-tab-content"><div id="dm-proyecto"></div></div>
-
-                        <!-- ─── TAB DOCS LOTE ─── -->
-                        <div id="tab-docs-lote" class="im-tab-content"><div id="dm-lote"></div></div>
+                        <!-- ─── TAB DOCS VENTA ─── -->
+                        <div id="tab-docs-venta" class="im-tab-content">
+                            <div id="no-venta-doc-msg" style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:16px;text-align:center;color:#92400e;font-size:.85rem;">
+                                <i class="bi bi-receipt" style="font-size:1.5rem;display:block;margin-bottom:6px;"></i>Registra una venta primero para subir documentos de la venta.
+                            </div>
+                            <div id="dm-venta"></div>
+                        </div>
 
                         <!-- ─── TAB DOCS PERSONA ─── -->
                         <div id="tab-docs-persona" class="im-tab-content">
                             <div id="no-cliente-msg" style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:16px;text-align:center;color:#92400e;font-size:.85rem;">
-                                <i class="bi bi-person-exclamation" style="font-size:1.5rem;display:block;margin-bottom:6px;"></i>Asigna un comprador primero.
+                                <i class="bi bi-person-exclamation" style="font-size:1.5rem;display:block;margin-bottom:6px;"></i>Asigna un comprador primero para ver sus documentos.
                             </div>
                             <div id="dm-persona"></div>
                         </div>
+
+                        <!-- ─── TAB DOCS LOTE ─── -->
+                        <div id="tab-docs-lote" class="im-tab-content"><div id="dm-lote"></div></div>
+
+                        <!-- ─── TAB DOCS PROYECTO ─── -->
+                        <div id="tab-docs-proyecto" class="im-tab-content"><div id="dm-proyecto"></div></div>
 
                         <!-- ─── TAB AUDITORÍA ─── -->
                         <div id="tab-auditoria" class="im-tab-content">
@@ -520,9 +529,17 @@ function switchTab(name,btn){
     document.querySelectorAll('.im-tab-content').forEach(c=>c.classList.remove('active'));
     if(btn)btn.classList.add('active');
     $(`tab-${name}`).classList.add('active');
-    if(name==='docs-proyecto'&&proyectoId){initDM('proyecto',proyectoId);loadDocs('proyecto',proyectoId);}
-    if(name==='docs-lote'){initDM('lote',PARCELA_ID);loadDocs('parcela',PARCELA_ID);}
+    if(name==='docs-venta'){
+        if(ventaData&&ventaData.id){
+            $('no-venta-doc-msg').style.display='none';
+            initDM('venta',ventaData.id);loadDocs('venta',ventaData.id);
+        } else {
+            $('no-venta-doc-msg').style.display='block';
+        }
+    }
     if(name==='docs-persona'&&currentClienteId){initDM('persona',currentClienteId);loadDocs('persona',currentClienteId);}
+    if(name==='docs-lote'){initDM('lote',PARCELA_ID);loadDocs('parcela',PARCELA_ID);}
+    if(name==='docs-proyecto'&&proyectoId){initDM('proyecto',proyectoId);loadDocs('proyecto',proyectoId);}
     if(name==='auditoria')loadAuditoria();
 }
 
@@ -1043,7 +1060,7 @@ function initDM(tipo,asociacionId){
             <p class="step-title"><i class="bi bi-folder2-open"></i> Documentos Subidos</p>
             <div id="dl-${tipo}" class="im-doc-list"><div class="im-empty" style="padding:16px;"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div></div>
         </div>`;
-    loadDocs(tipo==='lote'?'parcela':tipo,asociacionId);
+    loadDocs(tipo==='lote'?'parcela':tipo==='venta'?'venta':tipo,asociacionId);
 }
 
 function handleFileSelect(tipo,asociacionId,files){
@@ -1087,7 +1104,8 @@ async function uploadAllFiles(tipo,asociacionId){
             const fd=new FormData();
             fd.append('archivo',item.file,item.file.name);
             fd.append('nombre_personalizado',item.nombre||item.file.name);
-            fd.append('tipo_asociacion',tipo==='lote'?'parcela':tipo==='persona'?'persona':'proyecto');
+            const tipoApi=tipo==='lote'?'parcela':tipo==='venta'?'venta':tipo==='persona'?'persona':'proyecto';
+            fd.append('tipo_asociacion',tipoApi);
             fd.append('asociacion_id',asociacionId);
             const res=await fetch('/api/im/documentos',{method:'POST',body:fd});
             if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
@@ -1101,7 +1119,7 @@ async function uploadAllFiles(tipo,asociacionId){
 }
 
 async function loadDocs(tipo_asociacion,asociacionId){
-    const dlId=tipo_asociacion==='proyecto'?'dl-proyecto':tipo_asociacion==='parcela'?'dl-lote':'dl-persona';
+    const dlId=tipo_asociacion==='proyecto'?'dl-proyecto':tipo_asociacion==='parcela'?'dl-lote':tipo_asociacion==='venta'?'dl-venta':'dl-persona';
     const dl=$(dlId);if(!dl)return;
     dl.innerHTML='<div class="im-empty" style="padding:16px;"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
     try{

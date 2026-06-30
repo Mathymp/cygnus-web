@@ -34,7 +34,7 @@ exports.uploadDocumento = async (req, res) => {
         if (!tipo_asociacion || !asociacion_id)
             return res.status(400).json({ message: 'Faltan campos: tipo_asociacion, asociacion_id.' });
 
-        const tiposValidos = ['proyecto', 'parcela', 'persona'];
+        const tiposValidos = ['proyecto', 'parcela', 'persona', 'venta'];
         if (!tiposValidos.includes(tipo_asociacion))
             return res.status(400).json({ message: `tipo_asociacion debe ser: ${tiposValidos.join(', ')}` });
 
