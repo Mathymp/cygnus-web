@@ -617,10 +617,18 @@ exports.deleteAcceso = async (req, res) => {
 };
 
 // Lista de usuarios/agentes para selector en venta
+// Excluye cuentas genéricas/sistema por nombre
 exports.getUsuarios = async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT id, name, email, role FROM users WHERE role IN ('admin','corredor') ORDER BY name ASC`
+            `SELECT id, name, email, role FROM users
+             WHERE name NOT ILIKE '%administrador%'
+               AND name NOT ILIKE '%cygnus group%'
+               AND name NOT ILIKE '%system%'
+               AND name NOT ILIKE '%admin principal%'
+             ORDER BY
+               CASE WHEN role = 'corredor' THEN 0 ELSE 1 END,
+               name ASC`
         );
         res.json(result.rows);
     } catch (e) { res.status(500).json({ error: e.message }); }
