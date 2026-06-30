@@ -300,7 +300,7 @@ async function crearCliente(){
             telefono_conyugue:$('nc-con-tel').value||null
         };
         const res=await fetch('/api/im/clientes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
+        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`No se pudo crear el cliente (HTTP ${res.status}). Verifica que el RUT no esté duplicado.`);}
         closeNuevo();
         showToast(`Cliente "${nombre}" creado correctamente.`,'success');
         loadClientes();
@@ -331,7 +331,8 @@ async function loadClientes(){
     if(q)url+=`q=${encodeURIComponent(q)}&`;
     if(proj)url+=`proyecto_id=${encodeURIComponent(proj)}&`;
     try{
-        const res=await fetch(url);if(!res.ok)throw new Error(`Error ${res.status}`);
+        const res=await fetch(url);
+        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`No se pudieron cargar los clientes (HTTP ${res.status}). Intenta recargar la página.`);}
         allClientes=await res.json();
         $('total-count').textContent=allClientes.length;
         renderTable(allClientes);
@@ -527,7 +528,7 @@ async function saveCliente(event,clienteId){
             telefono_conyugue:$(`ec-con-tel-${id}`).value||null
         };
         const res=await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
+        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`No se pudo actualizar el cliente (HTTP ${res.status}). Verifica los campos y vuelve a intentar.`);}
         showToast('Cliente actualizado correctamente.','success');
         loadClientes();
     }catch(e){showToast(e.message,'error','No se pudo guardar');}

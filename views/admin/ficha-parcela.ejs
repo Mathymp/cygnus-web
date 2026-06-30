@@ -593,13 +593,19 @@ async function init(){
             fetch(`/api/im/parcelas/${PARCELA_ID}`),
             loadAgentes()
         ]);
-        if(!parcelaRes.ok)throw new Error(`HTTP ${parcelaRes.status}`);
+        if(!parcelaRes.ok){
+            const errBody=await parcelaRes.json().catch(()=>({}));
+            throw new Error(errBody.message||`No se pudo cargar la parcela (HTTP ${parcelaRes.status}). Verifica tu conexión e intenta de nuevo.`);
+        }
         const data=await parcelaRes.json();
         parcelaData=data.parcela;ventaData=data.venta;cuotasData=data.cuotas||[];
         proyectoId=parcelaData.proyecto_id;
         renderParcela(data);
         initDM('lote',PARCELA_ID);
-    }catch(e){$('parcela-titulo').textContent='Error: '+e.message;}
+    }catch(e){
+        $('parcela-titulo').textContent='Error al cargar';
+        showToast(e.message,'error','No se pudo cargar la parcela');
+    }
 }
 
 function renderParcela(data){
@@ -875,8 +881,8 @@ async function buscarCliente(){
     el.innerHTML='<div style="color:#64748b;font-size:.82rem;"><i class="bi bi-hourglass-split"></i> Buscando...</div>';
     try{
         const res=await fetch(`/api/im/clientes/buscar?rut=${encodeURIComponent(rut)}`);
-        if(res.status===404){el.innerHTML='<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:.85rem;color:#92400e;"><i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente. Completa el formulario de abajo.</div>';return;}
-        if(!res.ok)throw new Error(`Error ${res.status}`);
+        if(res.status===404){el.innerHTML='<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:.85rem;color:#92400e;"><i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente con ese RUT. Puedes crearlo en el formulario de abajo.</div>';return;}
+        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`Error al buscar cliente (HTTP ${res.status}).`);}
         const c=await res.json();
         el.innerHTML=`<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
             <div><span style="font-size:.9rem;font-weight:700;color:#0f172a;">${escH(c.nombre_completo)}</span>
@@ -1100,7 +1106,7 @@ async function loadDocs(tipo_asociacion,asociacionId){
     dl.innerHTML='<div class="im-empty" style="padding:16px;"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
     try{
         const res=await fetch(`/api/im/documentos?tipo_asociacion=${tipo_asociacion}&asociacion_id=${asociacionId}`);
-        if(!res.ok)throw new Error(`Error ${res.status}`);
+        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`No se pudieron cargar los documentos (HTTP ${res.status}).`);}
         const docs=await res.json();
         if(docs.length===0){dl.innerHTML='<div class="im-empty" style="padding:16px;"><i class="bi bi-folder2-open"></i><p>Sin documentos aún.</p></div>';return;}
         const ext2icon=ext=>['pdf'].includes(ext)?'bi-file-earmark-pdf bi-doc-red':['jpg','jpeg','png','webp','gif'].includes(ext)?'bi-file-earmark-image bi-doc-blue':'bi-file-earmark';
@@ -1141,10 +1147,10 @@ async function saveRename(id,tipo_asociacion,asociacionId){
 }
 
 async function deleteDoc(id,tipo_asociacion,asociacionId){
-    if(!confirm('¿Eliminar este documento?'))return;
+    if(!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.'))return;
     try{
         const res=await fetch(`/api/im/documentos/${id}`,{method:'DELETE'});
-        if(!res.ok)throw new Error(`Error ${res.status}`);
+        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`No se pudo eliminar el documento (HTTP ${res.status}).`);}
         showToast('Documento eliminado.','success');loadDocs(tipo_asociacion,asociacionId);loadAuditoria();
     }catch(e){showToast(e.message,'error');}
 }

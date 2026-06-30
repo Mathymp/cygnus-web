@@ -414,9 +414,9 @@
                         </div>
                     </div>
                     <div class="im-card-footer">
-                        <button class="im-btn im-btn-primary" style="flex:1;" onclick="abrirParcelas('${p.id}', '${escapeHtml(p.nombre)}')">
+                        <a class="im-btn im-btn-primary" style="flex:1;text-align:center;" href="/admin/inmobiliaria/proyectos/${p.id}">
                             <i class="bi bi-grid-3x3-gap"></i> Ver Parcelas
-                        </button>
+                        </a>
                     </div>`;
                 grid.appendChild(card);
             });
@@ -527,7 +527,7 @@
         async function loadParcelasModal(proyectoId) {
             try {
                 const res = await fetch(`/api/im/proyectos/${proyectoId}/parcelas`);
-                if (!res.ok) throw new Error(`Error ${res.status}`);
+                if (!res.ok) throw new Error(`No se pudieron cargar las parcelas (HTTP ${res.status}). Intenta recargar.`);
                 const parcelas = await res.json();
                 renderParcelasModal(parcelas);
             } catch (e) {
