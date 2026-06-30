@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <%- include('../partials/head') %>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/inmobiliaria.css">
+</head>
+<body class="dashboard-body">
+    <%- include('../partials/alerts') %>
+    <div class="app-layout">
+        <%- include('../partials/sidebar-admin', { page: 'inmobiliaria' }) %>
+
+        <main class="main-content">
+            <div class="dashboard-scroll">
+
+                <div class="im-page-header">
+                    <div>
+                        <h1><i class="bi bi-geo-alt-fill" style="color:#2563eb;"></i> Gestión de Campos</h1>
+                        <p>Proyectos de venta de campos y parcelas · Cygnus Group</p>
+                    </div>
+                    <% if (user && user.role === 'admin') { %>
+                    <button class="im-btn im-btn-primary" onclick="openModal_create()">
+                        <i class="bi bi-plus-lg"></i> Generar Proyecto
+                    </button>
+                    <% } %>
+                </div>
+
+                <!-- Leyenda -->
+                <div class="im-legend">
+                    <div class="im-legend-item"><div class="im-legend-dot disponible"></div> Disponible</div>
+                    <div class="im-legend-item"><div class="im-legend-dot reservado"></div> Reservado</div>
+                    <div class="im-legend-item"><div class="im-legend-dot vendido"></div> Vendido</div>
+                </div>
+
+                <!-- Grid de proyectos -->
+                <div id="im-grid" class="im-projects-grid">
+                    <div style="grid-column:1/-1; text-align:center; padding:40px; color:#94a3b8;">
+                        <i class="bi bi-hourglass-split" style="font-size:1.5rem; display:block; margin-bottom:8px;"></i>
+                        Cargando proyectos...
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ====== MODAL CREAR / EDITAR PROYECTO ====== -->
+    <div id="modal-project" class="im-modal-overlay">
+        <div class="im-modal-card">
+            <div class="im-modal-header">
+                <h3 id="modal-proj-title"><i class="bi bi-folder-plus"></i> Nuevo Proyecto</h3>
+                <button class="btn-close" onclick="closeModal('project')"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form id="form-project">
+                <input type="hidden" id="proj-id">
+                <div class="im-modal-body">
+                    <div class="im-form-row">
+                        <div class="im-input-group" style="grid-column: 1/-1;">
+                            <label>Nombre del Proyecto *</label>
+                            <input type="text" name="nombre" id="proj-nombre" class="styled-input" placeholder="Ej: Fundo Los Robles" required>
+                        </div>
+                    </div>
+                    <div class="im-form-row">
+                        <div class="im-input-group">
+                            <label>Estado</label>
+                            <select name="estado" id="proj-estado" class="styled-input">
+                                <option value="activo">Activo</option>
+                                <option value="inactivo">Inactivo</option>
+                                <option value="cerrado">Cerrado</option>
+                            </select>
+                        </div>
+                        <div class="im-input-group" id="grupo-total-parcelas">
+                            <label>Total de Parcelas</label>
+                            <input type="number" name="total_parcelas" id="proj-total" class="styled-input" min="0" placeholder="Ej: 20">
+                            <small style="color:#94a3b8; font-size:0.75rem;">Se auto-generarán al crear</small>
+                        </div>
+                    </div>
+                    <div class="im-form-row">
+                        <div class="im-input-group">
+                            <label>N° Rol 1</label>
+                            <input type="text" name="numero_rol_1" id="proj-rol1" class="styled-input" placeholder="Ej: 123-45">
+                        </div>
+                        <div class="im-input-group">
+                            <label>N° Rol 2 <span style="color:#94a3b8;">(opcional)</span></label>
+                            <input type="text" name="numero_rol_2" id="proj-rol2" class="styled-input" placeholder="Ej: 678-90">
+                        </div>
+                    </div>
+                    <div class="im-input-group">
+                        <label>N° Matriz</label>
+                        <input type="text" name="numero_matriz" id="proj-matriz" class="styled-input" placeholder="Ej: 99-99">
+                    </div>
+                </div>
+                <div class="im-modal-footer">
+                    <button type="button" class="im-btn im-btn-ghost" onclick="closeModal('project')">Cancelar</button>
+                    <button type="submit" class="im-btn im-btn-primary" id="btn-save-proj">
+                        <i class="bi bi-check-lg"></i> Crear Proyecto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ====== MODAL PARCELAS DEL PROYECTO ====== -->
+    <div id="modal-parcelas" class="im-modal-overlay">
+        <div class="im-modal-card wide">
+            <div class="im-modal-header">
+                <div>
+                    <h3 id="modal-parc-title"><i class="bi bi-grid-3x3-gap"></i> Parcelas</h3>
+                    <p id="modal-parc-sub" style="margin:4px 0 0; font-size:0.8rem; color:#64748b;"></p>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <% if (user && user.role === 'admin') { %>
+                    <button class="im-btn im-btn-sm im-btn-ghost" onclick="openAddParcela()">
+                        <i class="bi bi-plus"></i> Añadir
+                    </button>
+                    <% } %>
+                    <button class="btn-close" onclick="closeModal('parcelas')"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
+            <div class="im-modal-body">
+                <div class="im-legend" style="margin-bottom:16px;">
+                    <div class="im-legend-item"><div class="im-legend-dot disponible"></div> Disponible</div>
+                    <div class="im-legend-item"><div class="im-legend-dot reservado"></div> Reservado</div>
+                    <div class="im-legend-item"><div class="im-legend-dot vendido"></div> Vendido</div>
+                </div>
+                <div id="parc-stats" style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;"></div>
+                <div id="parcelas-grid-modal" class="im-parcelas-grid">
+                    <div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== MODAL AÑADIR PARCELA ====== -->
+    <div id="modal-add-parc" class="im-modal-overlay">
+        <div class="im-modal-card">
+            <div class="im-modal-header">
+                <h3><i class="bi bi-plus-square"></i> Añadir Parcela</h3>
+                <button class="btn-close" onclick="closeModal('add-parc')"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <form id="form-add-parc">
+                <input type="hidden" id="addparc-proyecto-id">
+                <div class="im-modal-body">
+                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px; margin-bottom:16px; font-size:0.85rem; color:#1e40af;">
+                        <i class="bi bi-info-circle-fill"></i> Puedes añadir un rango de parcelas de una vez.
+                    </div>
+                    <div class="im-form-row">
+                        <div class="im-input-group">
+                            <label>Desde N°</label>
+                            <input type="number" id="addparc-desde" class="styled-input" min="1" required>
+                        </div>
+                        <div class="im-input-group">
+                            <label>Hasta N°</label>
+                            <input type="number" id="addparc-hasta" class="styled-input" min="1" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="im-modal-footer">
+                    <button type="button" class="im-btn im-btn-ghost" onclick="closeModal('add-parc')">Cancelar</button>
+                    <button type="submit" class="im-btn im-btn-primary"><i class="bi bi-check-lg"></i> Generar Parcelas</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ====== MODAL CONFIRMAR ELIMINACIÓN ====== -->
+    <div id="modal-delete" class="im-modal-overlay">
+        <div class="im-modal-card" style="max-width:420px;">
+            <div class="im-modal-header">
+                <h3><i class="bi bi-exclamation-triangle"></i> Eliminar Proyecto</h3>
+                <button class="btn-close" onclick="closeModal('delete')"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="im-modal-body" style="text-align:center; padding:30px 22px;">
+                <i class="bi bi-trash3-fill" style="font-size:3rem; color:#ef4444; display:block; margin-bottom:12px;"></i>
+                <p style="font-size:1rem; font-weight:700; color:#0f172a; margin-bottom:6px;" id="del-proj-name"></p>
+                <p style="font-size:0.85rem; color:#64748b;">Esta acción eliminará el proyecto y todas sus parcelas. No se puede deshacer.</p>
+                <input type="hidden" id="del-proj-id">
+            </div>
+            <div class="im-modal-footer">
+                <button class="im-btn im-btn-ghost" onclick="closeModal('delete')">Cancelar</button>
+                <button class="im-btn im-btn-danger" onclick="confirmarEliminar()">
+                    <i class="bi bi-trash3"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const isAdmin = '<%= user && user.role === "admin" ? "true" : "false" %>' === 'true';
+        let proyectosData = [];
+        let currentProyectoId = null;
+
+        // ---- Helpers ----
+        function fmt(n) { return Math.floor(n).toLocaleString('es-CL'); }
+        function openModal(id)  { document.getElementById(`modal-${id}`).classList.add('show'); }
+        function closeModal(id) { document.getElementById(`modal-${id}`).classList.remove('show'); }
+
+        // ---- Cargar proyectos ----
+        async function loadProyectos() {
+            const grid = document.getElementById('im-grid');
+            grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:#94a3b8;"><i class="bi bi-hourglass-split" style="font-size:1.5rem; display:block; margin-bottom:8px;"></i>Cargando...</div>';
+            try {
+                const res = await fetch('/api/im/proyectos');
+                if (!res.ok) throw new Error('Error al cargar proyectos');
+                proyectosData = await res.json();
+                renderGrid();
+            } catch (e) {
+                grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#ef4444;">${e.message}</div>`;
+            }
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('im-grid');
+            grid.innerHTML = '';
+
+            if (proyectosData.length === 0) {
+                grid.innerHTML = `<div style="grid-column:1/-1;" class="im-empty">
+                    <i class="bi bi-folder-x"></i>
+                    <p>No hay proyectos creados todavía.<br><small>Haz clic en "Generar Proyecto" para empezar.</small></p>
+                </div>`;
+                return;
+            }
+
+            proyectosData.forEach(p => {
+                const badgeClass = p.estado === 'activo' ? 'im-badge-activo' : p.estado === 'cerrado' ? 'im-badge-cerrado' : 'im-badge-inactivo';
+                const card = document.createElement('div');
+                card.className = 'im-project-card';
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <span class="im-card-badge ${badgeClass}">
+                            <i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> ${p.estado.toUpperCase()}
+                        </span>
+                        ${isAdmin ? `
+                        <div style="display:flex; gap:6px;">
+                            <button class="im-btn im-btn-sm im-btn-ghost" onclick="openModal('project'); setEditMode('${p.id}')" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="im-btn im-btn-sm im-btn-danger" onclick="prepareDelete('${p.id}','${escapeHtml(p.nombre)}')" title="Eliminar">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>` : ''}
+                    </div>
+                    <p class="im-card-title">${escapeHtml(p.nombre)}</p>
+                    <div class="im-card-meta">
+                        <div class="im-meta-item">
+                            <span class="im-meta-label">Parcelas</span>
+                            <span class="im-meta-value">${p.total_parcelas || 0}</span>
+                        </div>
+                        <div class="im-meta-item">
+                            <span class="im-meta-label">N° Rol 1</span>
+                            <span class="im-meta-value">${p.numero_rol_1 || '—'}</span>
+                        </div>
+                        <div class="im-meta-item">
+                            <span class="im-meta-label">N° Rol 2</span>
+                            <span class="im-meta-value">${p.numero_rol_2 || '—'}</span>
+                        </div>
+                        <div class="im-meta-item">
+                            <span class="im-meta-label">N° Matriz</span>
+                            <span class="im-meta-value">${p.numero_matriz || '—'}</span>
+                        </div>
+                    </div>
+                    <div class="im-card-footer">
+                        <button class="im-btn im-btn-primary" style="flex:1;" onclick="abrirParcelas('${p.id}', '${escapeHtml(p.nombre)}')">
+                            <i class="bi bi-grid-3x3-gap"></i> Ver Parcelas
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // ---- Crear / Editar proyecto ----
+        function openModal_create() {
+            document.getElementById('form-project').reset();
+            document.getElementById('proj-id').value = '';
+            document.getElementById('modal-proj-title').innerHTML = '<i class="bi bi-folder-plus"></i> Nuevo Proyecto';
+            document.getElementById('btn-save-proj').innerHTML = '<i class="bi bi-check-lg"></i> Crear Proyecto';
+            document.getElementById('grupo-total-parcelas').style.display = 'block';
+            openModal('project');
+        }
+
+        function setEditMode(id) {
+            const p = proyectosData.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('proj-id').value = p.id;
+            document.getElementById('proj-nombre').value = p.nombre;
+            document.getElementById('proj-estado').value = p.estado;
+            document.getElementById('proj-rol1').value = p.numero_rol_1 || '';
+            document.getElementById('proj-rol2').value = p.numero_rol_2 || '';
+            document.getElementById('proj-matriz').value = p.numero_matriz || '';
+            document.getElementById('modal-proj-title').innerHTML = '<i class="bi bi-pencil-fill"></i> Editar Proyecto';
+            document.getElementById('btn-save-proj').innerHTML = '<i class="bi bi-check-lg"></i> Guardar Cambios';
+            document.getElementById('grupo-total-parcelas').style.display = 'none';
+        }
+
+        document.getElementById('form-project').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-save-proj');
+            btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Guardando...';
+            try {
+                const id = document.getElementById('proj-id').value;
+                const body = {
+                    nombre: document.getElementById('proj-nombre').value,
+                    estado: document.getElementById('proj-estado').value,
+                    total_parcelas: document.getElementById('proj-total').value || 0,
+                    numero_rol_1: document.getElementById('proj-rol1').value,
+                    numero_rol_2: document.getElementById('proj-rol2').value,
+                    numero_matriz: document.getElementById('proj-matriz').value
+                };
+                const url = id ? `/api/im/proyectos/${id}` : '/api/im/proyectos';
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                if (!res.ok) { const err = await res.json(); throw new Error(err.message || 'Error al guardar.'); }
+                closeModal('project');
+                loadProyectos();
+            } catch (err) { alert('Error: ' + err.message); }
+            finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Guardar'; }
+        });
+
+        // ---- Eliminar proyecto ----
+        function prepareDelete(id, nombre) {
+            document.getElementById('del-proj-id').value = id;
+            document.getElementById('del-proj-name').textContent = nombre;
+            openModal('delete');
+        }
+
+        async function confirmarEliminar() {
+            const id = document.getElementById('del-proj-id').value;
+            try {
+                const res = await fetch(`/api/im/proyectos/${id}`, { method: 'DELETE' });
+                if (!res.ok && res.status !== 204) {
+                    const err = await res.json();
+                    throw new Error(err.message);
+                }
+                closeModal('delete');
+                loadProyectos();
+            } catch (err) { alert('Error: ' + err.message); }
+        }
+
+        // ---- Modal Parcelas ----
+        async function abrirParcelas(proyectoId, nombre) {
+            currentProyectoId = proyectoId;
+            document.getElementById('modal-parc-title').innerHTML = `<i class="bi bi-grid-3x3-gap"></i> Parcelas — ${escapeHtml(nombre)}`;
+            document.getElementById('parcelas-grid-modal').innerHTML = '<div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
+            document.getElementById('parc-stats').innerHTML = '';
+            openModal('parcelas');
+            try {
+                const res = await fetch(`/api/im/proyectos/${proyectoId}/parcelas`);
+                const parcelas = await res.json();
+                renderParcelasModal(parcelas);
+            } catch (e) {
+                document.getElementById('parcelas-grid-modal').innerHTML = `<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${e.message}</p></div>`;
+            }
+        }
+
+        function renderParcelasModal(parcelas) {
+            const grid = document.getElementById('parcelas-grid-modal');
+            const stats = document.getElementById('parc-stats');
+
+            const disp = parcelas.filter(p => p.estado_venta === 'disponible').length;
+            const res = parcelas.filter(p => p.estado_venta === 'reservado').length;
+            const vend = parcelas.filter(p => p.estado_venta === 'vendido').length;
+
+            stats.innerHTML = `
+                <span style="background:#dcfce7; color:#166534; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700;">${disp} Disponibles</span>
+                <span style="background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700;">${res} Reservadas</span>
+                <span style="background:#fee2e2; color:#991b1b; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700;">${vend} Vendidas</span>
+            `;
+
+            if (parcelas.length === 0) {
+                grid.innerHTML = '<div class="im-empty"><i class="bi bi-inbox"></i><p>No hay parcelas en este proyecto.</p></div>';
+                return;
+            }
+
+            grid.innerHTML = '';
+            parcelas.forEach(p => {
+                const chip = document.createElement('a');
+                chip.href = `/admin/inmobiliaria/parcela/${p.id}`;
+                chip.className = `im-parcela-chip estado-${p.estado_venta}`;
+                chip.innerHTML = `
+                    <span class="im-parcela-num">${p.numero_parcela}</span>
+                    ${p.numero_rol_parcela ? `<span class="im-parcela-rol">${p.numero_rol_parcela}</span>` : ''}
+                    ${p.precio_actual ? `<span class="im-parcela-precio">$${fmt(p.precio_actual)}</span>` : ''}
+                    ${p.cliente_nombre ? `<span style="font-size:0.65rem; color:#64748b; margin-top:2px;">${escapeHtml(p.cliente_nombre.split(' ')[0])}</span>` : ''}
+                `;
+                grid.appendChild(chip);
+            });
+        }
+
+        // ---- Modal añadir parcela (bulk) ----
+        function openAddParcela() {
+            document.getElementById('addparc-proyecto-id').value = currentProyectoId;
+            document.getElementById('addparc-desde').value = '';
+            document.getElementById('addparc-hasta').value = '';
+            openModal('add-parc');
+        }
+
+        document.getElementById('form-add-parc').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const body = {
+                    proyecto_id: document.getElementById('addparc-proyecto-id').value,
+                    desde: document.getElementById('addparc-desde').value,
+                    hasta: document.getElementById('addparc-hasta').value
+                };
+                const res = await fetch('/api/im/parcelas/bulk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                if (!res.ok) { const err = await res.json(); throw new Error(err.message); }
+                closeModal('add-parc');
+                abrirParcelas(currentProyectoId, '');
+                loadProyectos();
+            } catch (err) { alert('Error: ' + err.message); }
+        });
+
+        document.addEventListener('DOMContentLoaded', loadProyectos);
+    </script>
+</body>
+</html>

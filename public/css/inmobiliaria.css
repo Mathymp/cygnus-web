@@ -1,0 +1,430 @@
+/* ============================================================
+   inmobiliaria.css — Módulo Venta de Campos · Cygnus Group
+   ============================================================ */
+
+/* ---- Variables heredadas del proyecto ---- */
+:root {
+    --im-disponible-bg: #dcfce7;
+    --im-disponible-color: #166534;
+    --im-reservado-bg: #fef3c7;
+    --im-reservado-color: #92400e;
+    --im-vendido-bg: #fee2e2;
+    --im-vendido-color: #991b1b;
+}
+
+/* ---- Layout principal ---- */
+.im-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 16px;
+    margin-top: 20px;
+    margin-bottom: 24px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.im-page-header h1 { font-size: 1.75rem; font-weight: 700; color: #0f172a; margin: 0; }
+.im-page-header p { color: #64748b; margin: 4px 0 0 0; font-size: 0.9rem; }
+
+/* ---- Cards de proyecto ---- */
+.im-projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 8px;
+}
+
+.im-project-card {
+    background: white;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+}
+.im-project-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 30px rgba(37,99,235,0.1);
+    border-color: #bfdbfe;
+}
+
+.im-card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+.im-badge-activo   { background: var(--im-disponible-bg); color: var(--im-disponible-color); }
+.im-badge-inactivo { background: #f1f5f9; color: #64748b; }
+.im-badge-cerrado  { background: var(--im-vendido-bg); color: var(--im-vendido-color); }
+
+.im-card-title { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
+
+.im-card-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.im-meta-item { display: flex; flex-direction: column; gap: 2px; }
+.im-meta-label { font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+.im-meta-value { font-size: 0.9rem; font-weight: 600; color: #334155; }
+
+.im-card-progress {
+    background: #f1f5f9;
+    border-radius: 20px;
+    height: 6px;
+    overflow: hidden;
+}
+.im-card-progress-bar {
+    height: 100%;
+    border-radius: 20px;
+    background: linear-gradient(90deg, #10b981, #059669);
+    transition: width 0.4s ease;
+}
+
+.im-card-footer {
+    display: flex;
+    gap: 8px;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 14px;
+}
+
+/* ---- Parcelas grid ---- */
+.im-parcelas-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.im-parcelas-header h2 { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 0; }
+
+.im-parcelas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.im-parcela-chip {
+    border-radius: 10px;
+    border: 1.5px solid #e2e8f0;
+    padding: 12px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+}
+.im-parcela-chip:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+
+.im-parcela-num { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
+.im-parcela-rol { font-size: 0.65rem; color: #94a3b8; font-weight: 500; }
+.im-parcela-precio { font-size: 0.72rem; font-weight: 600; color: #2563eb; }
+
+.im-parcela-chip.estado-disponible { border-color: #bbf7d0; background: #f0fdf4; }
+.im-parcela-chip.estado-reservado  { border-color: #fde68a; background: #fffbeb; }
+.im-parcela-chip.estado-vendido    { border-color: #fca5a5; background: #fef2f2; }
+.im-parcela-chip.estado-disponible .im-parcela-num { color: #166534; }
+.im-parcela-chip.estado-reservado  .im-parcela-num { color: #92400e; }
+.im-parcela-chip.estado-vendido    .im-parcela-num { color: #991b1b; }
+
+/* ---- Estado badge para tabla/chips ---- */
+.im-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+.im-status-badge.disponible { background: var(--im-disponible-bg); color: var(--im-disponible-color); }
+.im-status-badge.reservado  { background: var(--im-reservado-bg); color: var(--im-reservado-color); }
+.im-status-badge.vendido    { background: var(--im-vendido-bg); color: var(--im-vendido-color); }
+
+/* ---- Ficha de parcela ---- */
+.im-ficha-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 20px;
+    align-items: start;
+    margin-top: 8px;
+}
+
+.im-panel {
+    background: white;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.im-panel-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.im-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+    gap: 10px;
+}
+.im-detail-row:last-child { border-bottom: none; }
+.im-detail-key { font-size: 0.82rem; color: #64748b; font-weight: 500; }
+.im-detail-val { font-size: 0.9rem; color: #0f172a; font-weight: 600; text-align: right; }
+
+/* ---- Historial de precios ---- */
+.im-price-timeline { display: flex; flex-direction: column; gap: 0; margin-top: 8px; }
+.im-price-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    position: relative;
+}
+.im-price-entry::before {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #2563eb;
+    flex-shrink: 0;
+    z-index: 1;
+}
+.im-price-entry.latest::before { background: #10b981; width: 10px; height: 10px; }
+.im-price-meta { display: flex; flex-direction: column; gap: 1px; }
+.im-price-amount { font-size: 0.92rem; font-weight: 700; color: #0f172a; }
+.im-price-date { font-size: 0.72rem; color: #94a3b8; }
+
+/* ---- Tabs ---- */
+.im-tabs-header {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.im-tabs-header::-webkit-scrollbar { display: none; }
+
+.im-tab-btn {
+    background: none;
+    border: none;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #94a3b8;
+    cursor: pointer;
+    white-space: nowrap;
+    position: relative;
+    transition: color 0.2s;
+}
+.im-tab-btn.active { color: #2563eb; }
+.im-tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px; left: 0;
+    width: 100%; height: 2px;
+    background: #2563eb;
+}
+.im-tab-content { display: none; }
+.im-tab-content.active { display: block; animation: imFadeIn 0.25s ease; }
+
+/* ---- Formularios ---- */
+.im-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+.im-form-row.cols-1 { grid-template-columns: 1fr; }
+.im-form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.im-input-group { margin-bottom: 14px; }
+.im-input-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #334155; font-size: 0.82rem; }
+.im-input-group .styled-input { width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; font-family: inherit; transition: all 0.2s; background: #f8fafc; color: #0f172a; }
+.im-input-group .styled-input:focus { outline: none; border-color: #2563eb; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+.im-checkbox-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+.im-checkbox-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #2563eb; }
+.im-checkbox-row label { font-size: 0.9rem; font-weight: 500; color: #334155; cursor: pointer; }
+
+/* ---- Buttons ---- */
+.im-btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: 9px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; text-decoration: none; }
+.im-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.im-btn-primary { background: #2563eb; color: white; border-color: #1d4ed8; }
+.im-btn-primary:hover { background: #1d4ed8; }
+.im-btn-success { background: #10b981; color: white; }
+.im-btn-success:hover { background: #059669; }
+.im-btn-danger { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+.im-btn-danger:hover { background: #fca5a5; color: white; }
+.im-btn-ghost { background: white; color: #475569; border-color: #e2e8f0; }
+.im-btn-ghost:hover { background: #f8fafc; }
+.im-btn-sm { padding: 6px 12px; font-size: 0.78rem; border-radius: 7px; }
+.im-btn-full { width: 100%; justify-content: center; }
+
+/* ---- Upload de documentos ---- */
+.im-upload-zone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    background: #f8fafc;
+    transition: all 0.2s;
+    position: relative;
+}
+.im-upload-zone:hover, .im-upload-zone.dragover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+.im-upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
+}
+.im-upload-icon { font-size: 2rem; color: #94a3b8; display: block; margin-bottom: 6px; }
+.im-upload-zone:hover .im-upload-icon { color: #2563eb; }
+.im-upload-text { font-size: 0.85rem; color: #64748b; font-weight: 500; }
+.im-upload-hint { font-size: 0.72rem; color: #94a3b8; margin-top: 4px; }
+
+/* ---- Lista de documentos ---- */
+.im-doc-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.im-doc-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    transition: border-color 0.2s;
+}
+.im-doc-item:hover { border-color: #bfdbfe; background: #eff6ff; }
+.im-doc-icon { font-size: 1.4rem; color: #2563eb; flex-shrink: 0; }
+.im-doc-info { flex: 1; min-width: 0; }
+.im-doc-name { font-size: 0.85rem; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.im-doc-date { font-size: 0.72rem; color: #94a3b8; }
+.im-doc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ---- Auditoría timeline ---- */
+.im-audit-list { display: flex; flex-direction: column; gap: 0; }
+.im-audit-item {
+    display: flex;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f5f9;
+    position: relative;
+}
+.im-audit-item:last-child { border-bottom: none; }
+.im-audit-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #2563eb; flex-shrink: 0; margin-top: 4px;
+}
+.im-audit-body { flex: 1; }
+.im-audit-accion { font-size: 0.82rem; font-weight: 700; color: #0f172a; }
+.im-audit-desc { font-size: 0.8rem; color: #64748b; margin-top: 2px; line-height: 1.4; }
+.im-audit-meta { font-size: 0.72rem; color: #94a3b8; margin-top: 4px; }
+
+/* ---- Empty state ---- */
+.im-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #94a3b8;
+}
+.im-empty i { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+.im-empty p { font-size: 0.9rem; margin: 0; }
+
+/* ---- Modal overlay (sigue patrón del proyecto) ---- */
+.im-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,0.75);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(6px);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    padding: 20px;
+}
+.im-modal-overlay.show { opacity: 1; pointer-events: auto; }
+
+.im-modal-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px -12px rgba(0,0,0,0.3);
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    display: flex; flex-direction: column;
+    transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+}
+.im-modal-overlay.show .im-modal-card { transform: translateY(0); }
+
+.im-modal-card.wide { max-width: 700px; }
+
+.im-modal-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f8fafc;
+    flex-shrink: 0;
+}
+.im-modal-header h3 { margin: 0; font-size: 1.1rem; font-weight: 700; color: #0f172a; }
+.im-modal-body { overflow-y: auto; padding: 22px; flex: 1; }
+.im-modal-footer {
+    padding: 16px 22px;
+    border-top: 1px solid #e2e8f0;
+    display: flex; justify-content: flex-end; gap: 10px;
+    background: #f8fafc;
+    flex-shrink: 0;
+}
+
+/* ---- Leyenda de colores ---- */
+.im-legend {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.im-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 500; color: #64748b; }
+.im-legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+.im-legend-dot.disponible { background: #dcfce7; border: 1.5px solid #86efac; }
+.im-legend-dot.reservado  { background: #fef3c7; border: 1.5px solid #fde68a; }
+.im-legend-dot.vendido    { background: #fee2e2; border: 1.5px solid #fca5a5; }
+
+/* ---- Animations ---- */
+@keyframes imFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+    .im-ficha-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    .im-form-row { grid-template-columns: 1fr; }
+    .im-form-row.cols-3 { grid-template-columns: 1fr; }
+    .im-parcelas-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+}

@@ -19,8 +19,14 @@ const projectController = require('../controllers/projectController');
 const loteController = require('../controllers/loteController');
 const crmController = require('../controllers/crmController');
 
+// --- IMPORTAR CONTROLADORES INMOBILIARIA CAMPOS ---
+const inmobiliariaController = require('../controllers/inmobiliariaController');
+const documentosController = require('../controllers/documentosController');
+
 // --- CONFIGURACIÓN DE UPLOAD ---
 const upload = require('../config/cloudinaryConfig');
+const multerLib2 = require('multer');
+const uploadDocMemory = multerLib2({ storage: multerLib2.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 const cloudinaryV2 = require('cloudinary').v2;
 const multerLib = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -209,6 +215,51 @@ router.get('/admin/marca', requireAuth, (req, res) => {
         user: req.session.user
     });
 });
+
+// ==========================================
+//     MÓDULO INMOBILIARIA DE CAMPOS
+// ==========================================
+
+// Vistas
+router.get('/admin/inmobiliaria', requireAuth, (req, res) => {
+    res.render('admin/gestion-inmobiliaria', { user: req.session.user, page: 'inmobiliaria' });
+});
+router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, (req, res) => {
+    res.render('admin/ficha-parcela', { user: req.session.user, page: 'inmobiliaria', parcelaId: req.params.parcelaId });
+});
+
+// API – Proyectos Inmobiliaria
+router.get('/api/im/proyectos', requireAuth, inmobiliariaController.getProyectos);
+router.post('/api/im/proyectos', requireAuth, inmobiliariaController.createProyecto);
+router.put('/api/im/proyectos/:id', requireAuth, inmobiliariaController.updateProyecto);
+router.delete('/api/im/proyectos/:id', requireAuth, inmobiliariaController.deleteProyecto);
+
+// API – Parcelas
+router.get('/api/im/proyectos/:proyectoId/parcelas', requireAuth, inmobiliariaController.getParcelas);
+router.get('/api/im/parcelas/:id', requireAuth, inmobiliariaController.getParcelaById);
+router.post('/api/im/parcelas', requireAuth, inmobiliariaController.createParcela);
+router.post('/api/im/parcelas/bulk', requireAuth, inmobiliariaController.createParcelasBulk);
+router.put('/api/im/parcelas/:id', requireAuth, inmobiliariaController.updateParcela);
+router.delete('/api/im/parcelas/:id', requireAuth, inmobiliariaController.deleteParcela);
+
+// API – Clientes Inmobiliaria
+router.get('/api/im/clientes', requireAuth, inmobiliariaController.getClientes);
+router.get('/api/im/clientes/buscar', requireAuth, inmobiliariaController.buscarClientePorRut);
+router.post('/api/im/clientes', requireAuth, inmobiliariaController.createCliente);
+router.put('/api/im/clientes/:id', requireAuth, inmobiliariaController.updateCliente);
+
+// API – Ventas de Lotes
+router.get('/api/im/ventas', requireAuth, inmobiliariaController.getVentas);
+router.post('/api/im/ventas', requireAuth, inmobiliariaController.createVenta);
+router.delete('/api/im/ventas/:id', requireAuth, inmobiliariaController.deleteVenta);
+
+// API – Documentos (Supabase Storage)
+router.get('/api/im/documentos', requireAuth, documentosController.getDocumentos);
+router.post('/api/im/documentos', requireAuth, uploadDocMemory.single('archivo'), documentosController.uploadDocumento);
+router.delete('/api/im/documentos/:id', requireAuth, documentosController.deleteDocumento);
+
+// API – Auditoría
+router.get('/api/im/auditoria', requireAuth, inmobiliariaController.getAuditoria);
 
 router.post('/recover-password', authController.recoverPassword);
 router.get('/update-password', authController.showUpdatePassword);
