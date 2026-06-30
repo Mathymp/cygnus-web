@@ -297,9 +297,16 @@
         // ---- Helpers ----
         function fmt(n) { return Math.floor(n).toLocaleString('es-CL'); }
         function escapeHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-        function openModal(id)  { document.getElementById(`modal-${id}`).classList.add('show'); }
         function closeModal(id) { document.getElementById(`modal-${id}`).classList.remove('show'); }
         function fmtPrecio(input) { input.value = input.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+
+        function openModal(id) {
+            const el = document.getElementById(`modal-${id}`);
+            if (!el) return;
+            el.classList.add('show');
+            if (id === 'accesos') setTimeout(loadAccesos, 60);
+            if (id === 'parcelas') projDocsInit = false;
+        }
 
         function switchParcelasTab(name, btn) {
             document.querySelectorAll('#modal-parcelas .im-tab-btn').forEach(b => b.classList.remove('active'));
@@ -788,13 +795,7 @@
             }
         }
 
-        // Abrir modal de accesos y cargar datos
-        const _origOpenModal = openModal;
-        function openModal(id) {
-            _origOpenModal(id);
-            if (id === 'accesos') setTimeout(loadAccesos, 50);
-            if (id === 'parcelas') { projDocsInit = false; }
-        }
+        // (openModal ya unificado arriba)
 
         // ---- Init ----
         document.addEventListener('DOMContentLoaded', loadProyectos);
