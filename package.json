@@ -11,6 +11,8 @@
     "dev": "nodemon app.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1079.0",
+    "@aws-sdk/s3-request-presigner": "^3.1079.0",
     "@sparticuz/chromium": "^143.0.4",
     "@supabase/supabase-js": "^2.39.3",
     "animate.css": "^4.1.1",

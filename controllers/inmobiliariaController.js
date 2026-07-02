@@ -1,4 +1,6 @@
 const { Pool } = require('pg');
+const path = require('path');
+const docStorage = require('../helpers/docStorage');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -635,29 +637,14 @@ exports.updateCuota = async (req, res) => {
 };
 
 exports.uploadComprobanteCuota = async (req, res) => {
-    const { createClient } = require('@supabase/supabase-js');
-    const path = require('path');
-    const supabaseAdmin = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
-    );
-    const BUCKET = 'cygnus-documentos';
-
     try {
         if (!req.file) return res.status(400).json({ message: 'No se recibió archivo.' });
         const { id } = req.params;
         const ext = path.extname(req.file.originalname).toLowerCase();
-        const storagePath = `cuotas/${id}/${Date.now()}${ext}`;
-
-        const { error: uploadErr } = await supabaseAdmin.storage
-            .from(BUCKET).upload(storagePath, req.file.buffer, { contentType: req.file.mimetype });
-        if (uploadErr) throw new Error(uploadErr.message);
-
-        let url = storagePath;
-        try {
-            const { data } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(storagePath, 60 * 60 * 24 * 365);
-            if (data) url = data.signedUrl;
-        } catch (_) {}
+        const objectKey = `cuotas/${id}/${Date.now()}${ext}`;
+        const uploaded = await docStorage.uploadDocument(req.file, objectKey);
+        const url = uploaded.url_storage;
+        const storagePath = uploaded.storage_path;
 
         const result = await pool.query(
             `UPDATE im_cuotas SET comprobante_url=$1, storage_path=$2, pagado=true, fecha_pago=COALESCE(fecha_pago, CURRENT_DATE)
@@ -681,29 +668,14 @@ exports.uploadComprobanteCuota = async (req, res) => {
 };
 
 exports.uploadComprobanteVenta = async (req, res) => {
-    const { createClient } = require('@supabase/supabase-js');
-    const path = require('path');
-    const supabaseAdmin = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
-    );
-    const BUCKET = 'cygnus-documentos';
-
     try {
         if (!req.file) return res.status(400).json({ message: 'No se recibió archivo.' });
         const { id } = req.params;
         const ext = path.extname(req.file.originalname).toLowerCase();
-        const storagePath = `ventas/${id}/comprobante${Date.now()}${ext}`;
-
-        const { error: uploadErr } = await supabaseAdmin.storage
-            .from(BUCKET).upload(storagePath, req.file.buffer, { contentType: req.file.mimetype });
-        if (uploadErr) throw new Error(uploadErr.message);
-
-        let url = storagePath;
-        try {
-            const { data } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(storagePath, 60 * 60 * 24 * 365);
-            if (data) url = data.signedUrl;
-        } catch (_) {}
+        const objectKey = `ventas/${id}/comprobante${Date.now()}${ext}`;
+        const uploaded = await docStorage.uploadDocument(req.file, objectKey);
+        const url = uploaded.url_storage;
+        const storagePath = uploaded.storage_path;
 
         const result = await pool.query(
             `UPDATE im_ventas_lotes SET comprobante_url=$1, comprobante_path=$2 WHERE id=$3 RETURNING *`,
@@ -967,13 +939,6 @@ exports.setCuotasDevolucion = async (req, res) => {
 };
 
 exports.pagarCuotaDevolucion = async (req, res) => {
-    const { createClient } = require('@supabase/supabase-js');
-    const path = require('path');
-    const supabaseAdmin = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
-    );
-    const BUCKET = 'cygnus-documentos';
     try {
         const { id } = req.params;
         const { fecha_pago, notas } = req.body;
@@ -981,14 +946,10 @@ exports.pagarCuotaDevolucion = async (req, res) => {
         let comprobante_url = null, storage_path = null;
         if (req.file) {
             const ext = path.extname(req.file.originalname).toLowerCase();
-            storage_path = `cuotas-dev/${id}/${Date.now()}${ext}`;
-            const { error: upErr } = await supabaseAdmin.storage.from(BUCKET)
-                .upload(storage_path, req.file.buffer, { contentType: req.file.mimetype });
-            if (upErr) return res.status(500).json({ message: 'Error al subir comprobante: ' + upErr.message });
-            try {
-                const { data } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(storage_path, 60*60*24*365);
-                if (data?.signedUrl) comprobante_url = data.signedUrl;
-            } catch (_) { comprobante_url = storage_path; }
+            const objectKey = `cuotas-dev/${id}/${Date.now()}${ext}`;
+            const uploaded = await docStorage.uploadDocument(req.file, objectKey);
+            storage_path = uploaded.storage_path;
+            comprobante_url = uploaded.url_storage;
         }
 
         const sets = [`pagado=true`, `fecha_pago=COALESCE($1, CURRENT_DATE)`];
@@ -1022,32 +983,19 @@ exports.pagarCuotaDevolucion = async (req, res) => {
 };
 
 exports.uploadDocumentoResciliacion = async (req, res) => {
-    const { createClient } = require('@supabase/supabase-js');
-    const path = require('path');
-    const supabaseAdmin = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
-    );
-    const BUCKET = 'cygnus-documentos';
     try {
         if (!req.file) return res.status(400).json({ message: 'No se recibió archivo.' });
         const { id } = req.params;
 
         const rescRes = await pool.query(`SELECT parcela_id, venta_id FROM im_resciliaciones WHERE id=$1`, [id]);
         if (rescRes.rows.length === 0) return res.status(404).json({ message: 'Resciliación no encontrada.' });
-        const { parcela_id, venta_id } = rescRes.rows[0];
+        const { parcela_id } = rescRes.rows[0];
 
         const ext = path.extname(req.file.originalname).toLowerCase();
-        const storage_path = `resciliaciones/${id}/${Date.now()}${ext}`;
-        const { error: upErr } = await supabaseAdmin.storage.from(BUCKET)
-            .upload(storage_path, req.file.buffer, { contentType: req.file.mimetype });
-        if (upErr) return res.status(500).json({ message: 'Error al subir documento: ' + upErr.message });
-
-        let url = storage_path;
-        try {
-            const { data } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(storage_path, 60*60*24*365);
-            if (data?.signedUrl) url = data.signedUrl;
-        } catch (_) {}
+        const objectKey = `resciliaciones/${id}/${Date.now()}${ext}`;
+        const uploaded = await docStorage.uploadDocument(req.file, objectKey);
+        const url = uploaded.url_storage;
+        const storage_path = uploaded.storage_path;
 
         // Actualizar resciliación
         await pool.query(

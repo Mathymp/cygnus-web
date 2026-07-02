@@ -1,48 +1,11 @@
 const { Pool } = require('pg');
-const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
+const docStorage = require('../helpers/docStorage');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
-
-const SUPABASE_ADMIN_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-    || process.env.SUPABASE_SERVICE_KEY
-    || process.env.SUPABASE_KEY;
-
-const supabaseAdmin = createClient(
-    process.env.SUPABASE_URL,
-    SUPABASE_ADMIN_KEY,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-);
-
-const BUCKET = 'cygnus-documentos';
-
-function resolveStoragePath(doc) {
-    if (doc.storage_path) return doc.storage_path;
-    const url = doc.url_storage || '';
-    if (!url.startsWith('http')) return url || null;
-    const match = url.match(/\/cygnus-documentos\/(.+?)(?:\?|$)/);
-    return match ? decodeURIComponent(match[1]) : null;
-}
-
-async function signDocUrl(doc) {
-    const storagePath = resolveStoragePath(doc);
-    if (!storagePath) return doc.url_storage;
-    try {
-        const { data, error } = await supabaseAdmin.storage
-            .from(BUCKET).createSignedUrl(storagePath, 3600);
-        if (error) {
-            console.warn('[Sign URL]', storagePath, error.message);
-            return doc.url_storage;
-        }
-        return data?.signedUrl || doc.url_storage;
-    } catch (e) {
-        console.warn('[Sign URL exception]', storagePath, e.message);
-        return doc.url_storage;
-    }
-}
 
 async function insertarAuditoria(pool, { entidadId, accion, descripcion, req }) {
     const userId   = req.session.user ? req.session.user.id   : null;
@@ -58,10 +21,8 @@ async function insertarAuditoria(pool, { entidadId, accion, descripcion, req }) 
 
 exports.testStorage = async (req, res) => {
     try {
-        const { data: buckets, error } = await supabaseAdmin.storage.listBuckets();
-        if (error) return res.json({ ok: false, error: error.message, key_type: SUPABASE_ADMIN_KEY?.length > 100 ? 'service_role (largo)' : 'anon/short' });
-        const bucket = (buckets || []).find(b => b.id === BUCKET);
-        res.json({ ok: true, bucket_found: !!bucket, bucket_name: BUCKET, key_type: SUPABASE_ADMIN_KEY?.length > 100 ? 'service_role (largo)' : 'anon o corta' });
+        const result = await docStorage.testStorage();
+        res.json({ ok: result.wasabi?.ok || result.cloudinary?.ok, ...result });
     } catch (e) {
         res.json({ ok: false, error: e.message });
     }
@@ -88,30 +49,21 @@ exports.uploadDocumento = async (req, res) => {
         const safeId = String(asociacion_id).replace(/[^a-zA-Z0-9_-]/g, '_');
         const filePath = `${tipo_asociacion}/${safeId}/${timestamp}${ext}`;
 
-        const { error: uploadError } = await supabaseAdmin.storage
-            .from(BUCKET)
-            .upload(filePath, req.file.buffer, { contentType: req.file.mimetype || 'application/octet-stream', upsert: false });
-
-        if (uploadError) {
+        let uploaded;
+        try {
+            uploaded = await docStorage.uploadDocument(req.file, filePath);
+        } catch (uploadError) {
             console.error('[Storage Upload Error]', uploadError);
             return res.status(500).json({
-                message: `Error al subir archivo al Storage: ${uploadError.message}`,
-                hint: uploadError.statusCode === 403 ? 'Verifica que SUPABASE_SERVICE_ROLE_KEY esté configurado en Render.' : undefined
+                message: `Error al subir archivo: ${uploadError.message}`,
+                hint: uploadError.message.includes('WASABI') ? 'Verifica WASABI_ACCESS_KEY y WASABI_SECRET_KEY en Render → Environment.' : undefined
             });
         }
-
-        let url_storage = filePath;
-        try {
-            const { data: signedData, error: signErr } = await supabaseAdmin.storage
-                .from(BUCKET).createSignedUrl(filePath, 60 * 60 * 24 * 365);
-            if (signedData?.signedUrl) url_storage = signedData.signedUrl;
-            else if (signErr) console.warn('[Sign URL warn]', signErr.message);
-        } catch (_) {}
 
         const dbResult = await pool.query(
             `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
              VALUES ($1, $2, $3, $4::text, $5, $6) RETURNING *`,
-            [nombreFinal, url_storage, tipo_asociacion, String(asociacion_id), req.session.user?.id || null, filePath]
+            [nombreFinal, uploaded.url_storage, tipo_asociacion, String(asociacion_id), req.session.user?.id || null, uploaded.storage_path]
         );
 
         await insertarAuditoria(pool, {
@@ -140,10 +92,9 @@ exports.getDocumentos = async (req, res) => {
 
         const result = await pool.query(query, params);
 
-        // Regenerar URLs firmadas frescas (válidas 1 hora)
         const docs = await Promise.all(result.rows.map(async (doc) => ({
             ...doc,
-            url_storage: await signDocUrl(doc)
+            url_storage: await docStorage.signDocUrl(doc)
         })));
 
         res.json(docs);
@@ -156,7 +107,7 @@ exports.getDocumentoUrl = async (req, res) => {
         const result = await pool.query(`SELECT * FROM im_documentos WHERE id=$1`, [id]);
         if (result.rows.length === 0) return res.status(404).json({ message: 'Documento no encontrado.' });
         const doc = result.rows[0];
-        const url = await signDocUrl(doc);
+        const url = await docStorage.signDocUrl(doc);
         res.json({ url, nombre: doc.nombre_personalizado, storage_path: doc.storage_path });
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
@@ -189,14 +140,12 @@ exports.deleteDocumento = async (req, res) => {
     try {
         const { id } = req.params;
         const docRes = await pool.query(
-            `DELETE FROM im_documentos WHERE id=$1 RETURNING nombre_personalizado, storage_path, tipo_asociacion, asociacion_id`, [id]
+            `DELETE FROM im_documentos WHERE id=$1 RETURNING nombre_personalizado, storage_path, url_storage, tipo_asociacion, asociacion_id`, [id]
         );
         if (docRes.rows.length === 0) return res.status(404).json({ message: 'Documento no encontrado.' });
 
         const doc = docRes.rows[0];
-        if (doc.storage_path) {
-            await supabaseAdmin.storage.from(BUCKET).remove([doc.storage_path]);
-        }
+        await docStorage.deleteStoredDocument(doc);
 
         await insertarAuditoria(pool, {
             entidadId: doc.asociacion_id,

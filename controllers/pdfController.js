@@ -78,7 +78,7 @@ exports.generatePropertyPDF = async (req, res) => {
         }
 
         // 5. MAPA
-        const gmapsKey = process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'; 
+        const gmapsKey = process.env.GOOGLE_MAPS_KEY || '';
         const lat = prop.latitude || -33.44889;
         const lng = prop.longitude || -70.669265;
         let mapStaticUrl = '';

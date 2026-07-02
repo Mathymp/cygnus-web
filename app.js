@@ -43,13 +43,17 @@ const pgPool = new Pool({
 });
 
 // --- CONFIGURACIÓN DE SESIÓN ---
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET es obligatorio en producción. Configúralo en Render → Environment.');
+}
+
 app.use(session({
     store: new pgSession({
         pool: pgPool,                
         tableName: 'session',        
         createTableIfMissing: true   
     }),
-    secret: process.env.SESSION_SECRET || 'cygnus_secret_key',
+    secret: process.env.SESSION_SECRET || 'dev-only-session-secret',
     resave: false,
     saveUninitialized: false,
     cookie: { 

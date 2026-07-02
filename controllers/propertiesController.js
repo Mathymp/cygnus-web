@@ -80,7 +80,7 @@ const propertiesController = {
             title: 'Nueva Propiedad',
             page: 'publicar',
             user: req.session.user,
-            googleMapsKey: process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'
+            googleMapsKey: process.env.GOOGLE_MAPS_KEY
         });
     },
 
@@ -394,7 +394,7 @@ const propertiesController = {
                 page: 'propiedades',
                 user: req.session.user,
                 prop: prop,
-                googleMapsKey: process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'
+                googleMapsKey: process.env.GOOGLE_MAPS_KEY
             });
 
         } catch (error) {

@@ -40,7 +40,7 @@ const editPropertyController = {
                 page: 'propiedades',
                 user: user,
                 prop: prop,
-                googleMapsKey: process.env.GOOGLE_MAPS_KEY || 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'
+                googleMapsKey: process.env.GOOGLE_MAPS_KEY || ''
             });
 
         } catch (error) {

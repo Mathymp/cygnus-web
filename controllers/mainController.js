@@ -203,7 +203,7 @@ const mainController = {
                 prop, 
                 ufValue, 
                 activePage: 'propiedades',
-                googleMapsKey: 'AIzaSyBeMVmY5lCw_TvvUBr6uZh8VrVlWHrU7lg'
+                googleMapsKey: process.env.GOOGLE_MAPS_KEY || ''
             });
         } catch(e) { res.redirect('/'); }
     },
