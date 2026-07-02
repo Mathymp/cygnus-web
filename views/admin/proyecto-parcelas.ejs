@@ -104,8 +104,11 @@
         .proj-preview-body{flex:1 1 auto;min-height:0;position:relative;overflow:hidden;background:#0f172a;}
         .proj-preview-body.mode-pdf{background:#525659;}
         .proj-preview-body .proj-pdf-frame{position:absolute;inset:0;width:100%;height:100%;border:none;display:block;background:#525659;}
-        .proj-preview-body .proj-img-wrap{position:absolute;inset:0;overflow:hidden;cursor:grab;}
-        .proj-preview-body .proj-img-wrap img{position:absolute;transform-origin:0 0;user-select:none;pointer-events:none;max-width:none;max-height:none;display:block;}
+        .proj-preview-body .proj-img-wrap{position:absolute;inset:0;overflow:hidden;cursor:grab;display:flex;align-items:center;justify-content:center;}
+        .proj-preview-body .proj-img-wrap img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;user-select:none;-webkit-user-drag:none;transform-origin:center center;will-change:transform;}
+        .proj-img-loading{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(15,23,42,.75);color:#94a3b8;font-size:.85rem;pointer-events:none;}
+        .proj-img-loading i{font-size:1.6rem;animation:projSpin 1s linear infinite;}
+        @keyframes projSpin{to{transform:rotate(360deg)}}
     </style>
 </head>
 <body class="dashboard-body">
@@ -794,6 +797,11 @@ async function loadProjDocs(){
         list.innerHTML = docs.map(doc => {
             _projDocsCache[doc.id] = doc;
             const ext = getDocExt(doc);
+            if(['jpg','jpeg','png','webp','gif'].includes(ext) && doc.url_storage){
+                const pre = new Image();
+                pre.decoding = 'async';
+                pre.src = doc.url_storage;
+            }
             const fecha = new Date(doc.creado_at).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'});
             return `<div class="im-doc-item" id="projdoc-${doc.id}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;transition:all .15s;">
                 <i class="bi ${ext2icon(ext)}" style="font-size:1.4rem;color:#2563eb;flex-shrink:0;"></i>
@@ -966,21 +974,40 @@ async function confirmProjDel(){
 }
 
 // ── Preview con Zoom centrado en cursor ──────────────────────────────
-const ZOOM_MIN = 0.05, ZOOM_MAX = 8;
-let _pState = { zoom:1, offX:0, offY:0, drag:false, lastX:0, lastY:0, img:null, isImg:false };
+const ZOOM_MIN = 0.25, ZOOM_MAX = 8;
+let _pState = { zoom:1, panX:0, panY:0, drag:false, lastX:0, lastY:0, img:null, isImg:false };
 
-async function openProjPreviewById(id){
-    let doc = _projDocsCache[id];
+function openProjPreviewById(id){
+    const doc = _projDocsCache[id];
     if(!doc) return;
-    let url = doc.url_storage;
-    try{
-        const res = await fetch(`/api/im/documentos/${id}/url`);
-        if(res.ok){ const data = await res.json(); if(data.url){ url = data.url; doc.url_storage = url; _projDocsCache[id] = doc; } }
-    }catch(_){}
-    openProjPreview(url, doc.nombre_personalizado, getDocExt(doc));
+    openProjPreview(doc.url_storage, doc.nombre_personalizado, getDocExt(doc), id);
 }
 
-function openProjPreview(url, nombre, ext){
+async function _projRetryUrl(docId, img, loader){
+    try{
+        const res = await fetch(`/api/im/documentos/${docId}/url`);
+        if(!res.ok) throw new Error('No se pudo refrescar URL');
+        const data = await res.json();
+        if(data.url && data.url !== img.src){
+            if(_projDocsCache[docId]) _projDocsCache[docId].url_storage = data.url;
+            img.onerror = () => _projShowImgError(data.url);
+            img.src = data.url;
+            return;
+        }
+    }catch(_){}
+    _projShowImgError(img.src);
+}
+
+function _projShowImgError(url){
+    const body = $('proj-preview-body');
+    body.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;text-align:center;padding:24px;">
+        <div><i class="bi bi-exclamation-triangle" style="font-size:2rem;display:block;margin-bottom:10px;"></i>
+        <p>No se pudo cargar la imagen.</p>
+        <a href="${escH(url)}" target="_blank" class="im-btn im-btn-primary" style="margin-top:12px;display:inline-flex;"><i class="bi bi-box-arrow-up-right"></i> Abrir en nueva pestaña</a></div></div>`;
+}
+
+function openProjPreview(url, nombre, ext, docId){
+    $('proj-preview-overlay').style.display = 'flex';
     $('proj-preview-title').textContent = nombre || 'Vista Previa';
     const body    = $('proj-preview-body');
     const zoomBar = $('proj-zoom-bar');
@@ -989,7 +1016,7 @@ function openProjPreview(url, nombre, ext){
     if(dl){ dl.href = url; dl.download = nombre||'archivo'; }
 
     _cleanPreviewListeners();
-    _pState = { zoom:1, offX:0, offY:0, drag:false, lastX:0, lastY:0, img:null, isImg:false };
+    _pState = { zoom:1, panX:0, panY:0, drag:false, lastX:0, lastY:0, img:null, isImg:false };
 
     const isImg = ['jpg','jpeg','png','webp','gif'].includes(ext);
     const isPdf = ext === 'pdf';
@@ -1003,74 +1030,66 @@ function openProjPreview(url, nombre, ext){
     }
 
     if(isImg){
-        body.innerHTML = `<div id="_pWrap" class="proj-img-wrap">
-            <img id="_pImg" src="${escH(url)}" draggable="false" alt="${escH(nombre)}">
-        </div>`;
+        body.innerHTML = `<div class="proj-img-loading" id="_pLoad"><i class="bi bi-hourglass-split"></i><span>Cargando imagen...</span></div>
+            <div id="_pWrap" class="proj-img-wrap">
+                <img id="_pImg" src="${escH(url)}" decoding="async" alt="${escH(nombre)}">
+            </div>`;
 
         _pState.img = document.getElementById('_pImg');
         const wrap  = document.getElementById('_pWrap');
-        _pState.img.style.opacity = '0';
-        _pState.img.onerror = () => {
-            body.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;text-align:center;padding:24px;">
-                <div><i class="bi bi-exclamation-triangle" style="font-size:2rem;display:block;margin-bottom:10px;"></i>
-                <p>No se pudo cargar la imagen.</p>
-                <a href="${escH(url)}" target="_blank" class="im-btn im-btn-primary" style="margin-top:12px;display:inline-flex;"><i class="bi bi-box-arrow-up-right"></i> Abrir en nueva pestaña</a></div></div>`;
-        };
+        const loader = document.getElementById('_pLoad');
 
-        const applyInitialFit = () => {
-            if(!_pState.img) return;
-            _projFitZoom();
+        const onReady = () => {
+            if(loader) loader.style.display = 'none';
+            _pState.zoom = 1; _pState.panX = 0; _pState.panY = 0;
             _projApply(false);
-            _pState.img.style.opacity = '1';
         };
-        const scheduleInitialFit = () => {
-            requestAnimationFrame(() => requestAnimationFrame(applyInitialFit));
-        };
-        _pState.img.onload = scheduleInitialFit;
-        if(_pState.img.complete && _pState.img.naturalWidth) scheduleInitialFit();
+        _pState.img.onload = onReady;
+        if(_pState.img.complete && _pState.img.naturalWidth > 0) onReady();
 
-        // Wheel → zoom centrado en cursor
+        _pState.img.onerror = () => {
+            if(docId) _projRetryUrl(docId, _pState.img, loader);
+            else _projShowImgError(url);
+        };
+
         wrap._onWheel = e => {
             e.preventDefault();
-            const rect  = wrap.getBoundingClientRect();
-            const mx    = e.clientX - rect.left;
-            const my    = e.clientY - rect.top;
+            const rect = wrap.getBoundingClientRect();
+            const mx = e.clientX - rect.left - rect.width/2;
+            const my = e.clientY - rect.top - rect.height/2;
             const factor = e.deltaY < 0 ? 1.12 : 0.9;
-            const newZ  = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _pState.zoom * factor));
-            // Ajustar offset para zoom centrado en el cursor
-            _pState.offX = mx - (mx - _pState.offX) * (newZ / _pState.zoom);
-            _pState.offY = my - (my - _pState.offY) * (newZ / _pState.zoom);
+            const newZ = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _pState.zoom * factor));
+            _pState.panX = mx - (mx - _pState.panX) * (newZ / _pState.zoom);
+            _pState.panY = my - (my - _pState.panY) * (newZ / _pState.zoom);
             _pState.zoom = newZ;
             _projApply(false);
         };
         wrap.addEventListener('wheel', wrap._onWheel, { passive:false });
 
-        // Mousedown → iniciar pan
         wrap._onMD = e => {
-            _pState.drag  = true;
+            if(_pState.zoom <= 1) return;
+            _pState.drag = true;
             _pState.lastX = e.clientX;
             _pState.lastY = e.clientY;
             wrap.style.cursor = 'grabbing';
         };
         wrap.addEventListener('mousedown', wrap._onMD);
 
-        // Mousemove / mouseup globales
         document._pMM = e => {
             if(!_pState.drag) return;
-            _pState.offX += e.clientX - _pState.lastX;
-            _pState.offY += e.clientY - _pState.lastY;
+            _pState.panX += e.clientX - _pState.lastX;
+            _pState.panY += e.clientY - _pState.lastY;
             _pState.lastX = e.clientX;
             _pState.lastY = e.clientY;
             _projApply(false);
         };
         document._pMU = () => {
             _pState.drag = false;
-            if(wrap) wrap.style.cursor = 'grab';
+            if(wrap) wrap.style.cursor = _pState.zoom > 1 ? 'grab' : 'default';
         };
         document.addEventListener('mousemove', document._pMM);
         document.addEventListener('mouseup',   document._pMU);
 
-        // Touch: pinch zoom + pan
         let _lastTouchDist = null, _lastTouchMid = null;
         wrap._onTouchStart = e => {
             if(e.touches.length === 2){
@@ -1087,12 +1106,12 @@ function openProjPreview(url, nombre, ext){
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const dist = Math.hypot(dx, dy);
                 const rect = wrap.getBoundingClientRect();
-                const mx   = _lastTouchMid.x - rect.left;
-                const my   = _lastTouchMid.y - rect.top;
+                const mx = _lastTouchMid.x - rect.left - rect.width/2;
+                const my = _lastTouchMid.y - rect.top - rect.height/2;
                 const factor = dist / _lastTouchDist;
                 const newZ = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _pState.zoom * factor));
-                _pState.offX = mx - (mx - _pState.offX) * (newZ / _pState.zoom);
-                _pState.offY = my - (my - _pState.offY) * (newZ / _pState.zoom);
+                _pState.panX = mx - (mx - _pState.panX) * (newZ / _pState.zoom);
+                _pState.panY = my - (my - _pState.panY) * (newZ / _pState.zoom);
                 _pState.zoom = newZ;
                 _lastTouchDist = dist;
                 _projApply(false);
@@ -1109,51 +1128,34 @@ function openProjPreview(url, nombre, ext){
             <p>Vista previa no disponible para este tipo de archivo.</p>
             <a href="${escH(url)}" target="_blank" class="im-btn im-btn-primary" style="margin-top:12px;display:inline-flex;"><i class="bi bi-box-arrow-up-right"></i> Abrir en nueva pestaña</a></div></div>`;
     }
-
-    $('proj-preview-overlay').style.display = 'flex';
-}
-
-// Fit: centrar imagen ajustando al contenedor con padding
-function _projFitZoom(){
-    const wrap = document.getElementById('_pWrap');
-    const img  = _pState.img;
-    if(!wrap || !img) return;
-    const pad  = 20;
-    const cW   = wrap.clientWidth  - pad*2;
-    const cH   = wrap.clientHeight - pad*2;
-    const iW   = img.naturalWidth;
-    const iH   = img.naturalHeight;
-    if(!iW || !iH || cW <= 0 || cH <= 0) return false;
-    _pState.zoom = Math.min(cW/iW, cH/iH, 1);
-    _pState.offX = (wrap.clientWidth  - iW * _pState.zoom) / 2;
-    _pState.offY = (wrap.clientHeight - iH * _pState.zoom) / 2;
-    return true;
 }
 
 function _projApply(animate){
     const img = _pState.img; if(!img) return;
     img.style.transition = animate ? 'transform .2s' : 'none';
-    img.style.transform  = `translate(${_pState.offX}px,${_pState.offY}px) scale(${_pState.zoom})`;
+    img.style.transform = `translate(${_pState.panX}px,${_pState.panY}px) scale(${_pState.zoom})`;
+    const wrap = document.getElementById('_pWrap');
+    if(wrap) wrap.style.cursor = _pState.zoom > 1 ? (_pState.drag ? 'grabbing' : 'grab') : 'default';
     _updateZoomUI();
 }
 
 function projZoom(delta){
-    const wrap = document.getElementById('_pWrap'); if(!wrap) return;
-    const cX = wrap.clientWidth/2, cY = wrap.clientHeight/2;
     const newZ = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, _pState.zoom + delta));
-    _pState.offX = cX - (cX - _pState.offX) * (newZ / _pState.zoom);
-    _pState.offY = cY - (cY - _pState.offY) * (newZ / _pState.zoom);
     _pState.zoom = newZ;
+    if(newZ <= 1){ _pState.panX = 0; _pState.panY = 0; }
     _projApply(true);
 }
-function projZoomReset(){ _projFitZoom(); _projApply(true); }
+function projZoomReset(){
+    _pState.zoom = 1; _pState.panX = 0; _pState.panY = 0;
+    _projApply(true);
+}
 
 function _updateZoomUI(){
     const pct = Math.round(_pState.zoom * 100);
     const el  = $('proj-zoom-pct'); if(el) el.textContent = pct + '%';
     const bar = $('proj-zoom-bar-fill');
     if(bar){
-        const frac = Math.log(_pState.zoom/ZOOM_MIN) / Math.log(ZOOM_MAX/ZOOM_MIN);
+        const frac = (_pState.zoom - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN);
         bar.style.width = Math.max(0, Math.min(100, Math.round(frac*100))) + '%';
     }
 }

@@ -1360,6 +1360,9 @@ async function loadDocs(tipo_asociacion,asociacionId){
         dl.innerHTML=docs.map(doc=>{
             _docsCache[doc.id]=doc;
             const ext=getDocExt(doc);
+            if(['jpg','jpeg','png','webp','gif'].includes(ext)&&doc.url_storage){
+                const pre=new Image();pre.decoding='async';pre.src=doc.url_storage;
+            }
             const fecha=new Date(doc.creado_at).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'});
             return `<div class="im-doc-item" id="docitem-${doc.id}">
                 <i class="bi ${ext2icon(ext)} im-doc-icon"></i>
@@ -1413,15 +1416,10 @@ async function confirmDeleteDoc(){
     finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-trash3"></i> Sí, eliminar';}
 }
 
-async function previewDocById(id){
-    let doc=_docsCache[id];
+function previewDocById(id){
+    const doc=_docsCache[id];
     if(!doc)return;
-    let url=doc.url_storage;
-    try{
-        const res=await fetch(`/api/im/documentos/${id}/url`);
-        if(res.ok){const data=await res.json();if(data.url){url=data.url;doc.url_storage=url;_docsCache[id]=doc;}}
-    }catch(_){}
-    previewDoc(url,doc.nombre_personalizado,getDocExt(doc));
+    previewDoc(doc.url_storage,doc.nombre_personalizado,getDocExt(doc));
 }
 
 function previewDoc(url,nombre,ext){
@@ -1432,8 +1430,9 @@ function previewDoc(url,nombre,ext){
     let content='';
     cont.className='im-preview-fill';
     if(imgs.includes(ext)){
+        openModal('preview');
         cont.style.cssText='height:100%;display:flex;align-items:center;justify-content:center;background:#0f172a;padding:16px;box-sizing:border-box;';
-        content=`<img src="${escH(url)}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.3);" alt="${escH(nombre)}">`;
+        content=`<div style="color:#94a3b8;font-size:.85rem;margin-bottom:8px;"><i class="bi bi-hourglass-split"></i> Cargando...</div><img src="${escH(url)}" decoding="async" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.3);display:none;" alt="${escH(nombre)}" onload="this.style.display='block';this.previousElementSibling&&(this.previousElementSibling.style.display='none');">`;
     }else if(ext==='pdf'){
         cont.style.cssText='height:100%;';
         const pdfSrc=escH(url)+'#toolbar=1&navpanes=1&scrollbar=1&view=FitH';
@@ -1443,7 +1442,7 @@ function previewDoc(url,nombre,ext){
         content=`<div style="color:#64748b;"><i class="bi bi-file-earmark-text" style="font-size:3rem;display:block;margin-bottom:12px;"></i><p>Vista previa no disponible para este tipo de archivo.</p><a href="${escH(url)}" target="_blank" class="im-btn im-btn-primary" style="margin-top:10px;display:inline-flex;"><i class="bi bi-box-arrow-up-right"></i> Abrir en nueva pestaña</a></div>`;
     }
     cont.innerHTML=content;
-    openModal('preview');
+    if(!imgs.includes(ext)) openModal('preview');
 }
 
 // ──────────────── AUDITORÍA ────────────────
