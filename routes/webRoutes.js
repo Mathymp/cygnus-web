@@ -48,6 +48,28 @@ const requireAuth = (req, res, next) => {
     next();
 };
 
+const requireAuthApi = (req, res, next) => {
+    if (!req.session?.user) return res.status(401).json({ message: 'No autenticado.' });
+    next();
+};
+
+// API: mismo criterio de acceso que las vistas /admin/inmobiliaria/*
+const requireImAccessApi = async (req, res, next) => {
+    if (!req.session?.user) return res.status(401).json({ message: 'No autenticado.' });
+    const role = String(req.session.user.role || '').toLowerCase();
+    if (role === 'admin' || role === 'administrador') return next();
+    try {
+        const r = await pool.query(
+            'SELECT 1 FROM im_accesos WHERE user_id::text = $1 LIMIT 1',
+            [String(req.session.user.id)]
+        );
+        if (r.rows.length > 0) return next();
+    } catch (e) {
+        console.error('[requireImAccessApi]', e.message);
+    }
+    return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
+};
+
 // --- MIDDLEWARE: Inyecta flags de acceso al módulo inmobiliaria en res.locals ---
 const setImAcceso = async (req, res, next) => {
     if (!req.session || !req.session.user) {
@@ -369,10 +391,10 @@ router.post('/api/im/ventas/:id/resciliar',   requireAuth, inmobiliariaControlle
 router.post('/api/im/ventas/:id/comprobante', requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteVenta);
 
 // API – Cuotas de pago
-router.get('/api/im/cuotas',                    requireAuth, inmobiliariaController.getAllCuotas);
-router.get('/api/im/cuotas/:ventaId',           requireAuth, inmobiliariaController.getCuotas);
-router.put('/api/im/cuotas/:id',                requireAuth, inmobiliariaController.updateCuota);
-router.post('/api/im/cuotas/:id/comprobante',   requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteCuota);
+router.get('/api/im/cuotas',                    requireAuthApi, requireImAccessApi, inmobiliariaController.getAllCuotas);
+router.get('/api/im/cuotas/:ventaId',           requireAuthApi, requireImAccessApi, inmobiliariaController.getCuotas);
+router.put('/api/im/cuotas/:id',                requireAuthApi, requireImAccessApi, inmobiliariaController.updateCuota);
+router.post('/api/im/cuotas/:id/comprobante',   requireAuthApi, requireImAccessApi, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteCuota);
 
 // API – Resciliaciones
 router.get('/api/im/resciliaciones',            requireAuth, inmobiliariaController.getAllResciliaciones);

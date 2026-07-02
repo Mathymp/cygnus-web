@@ -5,19 +5,25 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-const isAdmin = (req) => req.session.user && req.session.user.role === 'admin';
+const isAdmin = (req) => {
+    const role = String(req.session?.user?.role || '').toLowerCase();
+    return role === 'admin' || role === 'administrador';
+};
 
 // Autorizado = admin O tiene acceso al módulo inmobiliario
 async function isAuthorized(req) {
     if (isAdmin(req)) return true;
-    if (!req.session || !req.session.user) return false;
+    if (!req.session?.user?.id) return false;
     try {
         const { rows } = await pool.query(
-            `SELECT id FROM im_accesos WHERE user_id=$1`,
-            [req.session.user.id]
+            `SELECT 1 FROM im_accesos WHERE user_id::text = $1 LIMIT 1`,
+            [String(req.session.user.id)]
         );
         return rows.length > 0;
-    } catch { return false; }
+    } catch (e) {
+        console.error('[isAuthorized]', e.message);
+        return false;
+    }
 }
 
 async function auditLog(client, { tabla, entidadId, accion, descripcion, req }) {
@@ -584,7 +590,6 @@ exports.resciliarVenta = async (req, res) => {
 // ==========================================
 
 exports.getAllCuotas = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
     try {
         const { proyecto_id, estado } = req.query;
         let where = [];

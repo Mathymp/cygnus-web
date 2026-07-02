@@ -182,7 +182,7 @@ function showToast(msg,type='success',title=''){
 
 async function init(){
     try{
-        const res=await fetch('/api/im/cuotas');
+        const res=await fetch('/api/im/cuotas',{credentials:'same-origin'});
         if(!res.ok) throw new Error(`Error ${res.status}`);
         allCuotas=await res.json();
         buildProyectoFilter();
