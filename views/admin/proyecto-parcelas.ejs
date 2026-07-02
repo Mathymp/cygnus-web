@@ -301,7 +301,7 @@
                 </div>
                 <button onclick="projZoom(0.25)" title="Acercar" style="width:32px;height:32px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#fff'"><i class="bi bi-zoom-in"></i></button>
                 <span id="proj-zoom-pct" style="font-size:.75rem;font-weight:700;color:#475569;min-width:38px;text-align:center;">100%</span>
-                <button onclick="projZoomReset()" title="Tamaño original" style="width:32px;height:32px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:.75rem;font-weight:700;color:#64748b;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#fff'">1:1</button>
+                <button onclick="projZoomReset()" title="Ajustar a pantalla" style="width:32px;height:32px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:.75rem;font-weight:700;color:#64748b;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#fff'"><i class="bi bi-arrows-fullscreen"></i></button>
                 <div style="width:1px;height:20px;background:#e2e8f0;margin:0 2px;"></div>
                 <a id="proj-preview-dl" href="#" download target="_blank" title="Descargar" style="width:32px;height:32px;border:1px solid #e2e8f0;border-radius:7px;background:#fff;cursor:pointer;font-size:.95rem;color:#475569;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:all .15s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#fff'"><i class="bi bi-download"></i></a>
                 <span style="font-size:.7rem;color:#94a3b8;">Rueda del mouse · arrastra para mover</span>
@@ -1009,6 +1009,7 @@ function openProjPreview(url, nombre, ext){
 
         _pState.img = document.getElementById('_pImg');
         const wrap  = document.getElementById('_pWrap');
+        _pState.img.style.opacity = '0';
         _pState.img.onerror = () => {
             body.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;text-align:center;padding:24px;">
                 <div><i class="bi bi-exclamation-triangle" style="font-size:2rem;display:block;margin-bottom:10px;"></i>
@@ -1016,15 +1017,17 @@ function openProjPreview(url, nombre, ext){
                 <a href="${escH(url)}" target="_blank" class="im-btn im-btn-primary" style="margin-top:12px;display:inline-flex;"><i class="bi bi-box-arrow-up-right"></i> Abrir en nueva pestaña</a></div></div>`;
         };
 
-        // Esperar carga para hacer fit automático
-        _pState.img.onload = () => {
+        const applyInitialFit = () => {
+            if(!_pState.img) return;
             _projFitZoom();
-            _projApply(true);
+            _projApply(false);
+            _pState.img.style.opacity = '1';
         };
-        // Si ya está cacheada
-        if(_pState.img.complete && _pState.img.naturalWidth) {
-            _projFitZoom(); _projApply(true);
-        }
+        const scheduleInitialFit = () => {
+            requestAnimationFrame(() => requestAnimationFrame(applyInitialFit));
+        };
+        _pState.img.onload = scheduleInitialFit;
+        if(_pState.img.complete && _pState.img.naturalWidth) scheduleInitialFit();
 
         // Wheel → zoom centrado en cursor
         wrap._onWheel = e => {
@@ -1097,8 +1100,6 @@ function openProjPreview(url, nombre, ext){
         };
         wrap.addEventListener('touchstart', wrap._onTouchStart, {passive:true});
         wrap.addEventListener('touchmove',  wrap._onTouchMove,  {passive:false});
-
-        _updateZoomUI();
     } else if(isPdf){
         const pdfSrc = escH(url) + '#toolbar=1&navpanes=1&scrollbar=1&view=FitH';
         body.innerHTML = `<iframe class="proj-pdf-frame" src="${pdfSrc}" title="${escH(nombre)}"></iframe>`;
@@ -1122,11 +1123,11 @@ function _projFitZoom(){
     const cH   = wrap.clientHeight - pad*2;
     const iW   = img.naturalWidth;
     const iH   = img.naturalHeight;
-    if(!iW || !iH) return;
-    _pState.zoom = Math.min(cW/iW, cH/iH, 1); // no agrandar más de 1x al abrir
-    // Centrar
+    if(!iW || !iH || cW <= 0 || cH <= 0) return false;
+    _pState.zoom = Math.min(cW/iW, cH/iH, 1);
     _pState.offX = (wrap.clientWidth  - iW * _pState.zoom) / 2;
     _pState.offY = (wrap.clientHeight - iH * _pState.zoom) / 2;
+    return true;
 }
 
 function _projApply(animate){
