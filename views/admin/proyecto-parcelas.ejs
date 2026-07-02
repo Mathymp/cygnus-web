@@ -332,9 +332,17 @@ const PUEDE_CREAR  = '<%= typeof puedeCrear !== "undefined" && puedeCrear ? "tru
 let allParcelas   = [];
 let filtroEstado  = 'todos';
 let vistaActual   = 'grid';
+let _projDocsCache = {};
 
 function $(id){ return document.getElementById(id); }
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getDocExt(doc){
+    const fromPath=(doc.storage_path||'').split('.').pop().toLowerCase();
+    if(fromPath&&fromPath.length<=5&&!fromPath.includes('/'))return fromPath;
+    const fromUrl=(doc.url_storage||'').split('?')[0].split('.').pop().toLowerCase();
+    if(fromUrl&&fromUrl.length<=5&&!fromUrl.includes('/'))return fromUrl;
+    return '';
+}
 function fmt(n){ return Math.floor(parseFloat(n)||0).toLocaleString('es-CL'); }
 function fmtPrecio(input){ input.value=input.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
 
@@ -769,10 +777,13 @@ async function loadProjDocs(){
 
         if(docs.length === 0){
             list.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;"><i class="bi bi-folder2-open" style="font-size:2rem;"></i><p style="margin:8px 0 0;font-size:.85rem;">Sin documentos aún. Sube el primero arriba.</p></div>';
+            _projDocsCache = {};
             return;
         }
+        _projDocsCache = {};
         list.innerHTML = docs.map(doc => {
-            const ext = (doc.storage_path||'').split('.').pop().toLowerCase();
+            _projDocsCache[doc.id] = doc;
+            const ext = getDocExt(doc);
             const fecha = new Date(doc.creado_at).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'});
             return `<div class="im-doc-item" id="projdoc-${doc.id}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;transition:all .15s;">
                 <i class="bi ${ext2icon(ext)}" style="font-size:1.4rem;color:#2563eb;flex-shrink:0;"></i>
@@ -797,7 +808,7 @@ async function loadProjDocs(){
                 </div>
                 <!-- Botones acción (modo lectura) -->
                 <div id="pdbtns-${doc.id}" style="display:flex;gap:4px;flex-shrink:0;">
-                    ${canPreview(ext)?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="openProjPreview('${escH(doc.url_storage)}','${escH(doc.nombre_personalizado)}','${ext}')" title="Vista previa"><i class="bi bi-eye"></i></button>`:''}
+                    ${canPreview(ext)?`<button type="button" class="im-btn im-btn-sm im-btn-ghost" onclick="openProjPreviewById(${doc.id})" title="Vista previa"><i class="bi bi-eye"></i></button>`:''}
                     <a href="${escH(doc.url_storage)}" download="${escH(doc.nombre_personalizado)}.${ext}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Descargar"><i class="bi bi-download"></i></a>
                     <button class="im-btn im-btn-sm im-btn-ghost" onclick="startProjRename(${doc.id})" title="Renombrar"><i class="bi bi-pencil"></i></button>
                     ${IS_ADMIN||PUEDE_CREAR?`<button class="im-btn im-btn-sm im-btn-danger" onclick="openProjDel(${doc.id},'${escH(doc.nombre_personalizado)}')" title="Eliminar"><i class="bi bi-trash3"></i></button>`:''}
@@ -947,6 +958,17 @@ async function confirmProjDel(){
 // ── Preview con Zoom centrado en cursor ──────────────────────────────
 const ZOOM_MIN = 0.05, ZOOM_MAX = 8;
 let _pState = { zoom:1, offX:0, offY:0, drag:false, lastX:0, lastY:0, img:null, isImg:false };
+
+async function openProjPreviewById(id){
+    let doc = _projDocsCache[id];
+    if(!doc) return;
+    let url = doc.url_storage;
+    try{
+        const res = await fetch(`/api/im/documentos/${id}/url`);
+        if(res.ok){ const data = await res.json(); if(data.url){ url = data.url; doc.url_storage = url; _projDocsCache[id] = doc; } }
+    }catch(_){}
+    openProjPreview(url, doc.nombre_personalizado, getDocExt(doc));
+}
 
 function openProjPreview(url, nombre, ext){
     $('proj-preview-title').textContent = nombre || 'Vista Previa';

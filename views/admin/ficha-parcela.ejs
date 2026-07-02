@@ -513,6 +513,7 @@ let parcelaData=null, ventaData=null, cuotasData=[], currentClienteId=null, proy
 let pagoTipoActual = 'contado';
 let fechasCuotasGeneradas = [];
 let usuariosList = [];
+let _docsCache = {};
 const CURRENT_USER_ID   = '<%= user.id %>';
 const CURRENT_USER_NAME = '<%= user.name %>';
 
@@ -520,6 +521,13 @@ const CURRENT_USER_NAME = '<%= user.name %>';
 const $ = id => document.getElementById(id);
 function fmt(n){return Math.floor(parseFloat(n)||0).toLocaleString('es-CL');}
 function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function getDocExt(doc){
+    const fromPath=(doc.storage_path||'').split('.').pop().toLowerCase();
+    if(fromPath&&fromPath.length<=5&&!fromPath.includes('/'))return fromPath;
+    const fromUrl=(doc.url_storage||'').split('?')[0].split('.').pop().toLowerCase();
+    if(fromUrl&&fromUrl.length<=5&&!fromUrl.includes('/'))return fromUrl;
+    return '';
+}
 function fmtPrecio(input){input.value=input.value.replace(/\D/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
 function openModal(id){$(`modal-${id}`).classList.add('show');}
 function closeModal(id){$(`modal-${id}`).classList.remove('show');}
@@ -1344,8 +1352,10 @@ async function loadDocs(tipo_asociacion,asociacionId){
         if(docs.length===0){dl.innerHTML='<div class="im-empty" style="padding:16px;"><i class="bi bi-folder2-open"></i><p>Sin documentos aún.</p></div>';return;}
         const ext2icon=ext=>['pdf'].includes(ext)?'bi-file-earmark-pdf bi-doc-red':['jpg','jpeg','png','webp','gif'].includes(ext)?'bi-file-earmark-image bi-doc-blue':'bi-file-earmark';
         const canPreview=ext=>['pdf','jpg','jpeg','png','webp','gif'].includes(ext);
+        _docsCache={};
         dl.innerHTML=docs.map(doc=>{
-            const ext=(doc.storage_path||'').split('.').pop().toLowerCase();
+            _docsCache[doc.id]=doc;
+            const ext=getDocExt(doc);
             const fecha=new Date(doc.creado_at).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'});
             return `<div class="im-doc-item" id="docitem-${doc.id}">
                 <i class="bi ${ext2icon(ext)} im-doc-icon"></i>
@@ -1356,7 +1366,7 @@ async function loadDocs(tipo_asociacion,asociacionId){
                     <div class="im-doc-date">${fecha}</div>
                 </div>
                 <div class="im-doc-actions">
-                    ${canPreview(ext)?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDoc('${escH(doc.url_storage)}','${escH(doc.nombre_personalizado)}','${ext}')" title="Ver"><i class="bi bi-eye"></i></button>`:''}
+                    ${canPreview(ext)?`<button type="button" class="im-btn im-btn-sm im-btn-ghost" onclick="previewDocById(${doc.id})" title="Ver"><i class="bi bi-eye"></i></button>`:''}
                     <a href="${escH(doc.url_storage)}" download="${escH(doc.nombre_personalizado)}.${ext}" target="_blank" class="im-btn im-btn-sm im-btn-ghost" title="Descargar"><i class="bi bi-download"></i></a>
                     <button class="im-btn im-btn-sm im-btn-ghost" onclick="startRename(${doc.id})" title="Renombrar"><i class="bi bi-pencil"></i></button>
                     <button class="im-btn im-btn-sm" id="save-rename-${doc.id}" style="display:none;" onclick="saveRename(${doc.id},'${tipo_asociacion}','${asociacionId}')"><i class="bi bi-check-lg"></i></button>
@@ -1399,14 +1409,25 @@ async function confirmDeleteDoc(){
     finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-trash3"></i> Sí, eliminar';}
 }
 
+async function previewDocById(id){
+    let doc=_docsCache[id];
+    if(!doc)return;
+    let url=doc.url_storage;
+    try{
+        const res=await fetch(`/api/im/documentos/${id}/url`);
+        if(res.ok){const data=await res.json();if(data.url){url=data.url;doc.url_storage=url;_docsCache[id]=doc;}}
+    }catch(_){}
+    previewDoc(url,doc.nombre_personalizado,getDocExt(doc));
+}
+
 function previewDoc(url,nombre,ext){
     $('preview-title').innerHTML=`<i class="bi bi-eye"></i> ${escH(nombre)}`;
-    $('preview-download').href=url;$('preview-download').download=nombre+'.'+ext;
+    $('preview-download').href=url;$('preview-download').download=nombre+(ext?'.'+ext:'');
     const imgs=['jpg','jpeg','png','webp','gif'];
     let content='';
-    if(imgs.includes(ext))content=`<img src="${url}" style="max-width:100%;max-height:480px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.1);" alt="${escH(nombre)}">`;
-    else if(ext==='pdf')content=`<iframe src="${url}" class="preview-frame"></iframe>`;
-    else content=`<div style="padding:40px;color:#64748b;text-align:center;"><i class="bi bi-file-earmark-text" style="font-size:3rem;display:block;margin-bottom:12px;"></i><p>Vista previa no disponible para este tipo de archivo.</p><a href="${url}" target="_blank" class="im-btn im-btn-primary" style="margin-top:10px;display:inline-flex;"><i class="bi bi-box-arrow-up-right"></i> Abrir en nueva pestaña</a></div>`;
+    if(imgs.includes(ext))content=`<img src="${escH(url)}" style="max-width:100%;max-height:480px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.1);" alt="${escH(nombre)}">`;
+    else if(ext==='pdf')content=`<iframe src="${escH(url)}" class="preview-frame"></iframe>`;
+    else content=`<div style="padding:40px;color:#64748b;text-align:center;"><i class="bi bi-file-earmark-text" style="font-size:3rem;display:block;margin-bottom:12px;"></i><p>Vista previa no disponible para este tipo de archivo.</p><a href="${escH(url)}" target="_blank" class="im-btn im-btn-primary" style="margin-top:10px;display:inline-flex;"><i class="bi bi-box-arrow-up-right"></i> Abrir en nueva pestaña</a></div>`;
     $('preview-content').innerHTML=content;
     openModal('preview');
 }

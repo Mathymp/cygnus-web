@@ -321,6 +321,31 @@ const isOverdue=d=>d&&!d.pagado&&d.fecha_vencimiento&&new Date(d.fecha_vencimien
 //  Estado
 // ─────────────────────────────────────────────
 let allResc=[],filtroEstado='all';
+let _relDocsCache={}, _previewUrls={};
+
+function stashPreviewUrl(url){
+    const key='u'+Date.now()+Math.random().toString(36).slice(2,8);
+    _previewUrls[key]=url||'';
+    return key;
+}
+function previewDocStashed(key,nombre){previewDoc(_previewUrls[key],nombre);}
+function getDocExt(doc){
+    const fromPath=(doc.storage_path||'').split('.').pop().toLowerCase();
+    if(fromPath&&fromPath.length<=5&&!fromPath.includes('/'))return fromPath;
+    const fromUrl=(doc.url_storage||'').split('?')[0].split('.').pop().toLowerCase();
+    if(fromUrl&&fromUrl.length<=5&&!fromUrl.includes('/'))return fromUrl;
+    return '';
+}
+async function previewRelDocById(id){
+    let doc=_relDocsCache[id];
+    if(!doc)return;
+    let url=doc.url_storage;
+    try{
+        const res=await fetch(`/api/im/documentos/${id}/url`);
+        if(res.ok){const data=await res.json();if(data.url){url=data.url;doc.url_storage=url;_relDocsCache[id]=doc;}}
+    }catch(_){}
+    previewDoc(url,doc.nombre_personalizado);
+}
 
 // ─────────────────────────────────────────────
 //  Cargar datos
@@ -496,7 +521,7 @@ function rowHTML(r){
         : `<span style="font-size:.78rem;color:#94a3b8;">—</span>`;
 
     const docIcon=r.documento_url
-        ?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="event.stopPropagation();previewDoc('${escH(r.documento_url)}','Documento Resciliación')" title="Ver">
+        ?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="event.stopPropagation();previewDocStashed('${stashPreviewUrl(r.documento_url)}','Documento Resciliación')" title="Ver">
             <i class="bi bi-eye"></i></button>
           <a href="${escH(r.documento_url)}" download target="_blank" class="im-btn im-btn-sm im-btn-ghost" onclick="event.stopPropagation()" title="Descargar">
             <i class="bi bi-download"></i></a>`
@@ -644,7 +669,7 @@ async function renderDetail(rescId, container){
                 ${r.documento_url
                     ?`<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                         <span style="font-size:.8rem;font-weight:600;color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Documento cargado</span>
-                        <button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDoc('${escH(r.documento_url)}','Documento Resciliación')"><i class="bi bi-eye"></i> Ver</button>
+                        <button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDocStashed('${stashPreviewUrl(r.documento_url)}','Documento Resciliación')"><i class="bi bi-eye"></i> Ver</button>
                         <a href="${escH(r.documento_url)}" download target="_blank" class="im-btn im-btn-sm im-btn-ghost"><i class="bi bi-download"></i></a>
                       </div>`
                     :`<p style="font-size:.78rem;color:#94a3b8;margin:0 0 8px;">Sin documento aún.</p>`}
@@ -827,7 +852,7 @@ function renderCuotasDev(cuotas,rescId){
             :venc?`<span class="badge-vencida"><i class="bi bi-exclamation-triangle-fill"></i> Vencida</span>`
             :`<span class="badge-pendiente"><i class="bi bi-clock"></i> Pendiente</span>`;
         const compIcon=c.comprobante_url
-            ?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDoc('${escH(c.comprobante_url)}','Comprobante Devolución ${c.numero_cuota}')" title="Ver comprobante">
+            ?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDocStashed('${stashPreviewUrl(c.comprobante_url)}','Comprobante Devolución ${c.numero_cuota}')" title="Ver comprobante">
                 <i class="bi bi-eye"></i></button>`
             :'';
         const pagarBtn=!c.pagado
@@ -963,15 +988,17 @@ async function loadRelDocs(rescId, tipo, asociId, btn){
         const res=await fetch(`/api/im/documentos?tipo_asociacion=${tipo}&asociacion_id=${asociId}`);
         if(!res.ok)throw new Error('Error cargando docs');
         const docs=await res.json();
-        if(docs.length===0){cont.innerHTML='<p style="font-size:.8rem;color:#94a3b8;margin:8px 0;">Sin documentos en esta sección.</p>';return;}
+        if(docs.length===0){cont.innerHTML='<p style="font-size:.8rem;color:#94a3b8;margin:8px 0;">Sin documentos en esta sección.</p>';_relDocsCache={};return;}
+        _relDocsCache={};
         cont.innerHTML=docs.map(d=>{
-            const ext=(d.storage_path||'').split('.').pop().toLowerCase();
+            _relDocsCache[d.id]=d;
+            const ext=getDocExt(d);
             const canPrev=['pdf','jpg','jpeg','png','webp','gif'].includes(ext);
             return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;margin-bottom:5px;font-size:.8rem;">
                 <i class="bi bi-file-earmark${ext==='pdf'?'-pdf':['jpg','jpeg','png','webp'].includes(ext)?'-image':''}" style="font-size:1.1rem;color:#2563eb;flex-shrink:0;"></i>
                 <span style="flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(d.nombre_personalizado)}</span>
                 <span style="font-size:.72rem;color:#94a3b8;white-space:nowrap;">${new Date(d.creado_at).toLocaleDateString('es-CL')}</span>
-                ${canPrev?`<button class="im-btn im-btn-sm im-btn-ghost" onclick="previewDoc('${escH(d.url_storage)}','${escH(d.nombre_personalizado)}')"><i class="bi bi-eye"></i></button>`:''}
+                ${canPrev?`<button type="button" class="im-btn im-btn-sm im-btn-ghost" onclick="previewRelDocById(${d.id})"><i class="bi bi-eye"></i></button>`:''}
                 <a href="${escH(d.url_storage)}" download="${escH(d.nombre_personalizado)}" target="_blank" class="im-btn im-btn-sm im-btn-ghost"><i class="bi bi-download"></i></a>
             </div>`;
         }).join('');
@@ -982,13 +1009,15 @@ async function loadRelDocs(rescId, tipo, asociId, btn){
 //  Preview documento
 // ─────────────────────────────────────────────
 function previewDoc(url, nombre){
-    const ext=(url||'').split('.').pop().split('?')[0].toLowerCase();
+    const ext=(url||'').split('?')[0].split('.').pop().toLowerCase();
     $id('preview-title').textContent=nombre||'Vista Previa';
     const cont=$id('preview-content');
     if(['jpg','jpeg','png','webp','gif'].includes(ext)){
         cont.innerHTML=`<img src="${escH(url)}" style="max-width:100%;border-radius:8px;">`;
-    }else{
+    }else if(ext==='pdf'){
         cont.innerHTML=`<iframe src="${escH(url)}" class="preview-frame"></iframe>`;
+    }else{
+        cont.innerHTML=`<div style="padding:40px;color:#64748b;text-align:center;"><i class="bi bi-file-earmark-text" style="font-size:3rem;display:block;margin-bottom:12px;"></i><p>Vista previa no disponible.</p><a href="${escH(url)}" target="_blank" class="im-btn im-btn-primary" style="margin-top:10px;display:inline-flex;"><i class="bi bi-box-arrow-up-right"></i> Abrir en nueva pestaña</a></div>`;
     }
     openModal('preview');
 }

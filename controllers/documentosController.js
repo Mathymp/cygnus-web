@@ -19,6 +19,31 @@ const supabaseAdmin = createClient(
 
 const BUCKET = 'cygnus-documentos';
 
+function resolveStoragePath(doc) {
+    if (doc.storage_path) return doc.storage_path;
+    const url = doc.url_storage || '';
+    if (!url.startsWith('http')) return url || null;
+    const match = url.match(/\/cygnus-documentos\/(.+?)(?:\?|$)/);
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+async function signDocUrl(doc) {
+    const storagePath = resolveStoragePath(doc);
+    if (!storagePath) return doc.url_storage;
+    try {
+        const { data, error } = await supabaseAdmin.storage
+            .from(BUCKET).createSignedUrl(storagePath, 3600);
+        if (error) {
+            console.warn('[Sign URL]', storagePath, error.message);
+            return doc.url_storage;
+        }
+        return data?.signedUrl || doc.url_storage;
+    } catch (e) {
+        console.warn('[Sign URL exception]', storagePath, e.message);
+        return doc.url_storage;
+    }
+}
+
 async function insertarAuditoria(pool, { entidadId, accion, descripcion, req }) {
     const userId   = req.session.user ? req.session.user.id   : null;
     const userName = req.session.user ? req.session.user.name : 'Sistema';
@@ -116,18 +141,23 @@ exports.getDocumentos = async (req, res) => {
         const result = await pool.query(query, params);
 
         // Regenerar URLs firmadas frescas (válidas 1 hora)
-        const docs = await Promise.all(result.rows.map(async (doc) => {
-            if (doc.storage_path) {
-                try {
-                    const { data } = await supabaseAdmin.storage
-                        .from(BUCKET).createSignedUrl(doc.storage_path, 3600);
-                    return { ...doc, url_storage: data ? data.signedUrl : doc.url_storage };
-                } catch (_) {}
-            }
-            return doc;
-        }));
+        const docs = await Promise.all(result.rows.map(async (doc) => ({
+            ...doc,
+            url_storage: await signDocUrl(doc)
+        })));
 
         res.json(docs);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+exports.getDocumentoUrl = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(`SELECT * FROM im_documentos WHERE id=$1`, [id]);
+        if (result.rows.length === 0) return res.status(404).json({ message: 'Documento no encontrado.' });
+        const doc = result.rows[0];
+        const url = await signDocUrl(doc);
+        res.json({ url, nombre: doc.nombre_personalizado, storage_path: doc.storage_path });
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
 

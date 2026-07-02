@@ -386,6 +386,7 @@ router.get('/api/im/parcelas/vendidas',         requireAuth, inmobiliariaControl
 // API – Documentos (Supabase Storage)
 router.get('/api/im/documentos/test-storage', requireAuth, documentosController.testStorage);
 router.get('/api/im/documentos',          requireAuth, documentosController.getDocumentos);
+router.get('/api/im/documentos/:id/url',  requireAuth, documentosController.getDocumentoUrl);
 router.post('/api/im/documentos',         requireAuth, uploadDocMemory.single('archivo'), documentosController.uploadDocumento);
 router.patch('/api/im/documentos/:id',    requireAuth, documentosController.renameDocumento);
 router.delete('/api/im/documentos/:id',   requireAuth, documentosController.deleteDocumento);
