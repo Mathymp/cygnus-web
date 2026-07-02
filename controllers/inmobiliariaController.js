@@ -10,22 +10,6 @@ const isAdmin = (req) => {
     return role === 'admin' || role === 'administrador';
 };
 
-// Autorizado = admin O tiene acceso al módulo inmobiliario
-async function isAuthorized(req) {
-    if (isAdmin(req)) return true;
-    if (!req.session?.user?.id) return false;
-    try {
-        const { rows } = await pool.query(
-            `SELECT 1 FROM im_accesos WHERE user_id::text = $1 LIMIT 1`,
-            [String(req.session.user.id)]
-        );
-        return rows.length > 0;
-    } catch (e) {
-        console.error('[isAuthorized]', e.message);
-        return false;
-    }
-}
-
 async function auditLog(client, { tabla, entidadId, accion, descripcion, req }) {
     const userId   = req.session.user ? req.session.user.id   : null;
     const userName = req.session.user ? req.session.user.name : 'Sistema';
@@ -50,7 +34,6 @@ exports.getProyectos = async (req, res) => {
 };
 
 exports.createProyecto = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -83,7 +66,6 @@ exports.createProyecto = async (req, res) => {
 };
 
 exports.updateProyecto = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -199,7 +181,6 @@ exports.getParcelaById = async (req, res) => {
 };
 
 exports.createParcela = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     try {
         const { proyecto_id, numero_parcela, numero_rol_parcela, metraje, precio_actual } = req.body;
         const numStr = String(numero_parcela || '').trim().toUpperCase();
@@ -235,7 +216,6 @@ exports.createParcela = async (req, res) => {
 };
 
 exports.createParcelasBulk = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -520,7 +500,6 @@ exports.createVenta = async (req, res) => {
 };
 
 exports.deleteVenta = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -872,7 +851,6 @@ exports.getAuditoria = async (req, res) => {
 // ==========================================
 
 exports.getAllResciliaciones = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
     try {
         const { proyecto_id } = req.query;
         const params = [];
@@ -916,7 +894,6 @@ exports.getAllResciliaciones = async (req, res) => {
 };
 
 exports.getResciliacionById = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
     try {
         const { id } = req.params;
         const [resc, cuotas] = await Promise.all([
@@ -946,7 +923,6 @@ exports.getResciliacionById = async (req, res) => {
 };
 
 exports.updateResciliacion = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
     try {
         const { id } = req.params;
         const { tipo_devolucion, monto_total_devolucion, monto_pie_devolucion,
@@ -969,7 +945,6 @@ exports.updateResciliacion = async (req, res) => {
 };
 
 exports.setCuotasDevolucion = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
     try {
         const { id } = req.params;
         const { cuotas } = req.body;
@@ -1092,7 +1067,6 @@ exports.uploadDocumentoResciliacion = async (req, res) => {
 };
 
 exports.getParcelasVendidas = async (req, res) => {
-    if (!await isAuthorized(req)) return res.status(403).json({ message: 'Sin acceso.' });
     try {
         const { proyecto_id } = req.query;
         if (!proyecto_id) return res.status(400).json({ message: 'proyecto_id es requerido.' });

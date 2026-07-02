@@ -47,7 +47,8 @@
             </li>
         </ul>
 
-        <% if (user && (user.role === 'admin' || (typeof imPuedeVer !== 'undefined' && imPuedeVer))) { %>
+        <% const _imAdmin = user && (user.role === 'admin' || String(user.role || '').toLowerCase() === 'administrador'); %>
+        <% if (user && (_imAdmin || (typeof imPuedeVer !== 'undefined' && imPuedeVer))) { %>
             
             <div class="nav-group-label">Gestión de Campos</div>
             <ul class="nav-list">

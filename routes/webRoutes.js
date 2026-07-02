@@ -53,22 +53,34 @@ const requireAuthApi = (req, res, next) => {
     next();
 };
 
-// API: mismo criterio de acceso que las vistas /admin/inmobiliaria/*
-const requireImAccessApi = async (req, res, next) => {
-    if (!req.session?.user) return res.status(401).json({ message: 'No autenticado.' });
-    const role = String(req.session.user.role || '').toLowerCase();
-    if (role === 'admin' || role === 'administrador') return next();
+function isImAdmin(user) {
+    const role = String(user?.role || '').toLowerCase();
+    return role === 'admin' || role === 'administrador';
+}
+
+async function userHasImAccess(user) {
+    if (!user?.id) return false;
+    if (isImAdmin(user)) return true;
     try {
         const r = await pool.query(
             'SELECT 1 FROM im_accesos WHERE user_id::text = $1 LIMIT 1',
-            [String(req.session.user.id)]
+            [String(user.id)]
         );
-        if (r.rows.length > 0) return next();
+        return r.rows.length > 0;
     } catch (e) {
-        console.error('[requireImAccessApi]', e.message);
+        console.error('[userHasImAccess]', e.message);
+        return false;
     }
+}
+
+// API: admin o agente con acceso en im_accesos
+const requireImAccessApi = async (req, res, next) => {
+    if (!req.session?.user) return res.status(401).json({ message: 'No autenticado.' });
+    if (await userHasImAccess(req.session.user)) return next();
     return res.status(403).json({ message: 'No tienes acceso al módulo de gestión de campos.' });
 };
+
+const imAccess = [requireAuthApi, requireImAccessApi];
 
 // --- MIDDLEWARE: Inyecta flags de acceso al módulo inmobiliaria en res.locals ---
 const setImAcceso = async (req, res, next) => {
@@ -77,14 +89,15 @@ const setImAcceso = async (req, res, next) => {
         res.locals.imPuedeCrear = false;
         return next();
     }
-    if (req.session.user.role === 'admin') {
+    if (isImAdmin(req.session.user)) {
         res.locals.imPuedeVer = true;
         res.locals.imPuedeCrear = true;
         return next();
     }
     try {
         const r = await pool.query(
-            'SELECT puede_crear FROM im_accesos WHERE user_id = $1', [req.session.user.id]
+            'SELECT puede_crear FROM im_accesos WHERE user_id::text = $1 LIMIT 1',
+            [String(req.session.user.id)]
         );
         res.locals.imPuedeVer   = r.rows.length > 0;
         res.locals.imPuedeCrear = r.rows.length > 0 && r.rows[0].puede_crear;
@@ -272,33 +285,25 @@ router.get('/admin/marca', requireAuth, (req, res) => {
 
 // Vistas
 router.get('/admin/inmobiliaria', requireAuth, async (req, res) => {
-    const isAdmin = req.session.user.role === 'admin';
-    let puedeCrear = isAdmin;
-    let tieneAcceso = isAdmin;
-    if (!isAdmin) {
+    if (!(await userHasImAccess(req.session.user))) return res.redirect('/dashboard');
+    let puedeCrear = isImAdmin(req.session.user);
+    if (!puedeCrear) {
         try {
-            const r = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
-            tieneAcceso = r.rows.length > 0;
-            puedeCrear  = r.rows.length > 0 && r.rows[0].puede_crear;
+            const r = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id::text = $1 LIMIT 1', [String(req.session.user.id)]);
+            puedeCrear = r.rows.length > 0 && r.rows[0].puede_crear;
         } catch (_) {}
     }
-    if (!tieneAcceso) return res.redirect('/dashboard');
     res.render('admin/gestion-inmobiliaria', { user: req.session.user, page: 'inmobiliaria', puedeCrear });
 });
 router.get('/admin/inmobiliaria/proyectos/:id', requireAuth, async (req, res) => {
-    const isAdmin = req.session.user.role === 'admin';
-    let tieneAcceso = isAdmin;
-    let puedeCrear  = isAdmin;
-    if (!isAdmin) {
+    if (!(await userHasImAccess(req.session.user))) return res.redirect('/dashboard');
+    let puedeCrear = isImAdmin(req.session.user);
+    if (!puedeCrear) {
         try {
-            const { rows } = await pool.query(
-                `SELECT puede_crear FROM im_accesos WHERE user_id=$1`, [req.session.user.id]
-            );
-            tieneAcceso = rows.length > 0;
-            puedeCrear  = rows.length > 0; // tener acceso = puede operar todo
-        } catch (_) { tieneAcceso = false; }
+            const { rows } = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id::text = $1 LIMIT 1', [String(req.session.user.id)]);
+            puedeCrear = rows.length > 0;
+        } catch (_) { puedeCrear = false; }
     }
-    if (!tieneAcceso) return res.redirect('/dashboard');
     res.render('admin/proyecto-parcelas', {
         user: req.session.user,
         page: 'inmobiliaria',
@@ -308,119 +313,94 @@ router.get('/admin/inmobiliaria/proyectos/:id', requireAuth, async (req, res) =>
 });
 
 router.get('/admin/inmobiliaria/clientes', requireAuth, async (req, res) => {
-    const isAdmin = req.session.user.role === 'admin';
-    let tieneAcceso = isAdmin;
-    if (!isAdmin) {
-        try {
-            const r = await pool.query('SELECT 1 FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
-            tieneAcceso = r.rows.length > 0;
-        } catch (_) {}
-    }
-    if (!tieneAcceso) return res.redirect('/dashboard');
+    if (!(await userHasImAccess(req.session.user))) return res.redirect('/dashboard');
     res.render('admin/clientes-im', { user: req.session.user, page: 'clientes-im' });
 });
 
 router.get('/admin/inmobiliaria/cuotas', requireAuth, async (req, res) => {
-    const isAdmin = req.session.user.role === 'admin';
-    let tieneAcceso = isAdmin;
-    if (!isAdmin) {
-        try {
-            const r = await pool.query('SELECT 1 FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
-            tieneAcceso = r.rows.length > 0;
-        } catch (_) {}
-    }
-    if (!tieneAcceso) return res.redirect('/dashboard');
+    if (!(await userHasImAccess(req.session.user))) return res.redirect('/dashboard');
     res.render('admin/cuotas-im', { user: req.session.user, page: 'cuotas-im' });
 });
 
 router.get('/admin/inmobiliaria/resciliaciones', requireAuth, async (req, res) => {
-    const isAdmin = req.session.user.role === 'admin';
-    let tieneAcceso = isAdmin;
-    if (!isAdmin) {
-        try {
-            const r = await pool.query('SELECT 1 FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
-            tieneAcceso = r.rows.length > 0;
-        } catch (_) {}
-    }
-    if (!tieneAcceso) return res.redirect('/dashboard');
+    if (!(await userHasImAccess(req.session.user))) return res.redirect('/dashboard');
     const proyectosRes = await pool.query(`SELECT id, nombre FROM im_proyectos ORDER BY nombre ASC`).catch(() => ({ rows: [] }));
     res.render('admin/resciliaciones-im', { user: req.session.user, page: 'resciliaciones-im', proyectos: proyectosRes.rows });
 });
 
 router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, async (req, res) => {
-    const isAdmin = req.session.user.role === 'admin';
-    let puedeCrear = isAdmin;
-    let tieneAcceso = isAdmin;
-    if (!isAdmin) {
+    if (!(await userHasImAccess(req.session.user))) return res.redirect('/dashboard');
+    let puedeCrear = isImAdmin(req.session.user);
+    if (!puedeCrear) {
         try {
-            const r = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id=$1', [req.session.user.id]);
-            tieneAcceso = r.rows.length > 0;
-            puedeCrear  = r.rows.length > 0; // tener acceso = puede operar todo
+            const r = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id::text = $1 LIMIT 1', [String(req.session.user.id)]);
+            puedeCrear = r.rows.length > 0;
         } catch (_) {}
     }
-    if (!tieneAcceso) return res.redirect('/dashboard');
     res.render('admin/ficha-parcela', { user: req.session.user, page: 'inmobiliaria', parcelaId: req.params.parcelaId, puedeCrear });
 });
 
 // API – Proyectos Inmobiliaria
-router.get('/api/im/proyectos', requireAuth, inmobiliariaController.getProyectos);
-router.post('/api/im/proyectos', requireAuth, inmobiliariaController.createProyecto);
-router.put('/api/im/proyectos/:id', requireAuth, inmobiliariaController.updateProyecto);
-router.delete('/api/im/proyectos/:id', requireAuth, inmobiliariaController.deleteProyecto);
+router.get('/api/im/proyectos', ...imAccess, inmobiliariaController.getProyectos);
+router.post('/api/im/proyectos', ...imAccess, inmobiliariaController.createProyecto);
+router.put('/api/im/proyectos/:id', ...imAccess, inmobiliariaController.updateProyecto);
+router.delete('/api/im/proyectos/:id', ...imAccess, inmobiliariaController.deleteProyecto);
 
 // API – Parcelas
-router.get('/api/im/proyectos/:proyectoId/parcelas', requireAuth, inmobiliariaController.getParcelas);
-router.get('/api/im/proyectos/:proyectoId/reporte',  requireAuth, inmobiliariaController.getReporte);
-router.get('/api/im/parcelas/:id', requireAuth, inmobiliariaController.getParcelaById);
-router.post('/api/im/parcelas', requireAuth, inmobiliariaController.createParcela);
-router.post('/api/im/parcelas/bulk', requireAuth, inmobiliariaController.createParcelasBulk);
-router.put('/api/im/parcelas/:id', requireAuth, inmobiliariaController.updateParcela);
-router.delete('/api/im/parcelas/:id', requireAuth, inmobiliariaController.deleteParcela);
+router.get('/api/im/proyectos/:proyectoId/parcelas', ...imAccess, inmobiliariaController.getParcelas);
+router.get('/api/im/proyectos/:proyectoId/reporte',  ...imAccess, inmobiliariaController.getReporte);
+router.get('/api/im/parcelas/:id', ...imAccess, inmobiliariaController.getParcelaById);
+router.post('/api/im/parcelas', ...imAccess, inmobiliariaController.createParcela);
+router.post('/api/im/parcelas/bulk', ...imAccess, inmobiliariaController.createParcelasBulk);
+router.put('/api/im/parcelas/:id', ...imAccess, inmobiliariaController.updateParcela);
+router.delete('/api/im/parcelas/:id', ...imAccess, inmobiliariaController.deleteParcela);
 
 // API – Clientes Inmobiliaria
-router.get('/api/im/clientes', requireAuth, inmobiliariaController.getClientes);
-router.get('/api/im/clientes/buscar', requireAuth, inmobiliariaController.buscarClientePorRut);
-router.post('/api/im/clientes', requireAuth, inmobiliariaController.createCliente);
-router.put('/api/im/clientes/:id', requireAuth, inmobiliariaController.updateCliente);
+router.get('/api/im/clientes', ...imAccess, inmobiliariaController.getClientes);
+router.get('/api/im/clientes/buscar', ...imAccess, inmobiliariaController.buscarClientePorRut);
+router.post('/api/im/clientes', ...imAccess, inmobiliariaController.createCliente);
+router.put('/api/im/clientes/:id', ...imAccess, inmobiliariaController.updateCliente);
 
 // API – Ventas de Lotes
-router.get('/api/im/ventas',  requireAuth, inmobiliariaController.getVentas);
-router.post('/api/im/ventas', requireAuth, inmobiliariaController.createVenta);
-router.delete('/api/im/ventas/:id', requireAuth, inmobiliariaController.deleteVenta);
-router.post('/api/im/ventas/:id/resciliar',   requireAuth, inmobiliariaController.resciliarVenta);
-router.post('/api/im/ventas/:id/comprobante', requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteVenta);
+router.get('/api/im/ventas',  ...imAccess, inmobiliariaController.getVentas);
+router.post('/api/im/ventas', ...imAccess, inmobiliariaController.createVenta);
+router.delete('/api/im/ventas/:id', ...imAccess, inmobiliariaController.deleteVenta);
+router.post('/api/im/ventas/:id/resciliar',   ...imAccess, inmobiliariaController.resciliarVenta);
+router.post('/api/im/ventas/:id/comprobante', ...imAccess, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteVenta);
 
 // API – Cuotas de pago
-router.get('/api/im/cuotas',                    requireAuthApi, requireImAccessApi, inmobiliariaController.getAllCuotas);
-router.get('/api/im/cuotas/:ventaId',           requireAuthApi, requireImAccessApi, inmobiliariaController.getCuotas);
-router.put('/api/im/cuotas/:id',                requireAuthApi, requireImAccessApi, inmobiliariaController.updateCuota);
-router.post('/api/im/cuotas/:id/comprobante',   requireAuthApi, requireImAccessApi, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteCuota);
+router.get('/api/im/cuotas',                    ...imAccess, inmobiliariaController.getAllCuotas);
+router.get('/api/im/cuotas/:ventaId',           ...imAccess, inmobiliariaController.getCuotas);
+router.put('/api/im/cuotas/:id',                ...imAccess, inmobiliariaController.updateCuota);
+router.post('/api/im/cuotas/:id/comprobante',   ...imAccess, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteCuota);
 
 // API – Resciliaciones
-router.get('/api/im/resciliaciones',            requireAuth, inmobiliariaController.getAllResciliaciones);
-router.get('/api/im/resciliaciones/:id',        requireAuth, inmobiliariaController.getResciliacionById);
-router.patch('/api/im/resciliaciones/:id',      requireAuth, inmobiliariaController.updateResciliacion);
-router.post('/api/im/resciliaciones/:id/cuotas-devolucion', requireAuth, inmobiliariaController.setCuotasDevolucion);
-router.patch('/api/im/cuotas-devolucion/:id/pagar', requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.pagarCuotaDevolucion);
-router.post('/api/im/resciliaciones/:id/documento', requireAuth, uploadDocMemory.single('archivo'), inmobiliariaController.uploadDocumentoResciliacion);
-router.get('/api/im/parcelas/vendidas',         requireAuth, inmobiliariaController.getParcelasVendidas);
+router.get('/api/im/resciliaciones',            ...imAccess, inmobiliariaController.getAllResciliaciones);
+router.get('/api/im/resciliaciones/:id',        ...imAccess, inmobiliariaController.getResciliacionById);
+router.patch('/api/im/resciliaciones/:id',      ...imAccess, inmobiliariaController.updateResciliacion);
+router.post('/api/im/resciliaciones/:id/cuotas-devolucion', ...imAccess, inmobiliariaController.setCuotasDevolucion);
+router.patch('/api/im/cuotas-devolucion/:id/pagar', ...imAccess, uploadDocMemory.single('archivo'), inmobiliariaController.pagarCuotaDevolucion);
+router.post('/api/im/resciliaciones/:id/documento', ...imAccess, uploadDocMemory.single('archivo'), inmobiliariaController.uploadDocumentoResciliacion);
+router.get('/api/im/parcelas/vendidas',         ...imAccess, inmobiliariaController.getParcelasVendidas);
 
 // API – Documentos (Supabase Storage)
-router.get('/api/im/documentos/test-storage', requireAuth, documentosController.testStorage);
-router.get('/api/im/documentos',          requireAuth, documentosController.getDocumentos);
-router.get('/api/im/documentos/:id/url',  requireAuth, documentosController.getDocumentoUrl);
-router.post('/api/im/documentos',         requireAuth, uploadDocMemory.single('archivo'), documentosController.uploadDocumento);
-router.patch('/api/im/documentos/:id',    requireAuth, documentosController.renameDocumento);
-router.delete('/api/im/documentos/:id',   requireAuth, documentosController.deleteDocumento);
+router.get('/api/im/documentos/test-storage', ...imAccess, documentosController.testStorage);
+router.get('/api/im/documentos',          ...imAccess, documentosController.getDocumentos);
+router.get('/api/im/documentos/:id/url',  ...imAccess, documentosController.getDocumentoUrl);
+router.post('/api/im/documentos',         ...imAccess, uploadDocMemory.single('archivo'), documentosController.uploadDocumento);
+router.patch('/api/im/documentos/:id',    ...imAccess, documentosController.renameDocumento);
+router.delete('/api/im/documentos/:id',   ...imAccess, documentosController.deleteDocumento);
 
 // API – Auditoría
-router.get('/api/im/auditoria', requireAuth, inmobiliariaController.getAuditoria);
+router.get('/api/im/auditoria', ...imAccess, inmobiliariaController.getAuditoria);
 
-// API – Accesos (admin gestiona qué usuarios ven el módulo)
-router.get('/api/im/usuarios',             requireAuth, inmobiliariaController.getUsuarios);
-router.get('/api/im/accesos',              requireAuth, inmobiliariaController.getAccesos);
-router.post('/api/im/accesos',             requireAuth, inmobiliariaController.setAcceso);
-router.delete('/api/im/accesos/:userId',   requireAuth, inmobiliariaController.deleteAcceso);
+// API – Usuarios del módulo (lectura para selects)
+router.get('/api/im/usuarios', ...imAccess, inmobiliariaController.getUsuarios);
+
+// API – Accesos (solo admin gestiona permisos)
+router.get('/api/im/accesos',              requireAuthApi, inmobiliariaController.getAccesos);
+router.post('/api/im/accesos',             requireAuthApi, inmobiliariaController.setAcceso);
+router.delete('/api/im/accesos/:userId',   requireAuthApi, inmobiliariaController.deleteAcceso);
 
 router.post('/recover-password', authController.recoverPassword);
 router.get('/update-password', authController.showUpdatePassword);

@@ -354,7 +354,7 @@ async function loadResc(){
     $id('resc-loading').style.display='block';
     $id('resc-loading').innerHTML='<i class="bi bi-hourglass-split" style="font-size:2rem;"></i><p style="margin:8px 0 0;font-weight:600;">Cargando resciliaciones...</p>';
     try{
-        const res=await fetch('/api/im/resciliaciones');
+        const res=await fetch('/api/im/resciliaciones',{credentials:'same-origin'});
         if(!res.ok){
             let errMsg='Error del servidor';
             try{ const b=await res.json(); errMsg=b.error||b.message||errMsg; }catch(_){}
