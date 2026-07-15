@@ -395,11 +395,25 @@
                             ? `<span style="font-size:0.68rem;font-weight:600;padding:2px 7px;border-radius:999px;background:#d1fae5;color:#065f46;">Con Rol</span>`
                             : `<span style="font-size:0.68rem;font-weight:600;padding:2px 7px;border-radius:999px;background:#fef9c3;color:#713f12;">En Verde</span>`}
                     </div>
-                    <div class="im-card-meta">
-                        <div class="im-meta-item">
-                            <span class="im-meta-label">Parcelas</span>
-                            <span class="im-meta-value">${p.total_parcelas || 0}</span>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+                        <div style="background:#f8fafc;border-radius:8px;padding:7px;text-align:center;">
+                            <strong style="display:block;color:#0f172a;font-size:.95rem;">${p.parcelas_reales||0}</strong>
+                            <span style="font-size:.62rem;color:#64748b;font-weight:700;text-transform:uppercase;">Total</span>
                         </div>
+                        <div style="background:#ecfdf5;border-radius:8px;padding:7px;text-align:center;">
+                            <strong style="display:block;color:#047857;font-size:.95rem;">${p.disponibles||0}</strong>
+                            <span style="font-size:.62rem;color:#047857;font-weight:700;text-transform:uppercase;">Disponibles</span>
+                        </div>
+                        <div style="background:#fffbeb;border-radius:8px;padding:7px;text-align:center;">
+                            <strong style="display:block;color:#b45309;font-size:.95rem;">${p.reservadas||0}</strong>
+                            <span style="font-size:.62rem;color:#b45309;font-weight:700;text-transform:uppercase;">Reservadas</span>
+                        </div>
+                        <div style="background:#eff6ff;border-radius:8px;padding:7px;text-align:center;">
+                            <strong style="display:block;color:#1d4ed8;font-size:.95rem;">${p.vendidas||0}</strong>
+                            <span style="font-size:.62rem;color:#1d4ed8;font-weight:700;text-transform:uppercase;">Vendidas</span>
+                        </div>
+                    </div>
+                    <div class="im-card-meta">
                         <div class="im-meta-item">
                             <span class="im-meta-label">N° Rol 1</span>
                             <span class="im-meta-value">${p.numero_rol_1 || '—'}</span>
@@ -413,6 +427,14 @@
                             <span class="im-meta-value">${p.numero_matriz || '—'}</span>
                         </div>
                     </div>
+                    ${Number(p.parcelas_reales)>0?`<div>
+                        <div style="display:flex;justify-content:space-between;font-size:.68rem;color:#64748b;margin-bottom:4px;">
+                            <span>Avance comercial</span><strong>${Math.round(((Number(p.reservadas)+Number(p.vendidas))/Number(p.parcelas_reales))*100)}%</strong>
+                        </div>
+                        <div style="height:6px;background:#e2e8f0;border-radius:20px;overflow:hidden;">
+                            <div style="height:100%;width:${Math.round(((Number(p.reservadas)+Number(p.vendidas))/Number(p.parcelas_reales))*100)}%;background:linear-gradient(90deg,#f59e0b,#2563eb);border-radius:20px;"></div>
+                        </div>
+                    </div>`:''}
                     <div class="im-card-footer">
                         <a class="im-btn im-btn-primary" style="flex:1;text-align:center;" href="/admin/inmobiliaria/proyectos/${p.id}">
                             <i class="bi bi-grid-3x3-gap"></i> Ver Parcelas

@@ -317,6 +317,11 @@ router.get('/admin/inmobiliaria/clientes', requireAuth, async (req, res) => {
     res.render('admin/clientes-im', { user: req.session.user, page: 'clientes-im' });
 });
 
+router.get('/admin/inmobiliaria/cartera', requireAuth, async (req, res) => {
+    if (!(await userHasImAccess(req.session.user))) return res.redirect('/dashboard');
+    res.render('admin/cartera-im', { user: req.session.user, page: 'cartera-im' });
+});
+
 router.get('/admin/inmobiliaria/cuotas', requireAuth, async (req, res) => {
     if (!(await userHasImAccess(req.session.user))) return res.redirect('/dashboard');
     res.render('admin/cuotas-im', { user: req.session.user, page: 'cuotas-im' });
@@ -342,6 +347,7 @@ router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, async (req, re
 
 // API – Proyectos Inmobiliaria
 router.get('/api/im/proyectos', ...imAccess, inmobiliariaController.getProyectos);
+router.get('/api/im/cartera', ...imAccess, inmobiliariaController.getCartera);
 router.post('/api/im/proyectos', ...imAccess, inmobiliariaController.createProyecto);
 router.put('/api/im/proyectos/:id', ...imAccess, inmobiliariaController.updateProyecto);
 router.delete('/api/im/proyectos/:id', ...imAccess, inmobiliariaController.deleteProyecto);

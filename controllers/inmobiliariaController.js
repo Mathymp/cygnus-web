@@ -60,7 +60,18 @@ async function auditLog(client, { tabla, entidadId, accion, descripcion, req }) 
 
 exports.getProyectos = async (req, res) => {
     try {
-        const result = await pool.query(`SELECT * FROM im_proyectos ORDER BY creado_at DESC`);
+        const result = await pool.query(`
+            SELECT pr.*,
+                   COUNT(pa.id)::int AS parcelas_reales,
+                   COUNT(pa.id) FILTER (WHERE COALESCE(pa.estado_venta,'disponible')='disponible')::int AS disponibles,
+                   COUNT(pa.id) FILTER (WHERE pa.estado_venta='reservado')::int AS reservadas,
+                   COUNT(pa.id) FILTER (WHERE pa.estado_venta='vendido')::int AS vendidas,
+                   COALESCE(SUM(pa.precio_actual) FILTER (WHERE COALESCE(pa.estado_venta,'disponible')='disponible'),0) AS valor_disponible
+            FROM im_proyectos pr
+            LEFT JOIN im_parcelas pa ON pa.proyecto_id=pr.id
+            GROUP BY pr.id
+            ORDER BY pr.creado_at DESC
+        `);
         res.json(result.rows);
     } catch (e) { res.status(500).json({ error: e.message }); }
 };
@@ -1179,4 +1190,218 @@ exports.getParcelasVendidas = async (req, res) => {
         `, [proyecto_id]);
         res.json(result.rows);
     } catch (e) { res.status(500).json({ error: e.message }); }
+};
+
+// ==========================================
+//  CARTERA EJECUTIVA — métricas reales
+// ==========================================
+
+exports.getCartera = async (req, res) => {
+    try {
+        await ensureSchemaOnce();
+        const { proyecto_id, tipo_proyecto } = req.query;
+        const params = [];
+        const filters = [];
+        if (proyecto_id) {
+            params.push(proyecto_id);
+            filters.push(`pr.id=$${params.length}`);
+        }
+        if (tipo_proyecto) {
+            params.push(tipo_proyecto);
+            filters.push(`pr.tipo_proyecto=$${params.length}`);
+        }
+        const projectWhere = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+        const projectAnd = filters.length ? `AND ${filters.join(' AND ')}` : '';
+
+        const [
+            inventarioRes,
+            ventasRes,
+            cuotasRes,
+            proyectosRes,
+            tiposRes,
+            agentesRes,
+            resciliacionesRes,
+            tendenciaRes,
+            alertasRes
+        ] = await Promise.all([
+            pool.query(`
+                SELECT COUNT(pa.id)::int AS total,
+                       COUNT(pa.id) FILTER (WHERE COALESCE(pa.estado_venta,'disponible')='disponible')::int AS disponibles,
+                       COUNT(pa.id) FILTER (WHERE pa.estado_venta='reservado')::int AS reservadas,
+                       COUNT(pa.id) FILTER (WHERE pa.estado_venta='vendido')::int AS vendidas,
+                       COALESCE(SUM(pa.precio_actual),0) AS valor_lista_total,
+                       COALESCE(SUM(pa.precio_actual) FILTER (WHERE COALESCE(pa.estado_venta,'disponible')='disponible'),0) AS valor_inventario_disponible,
+                       COALESCE(SUM(pa.metraje),0) AS metraje_total,
+                       COALESCE(SUM(pa.metraje) FILTER (WHERE COALESCE(pa.estado_venta,'disponible')='disponible'),0) AS metraje_disponible
+                FROM im_proyectos pr
+                LEFT JOIN im_parcelas pa ON pa.proyecto_id=pr.id
+                ${projectWhere}
+            `, params),
+            pool.query(`
+                SELECT COUNT(v.id)::int AS operaciones_activas,
+                       COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_compraventa,false)=true)::int AS ventas_cerradas,
+                       COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_compraventa,false)=false)::int AS reservas_vigentes,
+                       COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_promesa,false)=true)::int AS promesas_firmadas,
+                       COUNT(DISTINCT v.cliente_id)::int AS clientes_activos,
+                       COUNT(v.id) FILTER (WHERE COALESCE(v.tipo_pago,'contado')='contado')::int AS operaciones_contado,
+                       COUNT(v.id) FILTER (WHERE v.tipo_pago='credito')::int AS operaciones_credito,
+                       COALESCE(SUM(v.precio_acordado),0) AS cartera_acordada,
+                       COALESCE(SUM(v.precio_acordado) FILTER (WHERE COALESCE(v.tipo_pago,'contado')='contado'),0) AS monto_contado,
+                       COALESCE(SUM(v.precio_acordado) FILTER (WHERE v.tipo_pago='credito'),0) AS monto_credito,
+                       COALESCE(SUM(v.monto_pie) FILTER (WHERE v.tipo_pago='credito'),0) AS pie_comprometido,
+                       COALESCE(SUM(GREATEST(COALESCE(v.precio_lista,0)-COALESCE(v.precio_acordado,0),0)),0) AS descuento_total,
+                       COALESCE(AVG(v.precio_acordado) FILTER (WHERE v.precio_acordado IS NOT NULL),0) AS ticket_promedio
+                FROM im_ventas_lotes v
+                JOIN im_parcelas pa ON pa.id=v.parcela_id
+                JOIN im_proyectos pr ON pr.id=pa.proyecto_id
+                WHERE COALESCE(v.estado,'activa')='activa' ${projectAnd}
+            `, params),
+            pool.query(`
+                SELECT COUNT(q.id)::int AS cuotas_total,
+                       COUNT(q.id) FILTER (WHERE q.pagado=true)::int AS cuotas_pagadas,
+                       COUNT(q.id) FILTER (WHERE q.pagado=false)::int AS cuotas_pendientes,
+                       COUNT(q.id) FILTER (WHERE q.pagado=false AND q.fecha_vencimiento<CURRENT_DATE)::int AS cuotas_vencidas,
+                       COALESCE(SUM(q.monto) FILTER (WHERE q.pagado=true),0) AS monto_cobrado,
+                       COALESCE(SUM(q.monto) FILTER (WHERE q.pagado=false),0) AS saldo_pendiente,
+                       COALESCE(SUM(q.monto) FILTER (WHERE q.pagado=false AND q.fecha_vencimiento<CURRENT_DATE),0) AS monto_mora,
+                       COUNT(DISTINCT q.venta_id) FILTER (
+                           WHERE q.pagado=false AND q.fecha_vencimiento<CURRENT_DATE
+                       )::int AS contratos_en_mora,
+                       COUNT(q.id) FILTER (
+                           WHERE q.pagado=false AND q.fecha_vencimiento BETWEEN CURRENT_DATE AND CURRENT_DATE+INTERVAL '30 days'
+                       )::int AS vencen_30_dias
+                FROM im_cuotas q
+                JOIN im_ventas_lotes v ON v.id=q.venta_id AND COALESCE(v.estado,'activa')='activa'
+                JOIN im_parcelas pa ON pa.id=v.parcela_id
+                JOIN im_proyectos pr ON pr.id=pa.proyecto_id
+                WHERE 1=1 ${projectAnd}
+            `, params),
+            pool.query(`
+                WITH inv AS (
+                    SELECT pr.id, pr.nombre, pr.tipo_proyecto, pr.estado,
+                           COUNT(pa.id)::int AS total,
+                           COUNT(pa.id) FILTER (WHERE COALESCE(pa.estado_venta,'disponible')='disponible')::int AS disponibles,
+                           COUNT(pa.id) FILTER (WHERE pa.estado_venta='reservado')::int AS reservadas,
+                           COUNT(pa.id) FILTER (WHERE pa.estado_venta='vendido')::int AS vendidas,
+                           COALESCE(SUM(pa.precio_actual) FILTER (WHERE COALESCE(pa.estado_venta,'disponible')='disponible'),0) AS valor_disponible
+                    FROM im_proyectos pr
+                    LEFT JOIN im_parcelas pa ON pa.proyecto_id=pr.id
+                    ${projectWhere}
+                    GROUP BY pr.id
+                ), ven AS (
+                    SELECT pa.proyecto_id,
+                           COUNT(v.id)::int AS operaciones,
+                           COALESCE(SUM(v.precio_acordado),0) AS cartera,
+                           COUNT(v.id) FILTER (WHERE v.tipo_pago='credito')::int AS creditos
+                    FROM im_ventas_lotes v
+                    JOIN im_parcelas pa ON pa.id=v.parcela_id
+                    WHERE COALESCE(v.estado,'activa')='activa'
+                    GROUP BY pa.proyecto_id
+                ), cob AS (
+                    SELECT pa.proyecto_id,
+                           COALESCE(SUM(q.monto) FILTER (WHERE q.pagado=false),0) AS saldo,
+                           COALESCE(SUM(q.monto) FILTER (WHERE q.pagado=false AND q.fecha_vencimiento<CURRENT_DATE),0) AS mora
+                    FROM im_cuotas q
+                    JOIN im_ventas_lotes v ON v.id=q.venta_id AND COALESCE(v.estado,'activa')='activa'
+                    JOIN im_parcelas pa ON pa.id=v.parcela_id
+                    GROUP BY pa.proyecto_id
+                )
+                SELECT inv.*, COALESCE(ven.operaciones,0)::int AS operaciones,
+                       COALESCE(ven.cartera,0) AS cartera, COALESCE(ven.creditos,0)::int AS creditos,
+                       COALESCE(cob.saldo,0) AS saldo, COALESCE(cob.mora,0) AS mora
+                FROM inv
+                LEFT JOIN ven ON ven.proyecto_id=inv.id
+                LEFT JOIN cob ON cob.proyecto_id=inv.id
+                ORDER BY inv.nombre
+            `, params),
+            pool.query(`
+                SELECT COALESCE(pr.tipo_proyecto,'en_verde') AS tipo,
+                       COUNT(pa.id)::int AS total,
+                       COUNT(pa.id) FILTER (WHERE COALESCE(pa.estado_venta,'disponible')='disponible')::int AS disponibles,
+                       COUNT(pa.id) FILTER (WHERE pa.estado_venta='reservado')::int AS reservadas,
+                       COUNT(pa.id) FILTER (WHERE pa.estado_venta='vendido')::int AS vendidas
+                FROM im_proyectos pr
+                LEFT JOIN im_parcelas pa ON pa.proyecto_id=pr.id
+                ${projectWhere}
+                GROUP BY COALESCE(pr.tipo_proyecto,'en_verde')
+                ORDER BY tipo
+            `, params),
+            pool.query(`
+                SELECT COALESCE(NULLIF(v.agente_nombre,''),'Sin asignar') AS agente,
+                       COUNT(v.id)::int AS operaciones,
+                       COUNT(v.id) FILTER (WHERE v.firmo_compraventa=true)::int AS cerradas,
+                       COALESCE(SUM(v.precio_acordado),0) AS monto,
+                       COALESCE(AVG(v.precio_acordado) FILTER (WHERE v.precio_acordado IS NOT NULL),0) AS ticket
+                FROM im_ventas_lotes v
+                JOIN im_parcelas pa ON pa.id=v.parcela_id
+                JOIN im_proyectos pr ON pr.id=pa.proyecto_id
+                WHERE COALESCE(v.estado,'activa')='activa' ${projectAnd}
+                GROUP BY COALESCE(NULLIF(v.agente_nombre,''),'Sin asignar')
+                ORDER BY monto DESC, operaciones DESC
+                LIMIT 10
+            `, params),
+            pool.query(`
+                SELECT COUNT(DISTINCT r.id)::int AS total_resciliaciones,
+                       COUNT(DISTINCT r.id) FILTER (WHERE COALESCE(r.estado,'activa')='activa')::int AS devoluciones_abiertas,
+                       COALESCE(SUM(cd.monto) FILTER (WHERE cd.pagado=false),0) AS devolucion_pendiente,
+                       COALESCE(SUM(cd.monto) FILTER (WHERE cd.pagado=false AND cd.fecha_vencimiento<CURRENT_DATE),0) AS devolucion_vencida
+                FROM im_resciliaciones r
+                JOIN im_parcelas pa ON pa.id=r.parcela_id
+                JOIN im_proyectos pr ON pr.id=pa.proyecto_id
+                LEFT JOIN im_cuotas_devolucion cd ON cd.resciliacion_id=r.id
+                WHERE 1=1 ${projectAnd}
+            `, params),
+            pool.query(`
+                SELECT TO_CHAR(m.mes,'YYYY-MM') AS mes,
+                       TO_CHAR(m.mes,'Mon YY') AS etiqueta,
+                       COUNT(v.id)::int AS operaciones,
+                       COALESCE(SUM(v.precio_acordado),0) AS monto
+                FROM GENERATE_SERIES(
+                    DATE_TRUNC('month',CURRENT_DATE)-INTERVAL '11 months',
+                    DATE_TRUNC('month',CURRENT_DATE),
+                    INTERVAL '1 month'
+                ) m(mes)
+                LEFT JOIN (
+                    SELECT v.*
+                    FROM im_ventas_lotes v
+                    JOIN im_parcelas pa ON pa.id=v.parcela_id
+                    JOIN im_proyectos pr ON pr.id=pa.proyecto_id
+                    WHERE COALESCE(v.estado,'activa')='activa' ${projectAnd}
+                ) v ON DATE_TRUNC('month',COALESCE(v.fecha_venta,v.creado_at))=m.mes
+                GROUP BY m.mes
+                ORDER BY m.mes
+            `, params),
+            pool.query(`
+                SELECT q.id, q.numero_cuota, q.monto, q.fecha_vencimiento,
+                       CURRENT_DATE-q.fecha_vencimiento AS dias_atraso,
+                       c.nombre_completo AS cliente, c.telefono,
+                       pa.id AS parcela_id, pa.numero_parcela,
+                       pr.nombre AS proyecto
+                FROM im_cuotas q
+                JOIN im_ventas_lotes v ON v.id=q.venta_id AND COALESCE(v.estado,'activa')='activa'
+                JOIN im_clientes c ON c.id=v.cliente_id
+                JOIN im_parcelas pa ON pa.id=v.parcela_id
+                JOIN im_proyectos pr ON pr.id=pa.proyecto_id
+                WHERE q.pagado=false AND q.fecha_vencimiento<CURRENT_DATE ${projectAnd}
+                ORDER BY q.fecha_vencimiento ASC
+                LIMIT 12
+            `, params)
+        ]);
+
+        res.json({
+            inventario: inventarioRes.rows[0],
+            ventas: ventasRes.rows[0],
+            cobranza: cuotasRes.rows[0],
+            resciliaciones: resciliacionesRes.rows[0],
+            proyectos: proyectosRes.rows,
+            tipos: tiposRes.rows,
+            agentes: agentesRes.rows,
+            tendencia: tendenciaRes.rows,
+            alertas_mora: alertasRes.rows,
+            generado_en: new Date().toISOString()
+        });
+    } catch (e) {
+        console.error('[getCartera]', e.message);
+        res.status(500).json({ error: e.message, message: e.message });
+    }
 };
