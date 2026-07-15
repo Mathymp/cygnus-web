@@ -610,19 +610,23 @@ function switchTab(name,btn){
     if(name==='docs-venta'){
         if(ventaData&&ventaData.id){
             $('no-venta-doc-msg').style.display='none';
-            initDM('venta',ventaData.id);loadDocs('venta',ventaData.id);
+            initDM('venta',ventaData.id,true);
+            loadDocs('venta',ventaData.id);
         } else {
             $('no-venta-doc-msg').style.display='block';
             $('dm-venta').innerHTML='';
+            delete dmState.venta;
         }
     }
     if(name==='docs-persona'){
         if(currentClienteId){
             $('no-cliente-msg').style.display='none';
-            initDM('persona',currentClienteId);loadDocs('persona',currentClienteId);
+            initDM('persona',currentClienteId,true);
+            loadDocs('persona',currentClienteId);
         } else {
             $('no-cliente-msg').style.display='block';
             $('dm-persona').innerHTML='';
+            delete dmState.persona;
         }
     }
     if(name==='docs-lote'){initDM('lote',PARCELA_ID);loadDocs('parcela',PARCELA_ID);}
@@ -631,11 +635,33 @@ function switchTab(name,btn){
 }
 
 function setPagoTipo(tipo){
-    pagoTipoActual=tipo;
-    $('tab-contado').classList.toggle('active',tipo==='contado');
-    $('tab-credito').classList.toggle('active',tipo==='credito');
-    $('section-contado').style.display=tipo==='contado'?'block':'none';
-    $('section-credito').style.display=tipo==='credito'?'block':'none';
+    pagoTipoActual=tipo==='credito'?'credito':'contado';
+    const tabC=$('tab-contado'),tabR=$('tab-credito'),secC=$('section-contado'),secR=$('section-credito');
+    if(tabC)tabC.classList.toggle('active',pagoTipoActual==='contado');
+    if(tabR)tabR.classList.toggle('active',pagoTipoActual==='credito');
+    if(secC)secC.style.display=pagoTipoActual==='contado'?'block':'none';
+    if(secR)secR.style.display=pagoTipoActual==='credito'?'block':'none';
+}
+
+function resolverTipoPago(venta){
+    if(!venta)return 'contado';
+    if(venta.tipo_pago==='credito'||venta.tipo_pago==='contado')return venta.tipo_pago;
+    const fp=String(venta.forma_pago||'').toLowerCase();
+    if(fp.includes('cr')||fp.includes('cuota'))return 'credito';
+    if(Number(venta.numero_cuotas)>0||Number(venta.monto_cuota)>0)return 'credito';
+    return 'contado';
+}
+
+function habilitarDocsVentaCliente(ventaId,clienteId){
+    if(ventaId){
+        $('no-venta-doc-msg').style.display='none';
+        initDM('venta',ventaId,true);
+    }
+    if(clienteId){
+        currentClienteId=clienteId;
+        $('no-cliente-msg').style.display='none';
+        initDM('persona',clienteId,true);
+    }
 }
 
 // ──────────────── CUOTAS GENERATOR ────────────────
@@ -725,7 +751,11 @@ function renderParcela(data){
     $('parcela-titulo').textContent=`Parcela N° ${p.numero_parcela} — ${p.proyecto_nombre}`;
 
     const eMap={disponible:{cl:'disponible',ic:'bi-circle-fill',t:'Disponible'},reservado:{cl:'reservado',ic:'bi-clock-history',t:'Reservado'},vendido:{cl:'vendido',ic:'bi-bag-check-fill',t:'Vendido'}};
-    const e=eMap[p.estado_venta]||eMap.disponible;
+    // Si hay venta vigente, el estado visual sigue la operación (vendido salvo promesa sola)
+    const estadoVisual=venta
+        ?((venta.firmo_promesa&&!venta.firmo_compraventa)?'reservado':'vendido')
+        :(p.estado_venta||'disponible');
+    const e=eMap[estadoVisual]||eMap.disponible;
     $('parcela-estado-badge').innerHTML=`<span class="im-status-badge ${e.cl}"><i class="bi ${e.ic}"></i> ${e.t}</span>`;
     $('header-actions').innerHTML=((IS_ADMIN||PUEDE_CREAR)&&venta)
         ?`<button class="im-btn im-btn-warning" onclick="openResciliarModal()" style="background:#f59e0b;color:#fff;border-color:#f59e0b;">
@@ -736,7 +766,7 @@ function renderParcela(data){
     $('edit-rol').value=p.numero_rol_parcela||'';
     $('edit-metraje').value=p.metraje||'';
     if(p.precio_actual)$('edit-precio').value=Number(p.precio_actual).toLocaleString('es-CL');
-    $('edit-estado').value=p.estado_venta;
+    $('edit-estado').value=estadoVisual;
 
     // Historial precios
     if(hist.length===0){
@@ -753,8 +783,9 @@ function renderParcela(data){
 
     // Venta actual
     if(venta){
+        ventaData=venta;
         currentClienteId=venta.cliente_id;
-        const tipoPago=venta.tipo_pago||'contado';
+        const tipoPago=resolverTipoPago(venta);
         const cuotasPagadas=cuotas.filter(c=>c.pagado).length;
         const cuotasTotales=cuotas.length;
 
@@ -832,38 +863,42 @@ function renderParcela(data){
         $('btn-editar-venta-wrap').style.display='block';
         formVentaVisible=false;
 
-        // Pre-fill form (venta existente: campos editables, sin banner de visualización)
+        // Pre-fill form completo (cliente + pago)
         setClienteReadonly(false);
         $('cliente-modo-banner').style.display='none';
-        $('venta-cliente-id').value=venta.cliente_id;
-        $('cli-nombre').value=venta.nombre_completo;
-        $('cli-rut').value=venta.rut;
+        $('venta-cliente-id').value=venta.cliente_id||'';
+        $('cli-nombre').value=venta.nombre_completo||'';
+        $('cli-rut').value=venta.rut||'';
         $('cli-telefono').value=venta.telefono||'';if(venta.telefono){autoFmtTel($('cli-telefono'));}
         $('cli-email').value=venta.email||'';
         $('cli-direccion').value=venta.direccion||'';
-        $('cli-estado-civil').value=venta.estado_civil;
-        toggleConyuge(venta.estado_civil);
-        if(venta.regimen_matrimonial&&$('cli-regimen'))$('cli-regimen').value=venta.regimen_matrimonial;
+        $('cli-estado-civil').value=venta.estado_civil||'Soltero/a';
+        toggleConyuge(venta.estado_civil||'Soltero/a');
+        if($('cli-regimen'))$('cli-regimen').value=venta.regimen_matrimonial||'';
         $('cli-conyuge-nombre').value=venta.nombre_conyugue||'';
         $('cli-conyuge-rut').value=venta.rut_conyugue||'';
         $('cli-conyuge-email').value=venta.email_conyugue||'';
         $('cli-conyuge-tel').value=venta.telefono_conyugue||'';if(venta.telefono_conyugue){autoFmtTel($('cli-conyuge-tel'));}
-        $('venta-fecha').value=venta.fecha_venta?venta.fecha_venta.split('T')[0]:'';
-        $('venta-promesa').checked=venta.firmo_promesa;
-        $('venta-compraventa').checked=venta.firmo_compraventa;
+        $('venta-fecha').value=venta.fecha_venta?String(venta.fecha_venta).split('T')[0]:'';
+        $('venta-promesa').checked=!!venta.firmo_promesa;
+        $('venta-compraventa').checked=!!venta.firmo_compraventa;
         $('venta-notas').value=venta.notas||'';
         $('venta-condiciones').value=venta.condiciones_compra||'';
-        if(venta.precio_lista)$('venta-precio-lista').value=Number(venta.precio_lista).toLocaleString('es-CL');
-        if(venta.precio_acordado)$('venta-precio-acordado').value=Number(venta.precio_acordado).toLocaleString('es-CL');
+        $('venta-precio-lista').value=venta.precio_lista?Number(venta.precio_lista).toLocaleString('es-CL'):'';
+        $('venta-precio-acordado').value=venta.precio_acordado?Number(venta.precio_acordado).toLocaleString('es-CL'):'';
 
         // Agente
-        if(venta.agente_id){
-            const sel=$('venta-agente-id');if(sel)sel.value=venta.agente_id;
+        if($('venta-agente-id')){
+            $('venta-agente-id').value=venta.agente_id||'';
             $('venta-agente-nombre').value=venta.agente_nombre||'';
         }
 
-        // Pago tipo
+        // Metodología de pago (contado / crédito)
         setPagoTipo(tipoPago);
+        $('venta-monto-pie').value='';
+        $('venta-numero-credito').value='';
+        $('venta-num-cuotas').value='';
+        $('venta-monto-cuota').value='';
         if(tipoPago==='credito'){
             if(venta.monto_pie)$('venta-monto-pie').value=Number(venta.monto_pie).toLocaleString('es-CL');
             if(venta.numero_credito)$('venta-numero-credito').value=venta.numero_credito;
@@ -874,12 +909,12 @@ function renderParcela(data){
         // Cuotas panel
         if(cuotas.length>0){
             renderCuotasPanel(venta,cuotas);
+        }else{
+            $('section-cuotas-venta').style.display='none';
         }
 
-        $('no-cliente-msg').style.display='none';
-        $('no-venta-doc-msg').style.display='none';
-        initDM('persona',venta.cliente_id);
-        initDM('venta',venta.id);
+        // Habilitar Docs Venta y Docs Cliente siempre que haya venta
+        habilitarDocsVentaCliente(venta.id,venta.cliente_id);
     }else{
         currentClienteId=null;
         ventaData=null;
@@ -890,6 +925,11 @@ function renderParcela(data){
         if(p.precio_actual)$('venta-precio-lista').value=Number(p.precio_actual).toLocaleString('es-CL');
         $('no-cliente-msg').style.display='block';
         $('no-venta-doc-msg').style.display='block';
+        $('dm-venta').innerHTML='';
+        $('dm-persona').innerHTML='';
+        delete dmState.venta;
+        delete dmState.persona;
+        $('section-cuotas-venta').style.display='none';
         // Mostrar formulario si no hay venta
         $('form-venta-wrapper').style.display='block';
         if($('btn-editar-venta-wrap'))$('btn-editar-venta-wrap').style.display='none';
@@ -1284,12 +1324,14 @@ $('form-venta').addEventListener('submit',async(e)=>{
         // Habilitar docs de inmediato (antes del re-init)
         ventaData=ventaGuardada;
         currentClienteId=clienteId;
-        $('no-venta-doc-msg').style.display='none';
-        $('no-cliente-msg').style.display='none';
-        initDM('venta',ventaGuardada.id);
-        initDM('persona',clienteId);
+        habilitarDocsVentaCliente(ventaGuardada.id,clienteId);
 
-        showToast('Comprador y venta guardados correctamente.','success');
+        showToast(
+            $('venta-promesa').checked&&!$('venta-compraventa').checked
+                ? 'Venta guardada. Parcela marcada como Reservada.'
+                : 'Venta guardada. Parcela marcada como Vendida.',
+            'success'
+        );
         await init();
     }catch(err){showToast(err.message,'error','No se pudo guardar');}
     finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta';}}
@@ -1353,10 +1395,10 @@ async function resciliarContrato(){
 // ──────────────── DOCUMENT MANAGER ────────────────
 const dmState={};
 
-function initDM(tipo,asociacionId){
-    const container=$(`dm-${tipo}`);if(!container)return;
-    if(dmState[tipo]&&dmState[tipo].asociacionId===asociacionId)return;
-    dmState[tipo]={asociacionId,initialized:true};
+function initDM(tipo,asociacionId,force=false){
+    const container=$(`dm-${tipo}`);if(!container||!asociacionId)return;
+    if(!force&&dmState[tipo]&&dmState[tipo].asociacionId===String(asociacionId)&&container.innerHTML.trim())return;
+    dmState[tipo]={asociacionId:String(asociacionId),initialized:true};
     container.innerHTML=`
         <div class="step-box" style="margin-bottom:14px;">
             <p class="step-title"><i class="bi bi-cloud-upload"></i> Subir Documentos</p>

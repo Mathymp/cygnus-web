@@ -175,6 +175,18 @@ exports.getParcelaById = async (req, res) => {
     try {
         await ensureSchemaOnce();
         const { id } = req.params;
+        const ventaSelect = `
+            SELECT v.id, v.parcela_id, v.cliente_id, v.firmo_promesa, v.firmo_compraventa,
+                   v.forma_pago, v.fecha_venta, v.precio_lista, v.precio_acordado, v.notas,
+                   v.tipo_pago, v.monto_pie, v.numero_credito, v.numero_cuotas, v.monto_cuota,
+                   v.condiciones_compra, v.comprobante_url, v.comprobante_path,
+                   v.agente_id, v.agente_nombre, v.estado, v.creado_at,
+                   c.id as cliente_id, c.nombre_completo, c.rut, c.email, c.telefono,
+                   c.estado_civil, c.regimen_matrimonial, c.nombre_conyugue, c.rut_conyugue,
+                   c.email_conyugue, c.telefono_conyugue, c.direccion
+            FROM im_ventas_lotes v
+            JOIN im_clientes c ON v.cliente_id = c.id`;
+
         const [parcelaRes, historialRes, ventaRes] = await Promise.all([
             pool.query(
                 `SELECT p.*, pr.nombre as proyecto_nombre, pr.numero_rol_1, pr.numero_rol_2, pr.numero_matriz,
@@ -183,17 +195,45 @@ exports.getParcelaById = async (req, res) => {
             ),
             pool.query(`SELECT precio, fecha_registro FROM im_historial_precios WHERE parcela_id=$1 ORDER BY fecha_registro ASC`, [id]),
             pool.query(
-                `SELECT v.*, c.nombre_completo, c.rut, c.email, c.telefono, c.estado_civil,
-                         c.regimen_matrimonial, c.nombre_conyugue, c.rut_conyugue,
-                         c.email_conyugue, c.telefono_conyugue,
-                         c.direccion, c.id as cliente_id, v.agente_id, v.agente_nombre
-                 FROM im_ventas_lotes v JOIN im_clientes c ON v.cliente_id = c.id
-                 WHERE v.parcela_id=$1 AND COALESCE(v.estado,'activa')='activa' ORDER BY v.creado_at DESC LIMIT 1`, [id]
+                `${ventaSelect}
+                 WHERE v.parcela_id=$1 AND COALESCE(v.estado,'activa')='activa'
+                 ORDER BY v.creado_at DESC LIMIT 1`, [id]
             )
         ]);
         if (parcelaRes.rows.length === 0) return res.status(404).json({ message: 'Parcela no encontrada.' });
 
-        const venta = ventaRes.rows[0] || null;
+        const parcela = parcelaRes.rows[0];
+        let venta = ventaRes.rows[0] || null;
+
+        // Si la parcela está vendida/reservada pero no hay venta "activa",
+        // recuperar la última venta no resciliada (corrige datos desfasados).
+        if (!venta && (parcela.estado_venta === 'vendido' || parcela.estado_venta === 'reservado')) {
+            const fallback = await pool.query(
+                `${ventaSelect}
+                 WHERE v.parcela_id=$1 AND COALESCE(v.estado,'activa') <> 'resciliada'
+                 ORDER BY v.creado_at DESC LIMIT 1`, [id]
+            );
+            if (fallback.rows[0]) {
+                venta = fallback.rows[0];
+                // Reparar estado de la venta para próximas cargas
+                await pool.query(
+                    `UPDATE im_ventas_lotes SET estado='activa'
+                     WHERE id=$1 AND COALESCE(estado,'activa') <> 'activa'`,
+                    [venta.id]
+                ).catch(() => {});
+                venta.estado = 'activa';
+            }
+        }
+
+        // Sincronizar estado de parcela con la venta vigente
+        if (venta) {
+            const esperado = (venta.firmo_promesa && !venta.firmo_compraventa) ? 'reservado' : 'vendido';
+            if (parcela.estado_venta !== esperado) {
+                await pool.query(`UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`, [esperado, id]).catch(() => {});
+                parcela.estado_venta = esperado;
+            }
+        }
+
         let cuotas = [];
         if (venta) {
             const cuotasRes = await pool.query(
@@ -213,18 +253,21 @@ exports.getParcelaById = async (req, res) => {
              FROM im_ventas_lotes v
              JOIN im_clientes c ON v.cliente_id = c.id
              LEFT JOIN im_resciliaciones r ON r.venta_id = v.id
-             WHERE v.parcela_id=$1 AND v.estado <> 'activa'
+             WHERE v.parcela_id=$1 AND COALESCE(v.estado,'activa') <> 'activa'
              ORDER BY v.creado_at DESC`, [id]
         );
 
         res.json({
-            parcela: parcelaRes.rows[0],
+            parcela,
             historial_precios: historialRes.rows,
             venta,
             cuotas,
             historial_ventas: historialVentasRes.rows
         });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) {
+        console.error('[getParcelaById]', e.message);
+        res.status(500).json({ error: e.message, message: e.message });
+    }
 };
 
 exports.createParcela = async (req, res) => {
@@ -645,7 +688,8 @@ exports.createVenta = async (req, res) => {
             }
         }
 
-        const nuevoEstado = firmo_compraventa ? 'vendido' : 'reservado';
+        // Reservado solo si hay promesa SIN compraventa; cualquier otra venta = vendido
+        const nuevoEstado = (firmo_promesa && !firmo_compraventa) ? 'reservado' : 'vendido';
         await client.query(`UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`, [nuevoEstado, parcela_id]);
 
         await auditLog(client, { tabla: 'im_ventas_lotes', entidadId: venta.id,
