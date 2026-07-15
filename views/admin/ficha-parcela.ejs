@@ -285,11 +285,12 @@
                                             style="padding-left:36px;"
                                             class="styled-input"
                                             placeholder="Nombre o RUT del cliente..."
+                                            oninput="buscarClienteLive()"
                                             onkeydown="if(event.key==='Enter'){event.preventDefault();buscarCliente();}">
                                     </div>
                                     <button class="im-btn im-btn-primary" onclick="buscarCliente()"><i class="bi bi-search"></i> Buscar</button>
                                 </div>
-                                <div style="margin-top:6px;font-size:.76rem;color:#94a3b8;"><i class="bi bi-info-circle"></i> Puedes buscar por RUT (ej: 12.345.678-9) o por nombre del cliente.</div>
+                                <div style="margin-top:6px;font-size:.76rem;color:#94a3b8;"><i class="bi bi-info-circle"></i> Escribe un RUT (ej: 12.345.678-9) o nombre — los resultados aparecen mientras escribes.</div>
                                 <div id="cliente-encontrado" style="margin-top:10px;display:none;"></div>
                             </div>
 
@@ -305,6 +306,18 @@
                                 <!-- PASO 2: Datos del comprador -->
                                 <div class="step-box highlight">
                                     <p class="step-title"><span class="step-badge" style="background:#10b981;">2</span> Datos del Comprador</p>
+                                    <div id="cliente-modo-banner" style="display:none;background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+                                        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                                            <div style="font-size:.8rem;color:#065f46;font-weight:700;">
+                                                <i class="bi bi-person-check-fill"></i> Cliente existente — datos en modo visualización
+                                                <span id="cliente-modo-compras" style="display:block;font-weight:500;font-size:.74rem;color:#047857;margin-top:2px;"></span>
+                                            </div>
+                                            <div style="display:flex;gap:6px;">
+                                                <button type="button" class="im-btn im-btn-sm im-btn-ghost" onclick="habilitarEdicionCliente()"><i class="bi bi-pencil"></i> Editar datos</button>
+                                                <button type="button" class="im-btn im-btn-sm im-btn-danger" onclick="quitarClienteSeleccionado()"><i class="bi bi-x-lg"></i> Quitar</button>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="im-input-group"><label>Nombre Completo <span style="color:#ef4444;">*</span></label><input type="text" id="cli-nombre" class="styled-input" placeholder="Nombre y apellidos"></div>
                                     <div class="im-form-row">
                                         <div class="im-input-group">
@@ -819,7 +832,9 @@ function renderParcela(data){
         $('btn-editar-venta-wrap').style.display='block';
         formVentaVisible=false;
 
-        // Pre-fill form
+        // Pre-fill form (venta existente: campos editables, sin banner de visualización)
+        setClienteReadonly(false);
+        $('cliente-modo-banner').style.display='none';
         $('venta-cliente-id').value=venta.cliente_id;
         $('cli-nombre').value=venta.nombre_completo;
         $('cli-rut').value=venta.rut;
@@ -868,6 +883,8 @@ function renderParcela(data){
     }else{
         currentClienteId=null;
         ventaData=null;
+        setClienteReadonly(false);
+        $('cliente-modo-banner').style.display='none';
         $('venta-actual').innerHTML='';
         $('venta-fecha').value=new Date().toISOString().split('T')[0];
         if(p.precio_actual)$('venta-precio-lista').value=Number(p.precio_actual).toLocaleString('es-CL');
@@ -1068,64 +1085,69 @@ async function guardarParcela(event){
 }
 
 // ──────────────── BUSCAR CLIENTE ────────────────
+let clienteSoloLectura=false;
+let _buscarTimer=null;
+const CLI_CAMPOS=['cli-nombre','cli-rut','cli-telefono','cli-email','cli-direccion','cli-conyuge-nombre','cli-conyuge-rut','cli-conyuge-email','cli-conyuge-tel'];
+const CLI_SELECTS=['cli-estado-civil','cli-regimen'];
+
 function clienteCard(c){
-    const data=JSON.stringify(c).replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+    const safe=JSON.stringify(c).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     const detalle=[
         c.rut,
         c.estado_civil,
         c.telefono,
-        c.email,
-        c.direccion?('Dir: '+c.direccion):null
+        c.email
     ].filter(Boolean).map(escH).join(' · ');
-    return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">
+    const nCompras=parseInt(c.total_compras)||0;
+    const comprasBadge=nCompras>0
+        ?`<span style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:20px;padding:1px 8px;font-size:.68rem;font-weight:700;margin-left:6px;">${nCompras} parcela${nCompras!==1?'s':''}</span>`
+        :`<span style="background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;border-radius:20px;padding:1px 8px;font-size:.68rem;font-weight:700;margin-left:6px;">Sin compras</span>`;
+    return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">
         <div style="min-width:0;">
-            <div style="font-weight:700;font-size:.88rem;color:#0f172a;">${escH(c.nombre_completo)}</div>
+            <div style="font-weight:700;font-size:.88rem;color:#0f172a;">${escH(c.nombre_completo)}${comprasBadge}</div>
             <div style="font-size:.76rem;color:#64748b;word-break:break-word;">${detalle}</div>
-            ${c.nombre_conyugue?`<div style="font-size:.72rem;color:#7c3aed;margin-top:2px;">Cónyuge: ${escH(c.nombre_conyugue)}${c.rut_conyugue?' · '+escH(c.rut_conyugue):''}</div>`:''}
+            ${c.direccion?`<div style="font-size:.72rem;color:#94a3b8;margin-top:1px;"><i class="bi bi-geo-alt"></i> ${escH(c.direccion)}</div>`:''}
+            ${c.nombre_conyugue?`<div style="font-size:.72rem;color:#7c3aed;margin-top:1px;"><i class="bi bi-people"></i> Cónyuge: ${escH(c.nombre_conyugue)}${c.rut_conyugue?' · '+escH(c.rut_conyugue):''}</div>`:''}
+            ${c.parcelas_compradas?`<div style="font-size:.72rem;color:#166534;margin-top:1px;"><i class="bi bi-bag-check"></i> Compró: ${escH(c.parcelas_compradas)}</div>`:''}
         </div>
-        <button type="button" class="im-btn im-btn-sm im-btn-primary" onclick='cargarCliente(${JSON.stringify(c).replace(/'/g,"&#39;")})'><i class="bi bi-person-check"></i> Usar</button>
+        <button type="button" class="im-btn im-btn-sm im-btn-primary" data-cliente="${safe}" onclick="cargarClienteFromBtn(this)" style="flex-shrink:0;"><i class="bi bi-person-check"></i> Usar</button>
     </div>`;
 }
 
-async function buscarCliente(){
-    const q=$('buscar-rut').value.trim();
-    if(!q){showToast('Escribe un nombre o RUT para buscar.','warning');return;}
+function renderResultadosClientes(lista){
     const el=$('cliente-encontrado');el.style.display='block';
-    el.innerHTML='<div style="color:#64748b;font-size:.82rem;padding:8px 0;"><i class="bi bi-hourglass-split"></i> Buscando...</div>';
+    el.innerHTML=`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;">
+        <div style="font-size:.76rem;color:#64748b;margin-bottom:8px;font-weight:700;"><i class="bi bi-list-ul"></i> ${lista.length} cliente${lista.length!==1?'s':''} encontrado${lista.length!==1?'s':''} — revisa la información y pulsa "Usar":</div>
+        ${lista.map(clienteCard).join('')}
+    </div>`;
+}
+
+function buscarClienteLive(){
+    clearTimeout(_buscarTimer);
+    const q=$('buscar-rut').value.trim();
+    if(q.length<2){$('cliente-encontrado').style.display='none';return;}
+    _buscarTimer=setTimeout(()=>buscarCliente(true),350);
+}
+
+async function buscarCliente(silencioso=false){
+    const q=$('buscar-rut').value.trim();
+    if(!q){if(!silencioso)showToast('Escribe un nombre o RUT para buscar.','warning');return;}
+    const el=$('cliente-encontrado');el.style.display='block';
+    if(!silencioso)el.innerHTML='<div style="color:#64748b;font-size:.82rem;padding:8px 0;"><i class="bi bi-hourglass-split"></i> Buscando...</div>';
     try{
         const res=await fetch(`/api/im/clientes/buscar?q=${encodeURIComponent(q)}`);
         if(res.status===404){
             el.innerHTML=`<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:.84rem;color:#92400e;">
-                <i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente. Puedes crearlo directamente en el formulario de abajo.</div>`;
-            $('venta-cliente-id').value='';
+                <i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente con "<strong>${escH(q)}</strong>". Puedes crearlo directamente en el formulario de abajo.</div>`;
             return;
         }
         if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||eb.error||`Error ${res.status}`);}
         const data=await res.json();
-        if(data.multiple){
-            el.innerHTML=`<div style="font-size:.78rem;color:#64748b;margin-bottom:6px;font-weight:600;">Se encontraron ${data.clientes.length} clientes — selecciona uno:</div>`
-                +data.clientes.map(c=>{
-                    const safe=JSON.stringify(c).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-                    const detalle=[c.rut,c.estado_civil,c.telefono,c.email].filter(Boolean).map(escH).join(' · ');
-                    return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">
-                        <div style="min-width:0;">
-                            <div style="font-weight:700;font-size:.88rem;color:#0f172a;">${escH(c.nombre_completo)}</div>
-                            <div style="font-size:.76rem;color:#64748b;">${detalle}</div>
-                        </div>
-                        <button type="button" class="im-btn im-btn-sm im-btn-primary" data-cliente="${safe}" onclick="cargarClienteFromBtn(this)"><i class="bi bi-person-check"></i> Usar</button>
-                    </div>`;
-                }).join('');
-        } else {
-            // Un solo resultado: cargar automáticamente la ficha completa
-            el.innerHTML=`<div style="font-size:.78rem;color:#166534;margin-bottom:6px;font-weight:600;"><i class="bi bi-check-circle-fill"></i> Cliente encontrado — datos cargados en el formulario:</div>`
-                +`<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;font-size:.84rem;color:#065f46;">
-                    <strong>${escH(data.nombre_completo)}</strong> · ${escH(data.rut)}
-                    ${data.telefono?' · '+escH(data.telefono):''}
-                    ${data.email?' · '+escH(data.email):''}
-                </div>`;
-            cargarCliente(data);
-        }
-    }catch(e){showToast(e.message,'error','Error al buscar');el.style.display='none';}
+        renderResultadosClientes(data.multiple?data.clientes:[data]);
+    }catch(e){
+        if(!silencioso){showToast(e.message,'error','Error al buscar');}
+        el.style.display='none';
+    }
 }
 
 function cargarClienteFromBtn(btn){
@@ -1133,6 +1155,12 @@ function cargarClienteFromBtn(btn){
         const raw=(btn.getAttribute('data-cliente')||'').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
         cargarCliente(JSON.parse(raw));
     }catch(e){showToast('No se pudo cargar el cliente.','error');}
+}
+
+function setClienteReadonly(ro){
+    clienteSoloLectura=ro;
+    CLI_CAMPOS.forEach(id=>{const f=$(id);if(f){f.readOnly=ro;f.style.background=ro?'#f8fafc':'';f.style.color=ro?'#475569':'';}});
+    CLI_SELECTS.forEach(id=>{const f=$(id);if(f){f.disabled=ro;f.style.background=ro?'#f8fafc':'';f.style.color=ro?'#475569':'';}});
 }
 
 function cargarCliente(c){
@@ -1151,7 +1179,34 @@ function cargarCliente(c){
     $('cli-conyuge-email').value=c.email_conyugue||'';
     $('cli-conyuge-tel').value=c.telefono_conyugue||'';
     if(c.telefono_conyugue)autoFmtTel($('cli-conyuge-tel'));
-    showToast(`Cliente "${c.nombre_completo}" cargado con todos sus datos.`,'success');
+
+    // Modo visualización: el cliente ya existe, sus datos son solo lectura
+    setClienteReadonly(true);
+    $('cliente-modo-banner').style.display='block';
+    const nCompras=parseInt(c.total_compras)||0;
+    $('cliente-modo-compras').textContent=c.parcelas_compradas
+        ?`Ya compró: ${c.parcelas_compradas}. Esta venta se agregará como nueva compra.`
+        :(nCompras>0?`Tiene ${nCompras} compra${nCompras!==1?'s':''} registrada${nCompras!==1?'s':''}.`:'Sin compras anteriores registradas.');
+    // Colapsar la lista de resultados
+    $('cliente-encontrado').style.display='none';
+    $('buscar-rut').value='';
+    showToast(`Cliente "${c.nombre_completo}" seleccionado. Continúa con las condiciones de la venta.`,'success');
+    $('cli-nombre').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function habilitarEdicionCliente(){
+    setClienteReadonly(false);
+    showToast('Edición habilitada. Los cambios actualizarán la ficha del cliente al guardar.','info');
+}
+
+function quitarClienteSeleccionado(){
+    $('venta-cliente-id').value='';
+    setClienteReadonly(false);
+    $('cliente-modo-banner').style.display='none';
+    CLI_CAMPOS.forEach(id=>{const f=$(id);if(f)f.value='';});
+    $('cli-estado-civil').value='Soltero/a';
+    toggleConyuge('Soltero/a');
+    showToast('Cliente quitado. Puedes buscar otro o crear uno nuevo.','info');
 }
 
 // ──────────────── GUARDAR VENTA ────────────────
@@ -1164,7 +1219,9 @@ $('form-venta').addEventListener('submit',async(e)=>{
         let clienteId=$('venta-cliente-id').value;
             const estadoCivil=$('cli-estado-civil').value;
             const clienteBody={nombre_completo:$('cli-nombre').value,rut:$('cli-rut').value,email:$('cli-email').value||null,telefono:$('cli-telefono').value||null,direccion:$('cli-direccion').value||null,estado_civil:estadoCivil,regimen_matrimonial:(estadoCivil==='Casado/a'&&$('cli-regimen'))?$('cli-regimen').value:null,nombre_conyugue:$('cli-conyuge-nombre').value||null,rut_conyugue:$('cli-conyuge-rut').value||null,email_conyugue:$('cli-conyuge-email').value||null,telefono_conyugue:$('cli-conyuge-tel').value||null,reuse_if_exists:true};
-        if(clienteId){
+        if(clienteId&&clienteSoloLectura){
+            // Cliente existente en modo visualización: no tocar sus datos, solo usar su ID
+        }else if(clienteId){
             const r=await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(clienteBody)});
             if(!r.ok){
                 const err=await r.json().catch(()=>({}));

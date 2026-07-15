@@ -406,11 +406,18 @@ exports.buscarClientePorRut = async (req, res) => {
         if (!term) return res.status(400).json({ message: 'Ingresa un RUT o nombre para buscar.' });
 
         const rutNorm = normalizeRut(term);
+        const comprasSub = `(SELECT COUNT(*) FROM im_ventas_lotes v WHERE v.cliente_id = c.id) as total_compras,
+                (SELECT STRING_AGG(pr.nombre || ' P' || pa.numero_parcela, ', ' ORDER BY v2.creado_at DESC)
+                 FROM im_ventas_lotes v2
+                 JOIN im_parcelas pa ON v2.parcela_id = pa.id
+                 JOIN im_proyectos pr ON pa.proyecto_id = pr.id
+                 WHERE v2.cliente_id = c.id AND COALESCE(v2.estado,'activa')='activa') as parcelas_compradas`;
+
         // Si parece RUT (contiene guion o solo dígitos+K), buscar por RUT normalizado
         const esRut = /[0-9kK]-/.test(term) || /^\d{7,9}[kK\d]?$/.test(rutNorm);
         if (esRut && rutNorm.length >= 7) {
             const r = await pool.query(
-                `SELECT * FROM im_clientes WHERE ${rutSqlExpr('rut')} = $1 LIMIT 1`,
+                `SELECT c.*, ${comprasSub} FROM im_clientes c WHERE ${rutSqlExpr('c.rut')} = $1 LIMIT 1`,
                 [rutNorm]
             );
             if (r.rows.length > 0) return res.json(r.rows[0]);
@@ -418,11 +425,11 @@ exports.buscarClientePorRut = async (req, res) => {
 
         // Búsqueda flexible por nombre o RUT (con y sin formato)
         const result = await pool.query(
-            `SELECT * FROM im_clientes
-             WHERE nombre_completo ILIKE $1
-                OR rut ILIKE $1
-                OR ${rutSqlExpr('rut')} LIKE '%' || $2 || '%'
-             ORDER BY nombre_completo ASC LIMIT 8`,
+            `SELECT c.*, ${comprasSub} FROM im_clientes c
+             WHERE c.nombre_completo ILIKE $1
+                OR c.rut ILIKE $1
+                OR ${rutSqlExpr('c.rut')} LIKE '%' || $2 || '%'
+             ORDER BY c.nombre_completo ASC LIMIT 8`,
             [`%${term}%`, rutNorm]
         );
         if (result.rows.length === 0) return res.status(404).json({ message: 'No se encontró ningún cliente con ese nombre o RUT.' });
