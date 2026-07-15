@@ -54,6 +54,27 @@ async function auditLog(client, { tabla, entidadId, accion, descripcion, req }) 
     } catch (_) {}
 }
 
+/**
+ * Resuelve el ejecutivo desde users y usa siempre su nombre real.
+ * Evita guardar un nombre manipulado/desactualizado desde el navegador.
+ */
+async function resolveVentaAgent(client, req, agenteIdBody) {
+    const hasAgentField = Object.prototype.hasOwnProperty.call(req.body, 'agente_id');
+    const requestedId = hasAgentField ? agenteIdBody : req.session?.user?.id;
+    if (!requestedId) return { id: null, nombre: null };
+
+    const result = await client.query(
+        `SELECT id, name FROM users WHERE id::text=$1 LIMIT 1`,
+        [String(requestedId)]
+    );
+    if (result.rows.length === 0) {
+        const err = new Error('El ejecutivo seleccionado no existe o ya no está disponible.');
+        err.status = 400;
+        throw err;
+    }
+    return { id: result.rows[0].id, nombre: result.rows[0].name };
+}
+
 // ==========================================
 //  PROYECTOS
 // ==========================================
@@ -205,11 +226,10 @@ exports.getParcelaById = async (req, res) => {
         const parcela = parcelaRes.rows[0];
         let venta = ventaRes.rows[0] || null;
 
-        // Si no hay venta "activa" pero SÍ existe una venta no resciliada para
-        // esta parcela (p.ej. quedó marcada como 'liberada' o el estado de la
-        // parcela se desfasó), recuperarla y re-activarla. Esto evita que una
-        // compra recién guardada "desaparezca" al recargar el lote.
-        if (!venta) {
+        // Reparar una venta desfasada solo cuando la parcela sigue marcada como
+        // vendida/reservada. Si está disponible, no reactivar ventas históricas
+        // liberadas después de eliminar o resciliar una operación.
+        if (!venta && ['vendido', 'reservado'].includes(parcela.estado_venta)) {
             const fallback = await pool.query(
                 `${ventaSelect}
                  WHERE v.parcela_id=$1 AND COALESCE(v.estado,'activa') <> 'resciliada'
@@ -629,7 +649,7 @@ exports.createVenta = async (req, res) => {
             forma_pago, fecha_venta, precio_lista, precio_acordado, notas,
             tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota,
             condiciones_compra, fechas_cuotas,
-            agente_id, agente_nombre
+            agente_id
         } = req.body;
         if (!parcela_id || !cliente_id) {
             await client.query('ROLLBACK');
@@ -644,15 +664,10 @@ exports.createVenta = async (req, res) => {
             [parcela_id]
         );
 
-        // Agente: si el body envía agente_id (incluso null/"sin asignar"), respetarlo.
-        // Solo usar el usuario de sesión cuando el campo no viene en el body.
-        const hasAgenteField = Object.prototype.hasOwnProperty.call(req.body, 'agente_id');
-        const agenteId = hasAgenteField
-            ? (agente_id || null)
-            : (req.session.user ? req.session.user.id : null);
-        const agenteNombre = hasAgenteField
-            ? (agente_nombre || null)
-            : (req.session.user ? req.session.user.name : null);
+        // Validar el ejecutivo contra users y guardar su nombre canónico.
+        const agente = await resolveVentaAgent(client, req, agente_id);
+        const agenteId = agente.id;
+        const agenteNombre = agente.nombre;
 
         const result = await client.query(
             `INSERT INTO im_ventas_lotes (
@@ -703,8 +718,119 @@ exports.createVenta = async (req, res) => {
     } catch (e) {
         try { await client.query('ROLLBACK'); } catch (_) {}
         console.error('[createVenta]', e.message);
-        res.status(500).json({ error: e.message, message: e.message });
+        res.status(e.status || 500).json({ error: e.message, message: e.message });
     } finally { client.release(); }
+};
+
+exports.updateVenta = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { id } = req.params;
+        const {
+            cliente_id, firmo_promesa, firmo_compraventa, forma_pago,
+            fecha_venta, precio_lista, precio_acordado, notas,
+            tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota,
+            condiciones_compra, fechas_cuotas, agente_id
+        } = req.body;
+        if (!cliente_id) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'El cliente es obligatorio.' });
+        }
+
+        const current = await client.query(
+            `SELECT id, parcela_id FROM im_ventas_lotes WHERE id=$1 FOR UPDATE`,
+            [id]
+        );
+        if (current.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Venta no encontrada.' });
+        }
+
+        const cleanNum = (v) => v && String(v).trim()
+            ? parseFloat(String(v).replace(/\./g, '').replace(',', '.'))
+            : null;
+        const agente = await resolveVentaAgent(client, req, agente_id);
+        await client.query(
+            `UPDATE im_ventas_lotes
+             SET estado='liberada'
+             WHERE parcela_id=$1 AND id<>$2 AND COALESCE(estado,'activa')='activa'`,
+            [current.rows[0].parcela_id, id]
+        );
+        const result = await client.query(
+            `UPDATE im_ventas_lotes SET
+                cliente_id=$1, firmo_promesa=$2, firmo_compraventa=$3, forma_pago=$4,
+                fecha_venta=$5, precio_lista=$6, precio_acordado=$7, notas=$8,
+                tipo_pago=$9, monto_pie=$10, numero_credito=$11, numero_cuotas=$12,
+                monto_cuota=$13, condiciones_compra=$14, agente_id=$15,
+                agente_nombre=$16, estado='activa'
+             WHERE id=$17 RETURNING *`,
+            [
+                cliente_id, !!firmo_promesa, !!firmo_compraventa, forma_pago || null,
+                fecha_venta || new Date().toISOString().split('T')[0],
+                cleanNum(precio_lista), cleanNum(precio_acordado), notas || null,
+                tipo_pago || 'contado', cleanNum(monto_pie), numero_credito || null,
+                parseInt(numero_cuotas, 10) || 0, cleanNum(monto_cuota),
+                condiciones_compra || null, agente.id, agente.nombre, id
+            ]
+        );
+        const venta = result.rows[0];
+
+        // Conservar pagos ya registrados al editar. Solo reemplazar el calendario
+        // cuando el formulario envía expresamente nuevas fechas.
+        if (tipo_pago !== 'credito') {
+            const paid = await client.query(
+                `SELECT COUNT(*)::int AS total FROM im_cuotas WHERE venta_id=$1 AND pagado=true`,
+                [id]
+            );
+            if (paid.rows[0].total > 0) {
+                const err = new Error('No se puede cambiar a contado porque la venta ya tiene cuotas pagadas.');
+                err.status = 409;
+                throw err;
+            }
+            await client.query(`DELETE FROM im_cuotas WHERE venta_id=$1`, [id]);
+        } else if (Array.isArray(fechas_cuotas) && fechas_cuotas.length > 0) {
+            const paid = await client.query(
+                `SELECT COUNT(*)::int AS total FROM im_cuotas WHERE venta_id=$1 AND pagado=true`,
+                [id]
+            );
+            if (paid.rows[0].total > 0) {
+                const err = new Error('No se puede reemplazar el calendario porque ya existen cuotas pagadas.');
+                err.status = 409;
+                throw err;
+            }
+            await client.query(`DELETE FROM im_cuotas WHERE venta_id=$1`, [id]);
+            for (let i = 0; i < fechas_cuotas.length; i++) {
+                const cuota = fechas_cuotas[i];
+                await client.query(
+                    `INSERT INTO im_cuotas (venta_id, numero_cuota, monto, fecha_vencimiento)
+                     VALUES ($1,$2,$3,$4)`,
+                    [id, i + 1, cleanNum(cuota.monto) || cleanNum(monto_cuota), cuota.fecha || null]
+                );
+            }
+        }
+
+        const nuevoEstado = (firmo_promesa && !firmo_compraventa) ? 'reservado' : 'vendido';
+        await client.query(
+            `UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`,
+            [nuevoEstado, current.rows[0].parcela_id]
+        );
+        await auditLog(client, {
+            tabla: 'im_ventas_lotes',
+            entidadId: id,
+            accion: 'ACTUALIZAR',
+            descripcion: `Venta actualizada. Ejecutivo: ${agente.nombre || 'sin asignar'}. Estado: ${nuevoEstado}.`,
+            req
+        });
+        await client.query('COMMIT');
+        res.json(venta);
+    } catch (e) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
+        console.error('[updateVenta]', e.message);
+        res.status(e.status || 500).json({ error: e.message, message: e.message });
+    } finally {
+        client.release();
+    }
 };
 
 exports.deleteVenta = async (req, res) => {
@@ -713,7 +839,10 @@ exports.deleteVenta = async (req, res) => {
         await client.query('BEGIN');
         const { id } = req.params;
         const ventaRes = await client.query(`SELECT parcela_id FROM im_ventas_lotes WHERE id=$1`, [id]);
-        if (ventaRes.rows.length === 0) return res.status(404).json({ message: 'Venta no encontrada.' });
+        if (ventaRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Venta no encontrada.' });
+        }
         await client.query(`DELETE FROM im_ventas_lotes WHERE id=$1`, [id]);
         await client.query(`UPDATE im_parcelas SET estado_venta='disponible' WHERE id=$1`, [ventaRes.rows[0].parcela_id]);
         await auditLog(client, { tabla: 'im_ventas_lotes', entidadId: id,
@@ -734,10 +863,12 @@ exports.resciliarVenta = async (req, res) => {
         const { fecha, motivo, notas } = req.body;
 
         const ventaRes = await client.query(
-            `SELECT parcela_id FROM im_ventas_lotes WHERE id=$1 AND estado='activa'`, [id]
+            `SELECT parcela_id FROM im_ventas_lotes WHERE id=$1 AND COALESCE(estado,'activa')='activa'`, [id]
         );
-        if (ventaRes.rows.length === 0)
+        if (ventaRes.rows.length === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Venta activa no encontrada.' });
+        }
 
         const parcela_id = ventaRes.rows[0].parcela_id;
         const agente = req.session.user ? req.session.user.name : 'Sistema';
@@ -1001,7 +1132,7 @@ exports.getReporte = async (req, res) => {
                 (SELECT COUNT(*) FROM im_cuotas q WHERE q.venta_id=v.id AND q.pagado=true)  as cuotas_pagadas,
                 (SELECT COALESCE(SUM(q.monto),0) FROM im_cuotas q WHERE q.venta_id=v.id AND q.pagado=false) as saldo_pendiente
              FROM im_parcelas pa
-             LEFT JOIN im_ventas_lotes v ON v.parcela_id=pa.id AND v.estado='activa'
+             LEFT JOIN im_ventas_lotes v ON v.parcela_id=pa.id AND COALESCE(v.estado,'activa')='activa'
              LEFT JOIN im_clientes c ON v.cliente_id=c.id
              WHERE pa.proyecto_id=$1
              ORDER BY LENGTH(pa.numero_parcela::TEXT) ASC, pa.numero_parcela ASC`,
@@ -1373,18 +1504,24 @@ exports.getCartera = async (req, res) => {
                 ORDER BY tipo
             `, params),
             pool.query(`
-                SELECT COALESCE(NULLIF(v.agente_nombre,''),'Sin asignar') AS agente,
+                SELECT v.agente_id,
+                       COALESCE(NULLIF(MAX(u.name),''),MAX(NULLIF(v.agente_nombre,'')),'Sin asignar') AS agente,
                        COUNT(v.id)::int AS operaciones,
-                       COUNT(v.id) FILTER (WHERE v.firmo_compraventa=true)::int AS cerradas,
+                       COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_compraventa,false)=true)::int AS cerradas,
+                       COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_compraventa,false)=false)::int AS reservas,
                        COALESCE(SUM(v.precio_acordado),0) AS monto,
-                       COALESCE(AVG(v.precio_acordado) FILTER (WHERE v.precio_acordado IS NOT NULL),0) AS ticket
+                       COALESCE(AVG(v.precio_acordado) FILTER (WHERE v.precio_acordado IS NOT NULL),0) AS ticket,
+                       MAX(COALESCE(v.fecha_venta,v.creado_at::date)) AS ultima_venta
                 FROM im_ventas_lotes v
                 JOIN im_parcelas pa ON pa.id=v.parcela_id
                 JOIN im_proyectos pr ON pr.id=pa.proyecto_id
+                LEFT JOIN users u ON u.id::text=v.agente_id::text
                 WHERE COALESCE(v.estado,'activa')='activa' ${projectAnd}
-                GROUP BY COALESCE(NULLIF(v.agente_nombre,''),'Sin asignar')
+                GROUP BY v.agente_id,
+                         CASE WHEN v.agente_id IS NULL
+                              THEN COALESCE(NULLIF(v.agente_nombre,''),'Sin asignar')
+                              ELSE '' END
                 ORDER BY monto DESC, operaciones DESC
-                LIMIT 10
             `, params),
             pool.query(`
                 SELECT COUNT(DISTINCT r.id)::int AS total_resciliaciones,

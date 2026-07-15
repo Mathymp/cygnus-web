@@ -889,7 +889,17 @@ function renderParcela(data){
 
         // Agente
         if($('venta-agente-id')){
-            $('venta-agente-id').value=venta.agente_id||'';
+            const agenteSelect=$('venta-agente-id');
+            // Mantener visible un ejecutivo histórico aunque ya no aparezca
+            // en el listado actual, para no desasignarlo al editar la venta.
+            if(venta.agente_id&&!Array.from(agenteSelect.options).some(o=>o.value===String(venta.agente_id))){
+                const opt=document.createElement('option');
+                opt.value=venta.agente_id;
+                opt.dataset.nombre=venta.agente_nombre||'Ejecutivo';
+                opt.textContent=`${venta.agente_nombre||'Ejecutivo'} (histórico)`;
+                agenteSelect.appendChild(opt);
+            }
+            agenteSelect.value=venta.agente_id||'';
             $('venta-agente-nombre').value=venta.agente_nombre||'';
         }
 
@@ -1308,7 +1318,11 @@ $('form-venta').addEventListener('submit',async(e)=>{
             agente_id:   agenteSelId  || null,
             agente_nombre: agenteSelNom || null
         };
-        const vRes=await fetch('/api/im/ventas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ventaBody)});
+        // Si ya existe venta, actualizarla en lugar de crear otra. Así se
+        // conservan su ID, documentos y cuotas pagadas al cambiar ejecutivo.
+        const ventaExistenteId=ventaData&&ventaData.id?ventaData.id:null;
+        const ventaUrl=ventaExistenteId?`/api/im/ventas/${ventaExistenteId}`:'/api/im/ventas';
+        const vRes=await fetch(ventaUrl,{method:ventaExistenteId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ventaBody)});
         if(!vRes.ok){const err=await vRes.json().catch(()=>({}));throw new Error(err.message||err.error||`Error ${vRes.status}`);}
         const ventaGuardada=await vRes.json();
 

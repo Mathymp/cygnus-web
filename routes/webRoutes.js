@@ -301,7 +301,7 @@ router.get('/admin/inmobiliaria/proyectos/:id', requireAuth, async (req, res) =>
     if (!puedeCrear) {
         try {
             const { rows } = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id::text = $1 LIMIT 1', [String(req.session.user.id)]);
-            puedeCrear = rows.length > 0;
+            puedeCrear = rows.length > 0 && rows[0].puede_crear === true;
         } catch (_) { puedeCrear = false; }
     }
     res.render('admin/proyecto-parcelas', {
@@ -339,7 +339,7 @@ router.get('/admin/inmobiliaria/parcela/:parcelaId', requireAuth, async (req, re
     if (!puedeCrear) {
         try {
             const r = await pool.query('SELECT puede_crear FROM im_accesos WHERE user_id::text = $1 LIMIT 1', [String(req.session.user.id)]);
-            puedeCrear = r.rows.length > 0;
+            puedeCrear = r.rows.length > 0 && r.rows[0].puede_crear === true;
         } catch (_) {}
     }
     res.render('admin/ficha-parcela', { user: req.session.user, page: 'inmobiliaria', parcelaId: req.params.parcelaId, puedeCrear });
@@ -370,6 +370,7 @@ router.put('/api/im/clientes/:id', ...imAccess, inmobiliariaController.updateCli
 // API – Ventas de Lotes
 router.get('/api/im/ventas',  ...imAccess, inmobiliariaController.getVentas);
 router.post('/api/im/ventas', ...imAccess, inmobiliariaController.createVenta);
+router.put('/api/im/ventas/:id', ...imAccess, inmobiliariaController.updateVenta);
 router.delete('/api/im/ventas/:id', ...imAccess, inmobiliariaController.deleteVenta);
 router.post('/api/im/ventas/:id/resciliar',   ...imAccess, inmobiliariaController.resciliarVenta);
 router.post('/api/im/ventas/:id/comprobante', ...imAccess, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteVenta);
