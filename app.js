@@ -216,7 +216,12 @@ app.use((err, req, res, next) => {
 
     if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(413).json({ success: false, message: 'El archivo es demasiado grande (Máx 100MB).' });
+            let uploadLimits;
+            try { uploadLimits = require('./helpers/uploadLimits'); } catch (_) { uploadLimits = null; }
+            const msg = uploadLimits
+                ? uploadLimits.sizeLimitMessage(err)
+                : 'El archivo es demasiado pesado (imágenes máx. 20 MB · PDF/docs máx. 100 MB).';
+            return res.status(413).json({ success: false, message: msg });
         }
         if (err.code === 'LIMIT_FIELD_VALUE' || err.code === 'LIMIT_FIELD_SIZE') {
             return res.status(413).json({ success: false, message: 'La descripción o los datos de texto son demasiado largos.' });

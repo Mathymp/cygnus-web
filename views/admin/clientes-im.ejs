@@ -630,7 +630,7 @@ function renderExpand(id,c){
                     <p class="section-label" style="margin:0;"><i class="bi bi-folder2-open"></i> Documentos del Cliente</p>
                     <label class="im-btn im-btn-sm im-btn-primary" style="cursor:pointer;margin:0;">
                         <i class="bi bi-upload"></i> Subir
-                        <input type="file" style="display:none;" onchange="uploadClienteDoc('${c.id}',this)" onclick="event.stopPropagation()">
+                        <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" style="display:none;" onchange="uploadClienteDoc('${c.id}',this)" onclick="event.stopPropagation()">
                     </label>
                 </div>
                 <div id="docs-cli-${id}" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto;font-size:.82rem;color:#64748b;">Cargando documentos...</div>
@@ -687,19 +687,30 @@ async function loadClienteDocs(clienteId){
 }
 
 async function uploadClienteDoc(clienteId,input){
-    const file=input.files&&input.files[0];
-    if(!file)return;
+    const files=Array.from(input.files||[]);
+    if(!files.length)return;
+    if(window.IMUpload){
+        const errs=IMUpload.validateFiles(files);
+        if(errs.length){showToast(errs.join(' · '),'error','Archivo demasiado pesado');input.value='';return;}
+    }
     const cont=$(`docs-cli-${clienteId}`);
-    if(cont)cont.innerHTML='<p style="margin:0;color:#64748b;"><i class="bi bi-hourglass-split"></i> Subiendo documento...</p>';
+    if(cont)cont.innerHTML=`<p style="margin:0;color:#64748b;"><i class="bi bi-hourglass-split"></i> Subiendo ${files.length} archivo(s)...</p>`;
+    let ok=0;
     try{
-        const fd=new FormData();
-        fd.append('archivo',file,file.name);
-        fd.append('tipo_asociacion','persona');
-        fd.append('asociacion_id',clienteId);
-        fd.append('nombre_personalizado',file.name.replace(/\.[^/.]+$/,''));
-        const res=await fetch('/api/im/documentos',{method:'POST',body:fd});
-        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`No se pudo subir (HTTP ${res.status}).`);}
-        showToast('Documento subido correctamente.','success');
+        for(const file of files){
+            const fd=new FormData();
+            fd.append('archivo',file,file.name);
+            fd.append('tipo_asociacion','persona');
+            fd.append('asociacion_id',clienteId);
+            fd.append('nombre_personalizado',file.name.replace(/\.[^/.]+$/,''));
+            const res=await fetch('/api/im/documentos',{method:'POST',body:fd});
+            if(!res.ok){
+                const msg=window.IMUpload?await IMUpload.readErrorMessage(res,`No se pudo subir (HTTP ${res.status}).`):(await res.json().catch(()=>({}))).message||`No se pudo subir (HTTP ${res.status}).`;
+                throw new Error(msg);
+            }
+            ok++;
+        }
+        showToast(ok===1?'Documento subido correctamente.':`${ok} documentos subidos.`,'success');
     }catch(e){showToast(e.message,'error','No se pudo subir');}
     finally{input.value='';loadClienteDocs(clienteId);}
 }

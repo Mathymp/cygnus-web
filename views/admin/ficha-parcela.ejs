@@ -189,7 +189,7 @@
                     <div class="im-upload-zone" style="padding:14px;" onclick="document.getElementById('resc-file-input').click()">
                         <input type="file" id="resc-file-input" multiple accept="image/*,.pdf,.doc,.docx" style="display:none">
                         <i class="bi bi-cloud-arrow-up" style="font-size:1.6rem;color:#94a3b8;"></i>
-                        <p style="font-size:.8rem;color:#64748b;margin:4px 0 0;">Haz clic o arrastra archivos aquí</p>
+                        <p style="font-size:.8rem;color:#64748b;margin:4px 0 0;">Haz clic o arrastra archivos aquí · imágenes máx. 20 MB · PDF/docs máx. 100 MB</p>
                     </div>
                     <div id="resc-file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:4px;"></div>
                 </div>
@@ -238,7 +238,8 @@
                     <p style="font-size:.78rem;font-weight:700;color:#475569;margin:0 0 8px;">
                         <i class="bi bi-paperclip"></i> Comprobante de Pago (foto/PDF)
                     </p>
-                    <input type="file" id="cuota-modal-file" accept="image/*,.pdf" class="styled-input" style="padding:6px;">
+                    <input type="file" id="cuota-modal-file" accept="image/*,.pdf" class="styled-input" style="padding:6px;" multiple>
+                    <p class="price-hint" id="cuota-file-hint">Puedes subir varios · imágenes máx. 20 MB · PDF máx. 100 MB</p>
                     <p class="price-hint">Foto de transferencia, vale vista, recibo, etc.</p>
                 </div>
             </div>
@@ -477,8 +478,8 @@
                                     <div id="section-contado">
                                         <div class="im-input-group">
                                             <label><i class="bi bi-paperclip"></i> Comprobante de Pago</label>
-                                            <input type="file" id="comprobante-contado" accept="image/*,.pdf" class="styled-input" style="padding:6px;">
-                                            <p class="price-hint">Foto/PDF de la transferencia o vale vista (se sube tras guardar la venta)</p>
+                                            <input type="file" id="comprobante-contado" accept="image/*,.pdf" class="styled-input" style="padding:6px;" multiple>
+                                            <p class="price-hint">Varios archivos · imágenes máx. 20 MB · PDF máx. 100 MB (se suben tras guardar la venta)</p>
                                         </div>
                                     </div>
 
@@ -1284,11 +1285,20 @@ async function saveCuota(){
         const res=await fetch(`/api/im/cuotas/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
 
-        const file=$('cuota-modal-file').files[0];
-        if(file){
-            const fd=new FormData();fd.append('archivo',file,file.name);
-            const r2=await fetch(`/api/im/cuotas/${id}/comprobante`,{method:'POST',body:fd});
-            if(!r2.ok){const e=await r2.json().catch(()=>({}));showToast(e.message||'Error al subir comprobante','warning');}
+        const files=Array.from($('cuota-modal-file').files||[]);
+        if(files.length){
+            if(window.IMUpload){
+                const errs=IMUpload.validateFiles(files);
+                if(errs.length){showToast(errs.join(' · '),'error','Archivo demasiado pesado');throw new Error(errs[0]);}
+            }
+            for(const file of files){
+                const fd=new FormData();fd.append('archivo',file,file.name);
+                const r2=await fetch(`/api/im/cuotas/${id}/comprobante`,{method:'POST',body:fd});
+                if(!r2.ok){
+                    const msg=window.IMUpload?await IMUpload.readErrorMessage(r2,'Error al subir comprobante'):((await r2.json().catch(()=>({}))).message||'Error al subir comprobante');
+                    showToast(msg,'warning');
+                }
+            }
         }
 
         closeModal('cuota');
@@ -1559,12 +1569,26 @@ $('form-venta').addEventListener('submit',async(e)=>{
             throw new Error('Los documentos firmados no coinciden con lo marcado. Intenta actualizar de nuevo.');
         }
 
-        // Upload comprobante contado (no bloquea la venta)
+        // Upload comprobantes contado (multi) — no bloquea la venta
         if(pagoTipoActual==='contado'){
-            const file=$('comprobante-contado').files[0];
-            if(file&&ventaGuardada.id){
-                const fd=new FormData();fd.append('archivo',file,file.name);
-                await fetch(`/api/im/ventas/${ventaGuardada.id}/comprobante`,{method:'POST',body:fd}).catch(()=>{});
+            const files=Array.from($('comprobante-contado').files||[]);
+            if(files.length&&ventaGuardada.id){
+                if(window.IMUpload){
+                    const errs=IMUpload.validateFiles(files);
+                    if(errs.length) showToast(errs.join(' · '),'warning','Comprobante no subido');
+                    else{
+                        for(const file of files){
+                            const fd=new FormData();fd.append('archivo',file,file.name);
+                            const r=await fetch(`/api/im/ventas/${ventaGuardada.id}/comprobante`,{method:'POST',body:fd});
+                            if(!r.ok) showToast(await IMUpload.readErrorMessage(r,'Error al subir comprobante'),'warning');
+                        }
+                    }
+                }else{
+                    for(const file of files){
+                        const fd=new FormData();fd.append('archivo',file,file.name);
+                        await fetch(`/api/im/ventas/${ventaGuardada.id}/comprobante`,{method:'POST',body:fd}).catch(()=>{});
+                    }
+                }
             }
         }
 
@@ -1733,21 +1757,28 @@ async function resciliarContrato(){
         if(!res.ok)throw new Error(payload.message||payload.error||`Error ${res.status}`);
         if(!payload.id)throw new Error('La resciliación no quedó confirmada en la base de datos.');
 
-        const files=$('resc-file-input').files;
+        const files=Array.from($('resc-file-input').files||[]);
         if(files.length>0){
-            for(const f of files){
+            if(window.IMUpload){
+                const errs=IMUpload.validateFiles(files);
+                if(errs.length){showToast(errs.join(' · '),'warning','Algunos docs no se subieron');}
+            }
+            const okFiles=window.IMUpload?files.filter(f=>!IMUpload.validateFile(f)):files;
+            for(const f of okFiles){
                 const fd=new FormData();
                 fd.append('archivo',f);
                 fd.append('nombre_personalizado',`Resciliación — ${f.name.replace(/\.[^/.]+$/,'')}`);
                 fd.append('tipo_asociacion','parcela');
                 fd.append('asociacion_id',PARCELA_ID);
-                await fetch('/api/im/documentos',{method:'POST',body:fd}).catch(()=>{});
+                const r=await fetch('/api/im/documentos',{method:'POST',body:fd});
+                if(!r.ok&&window.IMUpload) showToast(await IMUpload.readErrorMessage(r),'warning');
             }
-            if(payload.id){
-                const first=files[0];
-                const fd2=new FormData();
-                fd2.append('archivo',first);
-                await fetch(`/api/im/resciliaciones/${payload.id}/documento`,{method:'POST',body:fd2}).catch(()=>{});
+            if(payload.id&&okFiles.length){
+                for(const f of okFiles){
+                    const fd2=new FormData();
+                    fd2.append('archivo',f);
+                    await fetch(`/api/im/resciliaciones/${payload.id}/documento`,{method:'POST',body:fd2}).catch(()=>{});
+                }
             }
         }
 
@@ -1776,7 +1807,7 @@ function initDM(tipo,asociacionId,force=false){
                     onchange="handleFileSelect('${tipo}','${asociacionId}',this.files)">
                 <i class="bi bi-cloud-arrow-up im-upload-icon"></i>
                 <p class="im-upload-text">Arrastra archivos aquí o <strong>haz clic</strong></p>
-                <p class="im-upload-hint">PDF, imágenes, Word, Excel · múltiples archivos · máx. 100 MB c/u</p>
+                <p class="im-upload-hint">PDF, imágenes, Word, Excel · múltiples archivos · imágenes máx. 20 MB · PDF/docs máx. 100 MB</p>
             </div>
             <div id="dq-${tipo}"></div>
         </div>
@@ -1797,6 +1828,15 @@ async function handleFileSelect(tipo,asociacionId,files){
 
     const inp=$(`file-input-${tipo}`);
     if(inp) setTimeout(()=>{ try{inp.value='';}catch(_){} },100);
+
+    // Validar peso antes de subir (mensaje con peso real vs máximo)
+    if(window.IMUpload){
+        const errs=IMUpload.validateFiles(fileArray);
+        if(errs.length){
+            showToast(errs.join(' · '),'error','Archivo demasiado pesado');
+            return;
+        }
+    }
 
     const qEl=$(`dq-${tipo}`);
     const tipoApi=tipo==='lote'?'parcela':tipo==='venta'?'venta':tipo==='persona'?'persona':'proyecto';

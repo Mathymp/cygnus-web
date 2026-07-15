@@ -76,7 +76,8 @@
                 </div>
                 <div class="im-input-group" style="margin-bottom:12px;">
                     <label>Comprobante de Pago <span style="color:#94a3b8;font-size:.75rem;">(foto, imagen, PDF)</span></label>
-                    <input type="file" id="modal-file" class="styled-input" accept="image/*,.pdf" style="padding:8px;">
+                    <input type="file" id="modal-file" class="styled-input" accept="image/*,.pdf" style="padding:8px;" multiple>
+                    <p style="font-size:.72rem;color:#94a3b8;margin:4px 0 0;">Varios archivos · imágenes máx. 20 MB · PDF máx. 100 MB</p>
                     <p style="font-size:.75rem;color:#64748b;margin:4px 0 0;"><i class="bi bi-info-circle"></i> Se guardará automáticamente en "Docs Venta" de la parcela.</p>
                 </div>
                 <div class="im-input-group" style="margin-bottom:16px;">
@@ -444,12 +445,21 @@ async function guardarPago(){
         const r=await fetch(`/api/im/cuotas/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.message||`Error ${r.status}`);}
 
-        const file=$('modal-file').files[0];
-        if(file){
+        const files=Array.from($('modal-file').files||[]);
+        if(files.length){
+            if(window.IMUpload){
+                const errs=IMUpload.validateFiles(files);
+                if(errs.length){showToast(errs.join(' · '),'error','Archivo demasiado pesado');throw new Error(errs[0]);}
+            }
             btn.innerHTML='<i class="bi bi-hourglass-split"></i> Subiendo comprobante...';
-            const fd=new FormData(); fd.append('archivo',file,file.name);
-            const r2=await fetch(`/api/im/cuotas/${id}/comprobante`,{method:'POST',body:fd});
-            if(!r2.ok){const e=await r2.json().catch(()=>({}));showToast(e.message||'Error al subir comprobante','warning','Aviso');}
+            for(const file of files){
+                const fd=new FormData(); fd.append('archivo',file,file.name);
+                const r2=await fetch(`/api/im/cuotas/${id}/comprobante`,{method:'POST',body:fd});
+                if(!r2.ok){
+                    const msg=window.IMUpload?await IMUpload.readErrorMessage(r2,'Error al subir comprobante'):((await r2.json().catch(()=>({}))).message||'Error al subir comprobante');
+                    showToast(msg,'warning','Aviso');
+                }
+            }
         }
 
         ventaCuotasCache={};

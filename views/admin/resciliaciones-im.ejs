@@ -227,11 +227,13 @@
                     <input type="text" id="pd-notas" class="styled-input" placeholder="Banco, N° cheque, referencia...">
                 </div>
                 <div class="im-input-group" style="margin-bottom:14px;">
+                    <input type="hidden" id="pd-resc-id" value="">
                     <label><i class="bi bi-camera"></i> Captura / comprobante <span style="font-weight:400;color:#94a3b8;">(transferencia, cheque, vale…)</span></label>
                     <div class="dz-mini">
-                        <input type="file" id="pd-file" accept="image/*,.pdf">
+                        <input type="file" id="pd-file" accept="image/*,.pdf" multiple>
                         <i class="bi bi-cloud-arrow-up" style="font-size:1.5rem;color:#2563eb;"></i>
-                        <p>Foto o PDF del comprobante</p>
+                        <p>Foto o PDF del comprobante (varios)</p>
+                        <p style="font-size:.72rem;color:#94a3b8;margin:2px 0 0;">Imágenes máx. 20 MB · PDF máx. 100 MB</p>
                         <p id="pd-file-name" style="font-weight:600;color:#0f172a;display:none;"></p>
                     </div>
                 </div>
@@ -690,9 +692,10 @@ async function renderDetail(rescId, container){
                       </div>`
                     :`<p style="font-size:.78rem;color:#94a3b8;margin:0 0 8px;">Sin documento aún.</p>`}
                 <div class="dz-mini" id="dz-resc-${rescId}" style="margin-top:6px;">
-                    <input type="file" accept="image/*,.pdf,.doc,.docx" onchange="uploadDocResc(${rescId},this.files[0])">
+                    <input type="file" accept="image/*,.pdf,.doc,.docx" multiple onchange="uploadDocResc(${rescId},this.files)">
                     <i class="bi bi-cloud-arrow-up" style="font-size:1.2rem;color:#2563eb;"></i>
-                    <p>Subir / Reemplazar documento</p>
+                    <p>Subir documentos (varios)</p>
+                    <p style="font-size:.7rem;color:#94a3b8;margin:2px 0 0;">Imágenes máx. 20 MB · PDF/docs máx. 100 MB</p>
                 </div>
                 <div id="doc-resc-prog-${rescId}" style="display:none;margin-top:6px;font-size:.78rem;color:#2563eb;"><i class="bi bi-hourglass-split"></i> Subiendo...</div>
             </div>
@@ -949,7 +952,7 @@ function renderCuotasDev(cuotas,rescId){
                 <i class="bi bi-eye"></i></button>`
             :'';
         const pagarBtn=!c.pagado
-            ?`<button class="im-btn im-btn-sm im-btn-primary" style="background:#16a34a;border:none;" onclick="abrirPagarDev(${c.id}, ${c.monto||0})">
+            ?`<button class="im-btn im-btn-sm im-btn-primary" style="background:#16a34a;border:none;" onclick="abrirPagarDev(${c.id}, ${c.monto||0}, ${rescId})">
                 <i class="bi bi-camera"></i> Registrar pago</button>`
             :'';
         return `<div class="mini-cuota-dev ${cls}">
@@ -1018,16 +1021,18 @@ async function actualizarEstado(rescId,estado){
 // ─────────────────────────────────────────────
 //  Pagar cuota de devolución
 // ─────────────────────────────────────────────
-function abrirPagarDev(cuotaId, monto){
+function abrirPagarDev(cuotaId, monto, rescId){
     $id('pd-cuota-id').value=cuotaId;
+    if($id('pd-resc-id'))$id('pd-resc-id').value=rescId||'';
     $id('pd-fecha').value=new Date().toISOString().split('T')[0];
     $id('pd-notas').value='';
     if($id('pd-medio'))$id('pd-medio').value='Transferencia';
     $id('pd-file').value='';
     $id('pd-file-name').style.display='none';
     $id('pd-file').onchange=function(){
-        const fn=this.files[0]?.name||'';
-        if(fn){$id('pd-file-name').textContent=fn;$id('pd-file-name').style.display='block';}
+        const n=this.files.length;
+        if(n){$id('pd-file-name').textContent=n===1?(this.files[0].name):(n+' archivos');$id('pd-file-name').style.display='block';}
+        else{$id('pd-file-name').style.display='none';}
     };
     openModal('pagar-dev');
 }
@@ -1035,16 +1040,32 @@ function abrirPagarDev(cuotaId, monto){
 async function confirmarPagarDev(){
     const btn=$id('pd-btn');
     const cuotaId=$id('pd-cuota-id').value;
+    const rescId=$id('pd-resc-id')?.value||'';
     btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Procesando...';
     try{
+        const files=Array.from($id('pd-file').files||[]);
+        if(files.length&&window.IMUpload){
+            const errs=IMUpload.validateFiles(files);
+            if(errs.length) throw new Error(errs.join('\n'));
+        }
         const fd=new FormData();
         fd.append('fecha_pago',$id('pd-fecha').value||'');
         fd.append('medio_pago',$id('pd-medio')?$id('pd-medio').value:'Transferencia');
         fd.append('notas',$id('pd-notas').value||'');
-        const file=$id('pd-file').files[0];
-        if(file) fd.append('archivo',file,file.name);
+        if(files[0]) fd.append('archivo',files[0],files[0].name);
         const res=await fetch(`/api/im/cuotas-devolucion/${cuotaId}/pagar`,{method:'PATCH',body:fd});
-        if(!res.ok)throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
+        if(!res.ok){
+            const msg=window.IMUpload
+                ? await IMUpload.readErrorMessage(res,`Error ${res.status}`)
+                : ((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
+            throw new Error(msg);
+        }
+        for(let i=1;i<files.length;i++){
+            if(!rescId)break;
+            const fd2=new FormData();
+            fd2.append('archivo',files[i],files[i].name);
+            await fetch(`/api/im/resciliaciones/${rescId}/documento`,{method:'POST',body:fd2});
+        }
         showToast('Pago de devolución registrado.','success');
         closeModal('pagar-dev');
         await loadResc();
@@ -1056,16 +1077,27 @@ async function confirmarPagarDev(){
 // ─────────────────────────────────────────────
 //  Upload documento resciliación
 // ─────────────────────────────────────────────
-async function uploadDocResc(rescId, file){
-    if(!file)return;
+async function uploadDocResc(rescId, fileList){
+    const files=Array.from(fileList||[]);
+    if(!files.length)return;
+    if(window.IMUpload){
+        const errs=IMUpload.validateFiles(files);
+        if(errs.length){showToast(errs.join(' · '),'error','Archivo demasiado pesado');return;}
+    }
     const prog=$id(`doc-resc-prog-${rescId}`);
-    if(prog){prog.style.display='block';prog.innerHTML='<i class="bi bi-hourglass-split"></i> Subiendo...';}
+    if(prog){prog.style.display='block';prog.style.color='#2563eb';prog.innerHTML=`<i class="bi bi-hourglass-split"></i> Subiendo ${files.length} archivo(s)...`;}
     try{
-        const fd=new FormData();
-        fd.append('archivo',file,file.name);
-        const res=await fetch(`/api/im/resciliaciones/${rescId}/documento`,{method:'POST',body:fd});
-        if(!res.ok)throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
-        showToast('Documento de resciliación subido.','success');
+        for(const file of files){
+            const fd=new FormData();
+            fd.append('archivo',file,file.name);
+            const res=await fetch(`/api/im/resciliaciones/${rescId}/documento`,{method:'POST',body:fd});
+            if(!res.ok)throw new Error(
+                (window.IMUpload?await IMUpload.readErrorMessage(res,`Error ${res.status}`):null)
+                || (await res.json().catch(()=>({}))).message
+                || `Error ${res.status}`
+            );
+        }
+        showToast(files.length===1?'Documento de resciliación subido.':`${files.length} documentos subidos.`,'success');
         const inner=$id(`resc-inner-${rescId}`);
         if(inner) await renderDetail(rescId,inner);
         await loadResc();

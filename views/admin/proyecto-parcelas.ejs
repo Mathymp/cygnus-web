@@ -276,7 +276,7 @@
                     onchange="handleProjFiles(this.files)">
                 <i class="bi bi-cloud-arrow-up" style="font-size:2.2rem;color:#2563eb;"></i>
                 <p style="margin:8px 0 2px;font-weight:700;color:#0f172a;font-size:.95rem;">Arrastra archivos aquí o <strong>haz clic para seleccionar</strong></p>
-                <p style="margin:0;font-size:.78rem;color:#94a3b8;">PDF, imágenes, Word, Excel, ZIP · hasta 100 MB por archivo</p>
+                <p style="margin:0;font-size:.78rem;color:#94a3b8;">Varios archivos · imágenes máx. 20 MB · PDF/docs máx. 100 MB</p>
             </div>
 
             <!-- Progreso de subida -->
@@ -842,6 +842,10 @@ async function loadProjDocs(){
 async function handleProjFiles(files){
     const fileArr = Array.from(files||[]);
     if(!fileArr.length) return;
+    if(window.IMUpload){
+        const errs=IMUpload.validateFiles(fileArr);
+        if(errs.length){ showToast(errs.join(' · '),'error','Archivo demasiado pesado'); return; }
+    }
     const queue = $('proj-upload-queue');
     let ok = 0, failMsgs = [];
 

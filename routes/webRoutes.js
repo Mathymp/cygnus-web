@@ -25,8 +25,19 @@ const documentosController = require('../controllers/documentosController');
 
 // --- CONFIGURACIÓN DE UPLOAD ---
 const upload = require('../config/cloudinaryConfig');
+const uploadLimits = require('../helpers/uploadLimits');
 const multerLib2 = require('multer');
-const uploadDocMemory = multerLib2({ storage: multerLib2.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
+const uploadDocMemory = multerLib2({
+    storage: multerLib2.memoryStorage(),
+    limits: { fileSize: uploadLimits.MAX_DOC_BYTES }
+});
+/** Tras multer: rechaza imágenes > 20 MB con mensaje claro (PDF/docs usan el tope de multer). */
+function enforceTypedDocSize(req, res, next) {
+    if (!req.file) return next();
+    const msg = uploadLimits.checkFileSize(req.file);
+    if (msg) return res.status(413).json({ success: false, message: msg });
+    next();
+}
 const cloudinaryV2 = require('cloudinary').v2;
 const multerLib = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -34,7 +45,7 @@ const panoStorage = new CloudinaryStorage({
     cloudinary: cloudinaryV2,
     params: { folder: 'cygnus_360', allowed_formats: ['jpg', 'jpeg', 'png', 'webp'], resource_type: 'image' }
 });
-const uploadPano = multerLib({ storage: panoStorage, limits: { fileSize: 200 * 1024 * 1024 } });
+const uploadPano = multerLib({ storage: panoStorage, limits: { fileSize: uploadLimits.MAX_PANO_BYTES } });
 
 // --- CONEXIÓN NATIVA BD (LOTIFY) ---
 const pool = new Pool({
@@ -373,28 +384,28 @@ router.post('/api/im/ventas', ...imAccess, inmobiliariaController.createVenta);
 router.put('/api/im/ventas/:id', ...imAccess, inmobiliariaController.updateVenta);
 router.delete('/api/im/ventas/:id', ...imAccess, inmobiliariaController.deleteVenta);
 router.post('/api/im/ventas/:id/resciliar',   ...imAccess, inmobiliariaController.resciliarVenta);
-router.post('/api/im/ventas/:id/comprobante', ...imAccess, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteVenta);
+router.post('/api/im/ventas/:id/comprobante', ...imAccess, uploadDocMemory.single('archivo'), enforceTypedDocSize, inmobiliariaController.uploadComprobanteVenta);
 
 // API – Cuotas de pago
 router.get('/api/im/cuotas',                    ...imAccess, inmobiliariaController.getAllCuotas);
 router.get('/api/im/cuotas/:ventaId',           ...imAccess, inmobiliariaController.getCuotas);
 router.put('/api/im/cuotas/:id',                ...imAccess, inmobiliariaController.updateCuota);
-router.post('/api/im/cuotas/:id/comprobante',   ...imAccess, uploadDocMemory.single('archivo'), inmobiliariaController.uploadComprobanteCuota);
+router.post('/api/im/cuotas/:id/comprobante',   ...imAccess, uploadDocMemory.single('archivo'), enforceTypedDocSize, inmobiliariaController.uploadComprobanteCuota);
 
 // API – Resciliaciones
 router.get('/api/im/resciliaciones',            ...imAccess, inmobiliariaController.getAllResciliaciones);
 router.get('/api/im/resciliaciones/:id',        ...imAccess, inmobiliariaController.getResciliacionById);
 router.patch('/api/im/resciliaciones/:id',      ...imAccess, inmobiliariaController.updateResciliacion);
 router.post('/api/im/resciliaciones/:id/cuotas-devolucion', ...imAccess, inmobiliariaController.setCuotasDevolucion);
-router.patch('/api/im/cuotas-devolucion/:id/pagar', ...imAccess, uploadDocMemory.single('archivo'), inmobiliariaController.pagarCuotaDevolucion);
-router.post('/api/im/resciliaciones/:id/documento', ...imAccess, uploadDocMemory.single('archivo'), inmobiliariaController.uploadDocumentoResciliacion);
+router.patch('/api/im/cuotas-devolucion/:id/pagar', ...imAccess, uploadDocMemory.single('archivo'), enforceTypedDocSize, inmobiliariaController.pagarCuotaDevolucion);
+router.post('/api/im/resciliaciones/:id/documento', ...imAccess, uploadDocMemory.single('archivo'), enforceTypedDocSize, inmobiliariaController.uploadDocumentoResciliacion);
 router.get('/api/im/parcelas/vendidas',         ...imAccess, inmobiliariaController.getParcelasVendidas);
 
 // API – Documentos (Supabase Storage)
 router.get('/api/im/documentos/test-storage', ...imAccess, documentosController.testStorage);
 router.get('/api/im/documentos',          ...imAccess, documentosController.getDocumentos);
 router.get('/api/im/documentos/:id/url',  ...imAccess, documentosController.getDocumentoUrl);
-router.post('/api/im/documentos',         ...imAccess, uploadDocMemory.single('archivo'), documentosController.uploadDocumento);
+router.post('/api/im/documentos',         ...imAccess, uploadDocMemory.single('archivo'), enforceTypedDocSize, documentosController.uploadDocumento);
 router.patch('/api/im/documentos/:id',    ...imAccess, documentosController.renameDocumento);
 router.delete('/api/im/documentos/:id',   ...imAccess, documentosController.deleteDocumento);
 
