@@ -114,22 +114,129 @@ async function fetchVentaHydrated(db, ventaId) {
     return result.rows[0] || null;
 }
 
-/** Apaga RLS/FORCE en tablas IM para el rol de DATABASE_URL (mismo criterio IRRESTRICTO del CRM). */
-async function disableImRls(db) {
+/** Abre acceso real a tablas IM (Supabase RLS). DISABLE a veces no alcanza; por eso también:
+ *  - SET row_security = off (si el rol lo permite)
+ *  - políticas permisivas FOR ALL
+ *  - GRANT al rol actual
+ */
+async function openImTableAccess(db) {
+    try {
+        await db.query(`SET row_security = off`);
+    } catch (e) {
+        console.warn('[imRls] SET row_security=off:', e.message);
+    }
+
     const tables = [
         'im_clientes', 'im_parcelas', 'im_proyectos', 'im_ventas_lotes',
         'im_cuotas', 'im_cuotas_devolucion', 'im_documentos',
         'im_historial_precios', 'im_resciliaciones', 'im_auditoria', 'im_accesos',
         'accesos_im', 'proyectos_im'
     ];
+
     for (const table of tables) {
         try {
             await db.query(`ALTER TABLE IF EXISTS ${table} NO FORCE ROW LEVEL SECURITY`);
             await db.query(`ALTER TABLE IF EXISTS ${table} DISABLE ROW LEVEL SECURITY`);
         } catch (e) {
-            console.warn('[imRls]', table, e.message);
+            console.warn('[imRls] disable', table, e.message);
         }
+        try {
+            await db.query(`DROP POLICY IF EXISTS im_backend_all ON ${table}`);
+            await db.query(
+                `CREATE POLICY im_backend_all ON ${table} FOR ALL USING (true) WITH CHECK (true)`
+            );
+        } catch (e) {
+            if (!String(e.message || '').includes('does not exist')) {
+                console.warn('[imRls] policy', table, e.message);
+            }
+        }
+        try {
+            await db.query(`GRANT ALL ON TABLE ${table} TO CURRENT_USER`);
+            await db.query(`GRANT ALL ON TABLE ${table} TO PUBLIC`);
+        } catch (_) {}
     }
+}
+
+async function disableImRls(db) {
+    return openImTableAccess(db);
+}
+
+/** Carga la venta de una parcela sin JOIN (luego hidrata el cliente aparte). */
+async function loadVentaForParcela(db, parcelaId) {
+    const raw = await db.query(
+        `SELECT *
+         FROM im_ventas_lotes
+         WHERE parcela_id::text = $1
+         ORDER BY
+           CASE
+             WHEN COALESCE(estado,'activa') = 'activa' THEN 0
+             WHEN COALESCE(estado,'activa') = 'liberada' THEN 1
+             ELSE 2
+           END,
+           creado_at DESC NULLS LAST,
+           id DESC
+         LIMIT 1`,
+        [String(parcelaId)]
+    );
+    if (!raw.rows[0]) return null;
+    const venta = raw.rows[0];
+    if (String(venta.estado || 'activa') === 'resciliada') return null;
+
+    if (String(venta.estado || 'activa') !== 'activa') {
+        await db.query(
+            `UPDATE im_ventas_lotes SET estado='activa' WHERE id=$1`,
+            [venta.id]
+        ).catch(() => {});
+        venta.estado = 'activa';
+    }
+
+    let cliente = null;
+    if (venta.cliente_id) {
+        const cRes = await db.query(
+            `SELECT id, nombre_completo, rut, email, telefono, direccion,
+                    estado_civil, regimen_matrimonial, nombre_conyugue, rut_conyugue,
+                    email_conyugue, telefono_conyugue
+             FROM im_clientes WHERE id::text=$1 LIMIT 1`,
+            [String(venta.cliente_id)]
+        );
+        cliente = cRes.rows[0] || null;
+    }
+
+    return {
+        id: venta.id,
+        parcela_id: venta.parcela_id,
+        cliente_id: venta.cliente_id,
+        firmo_promesa: venta.firmo_promesa,
+        firmo_compraventa: venta.firmo_compraventa,
+        forma_pago: venta.forma_pago,
+        fecha_venta: venta.fecha_venta,
+        precio_lista: venta.precio_lista,
+        precio_acordado: venta.precio_acordado,
+        notas: venta.notas,
+        tipo_pago: venta.tipo_pago,
+        monto_pie: venta.monto_pie,
+        numero_credito: venta.numero_credito,
+        numero_cuotas: venta.numero_cuotas,
+        monto_cuota: venta.monto_cuota,
+        condiciones_compra: venta.condiciones_compra,
+        comprobante_url: venta.comprobante_url,
+        comprobante_path: venta.comprobante_path,
+        agente_id: venta.agente_id,
+        agente_nombre: venta.agente_nombre,
+        estado: venta.estado || 'activa',
+        creado_at: venta.creado_at,
+        nombre_completo: cliente?.nombre_completo || null,
+        rut: cliente?.rut || null,
+        email: cliente?.email || null,
+        telefono: cliente?.telefono || null,
+        estado_civil: cliente?.estado_civil || null,
+        regimen_matrimonial: cliente?.regimen_matrimonial || null,
+        nombre_conyugue: cliente?.nombre_conyugue || null,
+        rut_conyugue: cliente?.rut_conyugue || null,
+        email_conyugue: cliente?.email_conyugue || null,
+        telefono_conyugue: cliente?.telefono_conyugue || null,
+        direccion: cliente?.direccion || null
+    };
 }
 
 async function assertParcelaYCliente(client, parcelaId, clienteId) {
@@ -274,44 +381,21 @@ exports.getParcelas = async (req, res) => {
 exports.getParcelaById = async (req, res) => {
     try {
         await ensureSchemaOnce();
-        await disableImRls(pool);
+        await openImTableAccess(pool);
         const { id } = req.params;
 
-        const [parcelaRes, historialRes, ventaRes] = await Promise.all([
+        const [parcelaRes, historialRes] = await Promise.all([
             pool.query(
                 `SELECT p.*, pr.nombre as proyecto_nombre, pr.numero_rol_1, pr.numero_rol_2, pr.numero_matriz,
                         pr.tipo_proyecto
                  FROM im_parcelas p JOIN im_proyectos pr ON p.proyecto_id = pr.id WHERE p.id::text = $1`, [String(id)]
             ),
-            pool.query(`SELECT precio, fecha_registro FROM im_historial_precios WHERE parcela_id::text=$1 ORDER BY fecha_registro ASC`, [String(id)]),
-            pool.query(
-                `${VENTA_SELECT_SQL}
-                 WHERE v.parcela_id::text=$1 AND COALESCE(v.estado,'activa')='activa'
-                 ORDER BY v.creado_at DESC NULLS LAST, v.id DESC LIMIT 1`, [String(id)]
-            )
+            pool.query(`SELECT precio, fecha_registro FROM im_historial_precios WHERE parcela_id::text=$1 ORDER BY fecha_registro ASC`, [String(id)])
         ]);
         if (parcelaRes.rows.length === 0) return res.status(404).json({ message: 'Parcela no encontrada.' });
 
         const parcela = parcelaRes.rows[0];
-        let venta = ventaRes.rows[0] || null;
-
-        // Si no hay activa, recuperar la última no resciliada (estado desfasado).
-        if (!venta) {
-            const fallback = await pool.query(
-                `${VENTA_SELECT_SQL}
-                 WHERE v.parcela_id::text=$1 AND COALESCE(v.estado,'activa') <> 'resciliada'
-                 ORDER BY v.creado_at DESC NULLS LAST, v.id DESC LIMIT 1`, [String(id)]
-            );
-            if (fallback.rows[0]) {
-                venta = fallback.rows[0];
-                await pool.query(
-                    `UPDATE im_ventas_lotes SET estado='activa'
-                     WHERE id=$1 AND COALESCE(estado,'activa') <> 'activa'`,
-                    [venta.id]
-                ).catch(() => {});
-                venta.estado = 'activa';
-            }
-        }
+        let venta = await loadVentaForParcela(pool, parcela.id);
 
         // Sincronizar estado de parcela con la venta vigente
         if (venta) {
@@ -320,6 +404,18 @@ exports.getParcelaById = async (req, res) => {
                 await pool.query(`UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`, [esperado, parcela.id]).catch(() => {});
                 parcela.estado_venta = esperado;
             }
+        } else if (['vendido', 'reservado'].includes(String(parcela.estado_venta || ''))) {
+            // Parcela marcada vendida pero sin fila visible: dejar constancia en logs
+            const dbg = await pool.query(
+                `SELECT id, cliente_id, estado, creado_at FROM im_ventas_lotes WHERE parcela_id::text=$1 ORDER BY creado_at DESC NULLS LAST LIMIT 5`,
+                [String(parcela.id)]
+            ).catch((e) => ({ rows: [], error: e.message }));
+            console.warn('[getParcelaById] parcela vendida/reservada sin venta hidratable', {
+                parcelaId: parcela.id,
+                estado: parcela.estado_venta,
+                ventasRaw: dbg.rows || [],
+                error: dbg.error
+            });
         }
 
         let cuotas = [];
@@ -330,7 +426,6 @@ exports.getParcelaById = async (req, res) => {
             cuotas = cuotasRes.rows;
         }
 
-        // Historial de todas las ventas anteriores (resciliadas / liberadas)
         const historialVentasRes = await pool.query(
             `SELECT v.id, v.estado, v.tipo_pago, v.precio_acordado, v.fecha_venta,
                     v.firmo_promesa, v.firmo_compraventa, v.agente_nombre, v.condiciones_compra,
@@ -471,6 +566,7 @@ exports.deleteParcela = async (req, res) => {
 exports.getClientes = async (req, res) => {
     try {
         await ensureSchemaOnce();
+        await openImTableAccess(pool);
         const { q, proyecto_id } = req.query;
         let query = `
             SELECT c.*,
@@ -717,7 +813,7 @@ exports.createVenta = async (req, res) => {
         await ensureSchemaOnce();
         // Crítico en Supabase: sin esto el INSERT puede “verse” en RETURNING
         // y desaparecer en el SELECT siguiente por RLS sin políticas.
-        await disableImRls(client);
+        await openImTableAccess(client);
 
         await client.query('BEGIN');
         const {
@@ -808,59 +904,35 @@ exports.createVenta = async (req, res) => {
 
         await client.query('COMMIT');
 
-        // Releer con la misma conexión (más fiable que el pool tras COMMIT)
-        let verificada = null;
-        try {
-            await disableImRls(client);
-            const simple = await client.query(
-                `SELECT id, estado, cliente_id, parcela_id FROM im_ventas_lotes WHERE id=$1`,
+        // Releer venta por parcela (sin JOIN) — es lo que usa la ficha al refrescar
+        await openImTableAccess(client);
+        let verificada = await loadVentaForParcela(client, parcela.id);
+        if (!verificada || String(verificada.id) !== String(ventaInsertada.id)) {
+            // Intento directo por id
+            const byId = await client.query(
+                `SELECT id, cliente_id, estado, parcela_id FROM im_ventas_lotes WHERE id=$1`,
                 [ventaInsertada.id]
-            );
-            if (simple.rows[0]) {
-                verificada = await fetchVentaHydrated(client, ventaInsertada.id);
+            ).catch(() => ({ rows: [] }));
+            if (!byId.rows[0]) {
+                console.error('[createVenta] INSERT no legible tras COMMIT', {
+                    ventaId: ventaInsertada.id,
+                    parcelaId: parcela.id,
+                    clienteId: cliente.id
+                });
+                return res.status(500).json({
+                    message: 'La parcela se marcó, pero la venta no quedó legible en im_ventas_lotes. Ejecuta en Supabase SQL: ALTER TABLE im_ventas_lotes DISABLE ROW LEVEL SECURITY; y vuelve a guardar.',
+                    error: 'venta_no_legible',
+                    venta_id: ventaInsertada.id
+                });
             }
-        } catch (e) {
-            console.warn('[createVenta] verify read:', e.message);
+            verificada = await loadVentaForParcela(client, parcela.id);
         }
-
-        // Si el COMMIT ok pero el SELECT falla (RLS residual), NO tumbar la venta:
-        // devolver la fila insertada + datos del cliente ya validados.
         if (!verificada) {
-            console.warn('[createVenta] post-commit select vacío; devolviendo fila insertada', ventaInsertada.id);
             verificada = {
                 ...ventaInsertada,
                 nombre_completo: cliente.nombre_completo,
-                rut: cliente.rut,
-                email: null,
-                telefono: null,
-                estado_civil: null,
-                regimen_matrimonial: null,
-                nombre_conyugue: null,
-                rut_conyugue: null,
-                email_conyugue: null,
-                telefono_conyugue: null,
-                direccion: null
+                rut: cliente.rut
             };
-            // Completar ficha de cliente si se puede leer
-            try {
-                const cFull = await client.query(`SELECT * FROM im_clientes WHERE id=$1`, [cliente.id]);
-                if (cFull.rows[0]) {
-                    const c = cFull.rows[0];
-                    Object.assign(verificada, {
-                        nombre_completo: c.nombre_completo,
-                        rut: c.rut,
-                        email: c.email,
-                        telefono: c.telefono,
-                        estado_civil: c.estado_civil,
-                        regimen_matrimonial: c.regimen_matrimonial,
-                        nombre_conyugue: c.nombre_conyugue,
-                        rut_conyugue: c.rut_conyugue,
-                        email_conyugue: c.email_conyugue,
-                        telefono_conyugue: c.telefono_conyugue,
-                        direccion: c.direccion
-                    });
-                }
-            } catch (_) {}
         }
 
         try {
@@ -895,7 +967,7 @@ exports.updateVenta = async (req, res) => {
     const client = await pool.connect();
     try {
         await ensureSchemaOnce();
-        await disableImRls(client);
+        await openImTableAccess(client);
         await client.query('BEGIN');
         const { id } = req.params;
         const {

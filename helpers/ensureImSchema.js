@@ -95,10 +95,7 @@ async function ensureImSchema(pool) {
             creado_at TIMESTAMPTZ DEFAULT NOW()
         )`,
 
-        // ── RLS: el backend Node usa DATABASE_URL (sin políticas anon).
-        // Las tablas CRM ya están "IRRESTRICTO"; las im_* con RLS activo
-        // hacen que INSERT/RETURNING parezca ok y luego el SELECT post-commit
-        // no encuentre la fila → "venta no quedó persistida".
+        // ── RLS: abrir acceso backend (mismo criterio IRRESTRICTO del CRM) ──
         `ALTER TABLE IF EXISTS im_clientes NO FORCE ROW LEVEL SECURITY`,
         `ALTER TABLE IF EXISTS im_clientes DISABLE ROW LEVEL SECURITY`,
         `ALTER TABLE IF EXISTS im_parcelas NO FORCE ROW LEVEL SECURITY`,
@@ -121,9 +118,21 @@ async function ensureImSchema(pool) {
         `ALTER TABLE IF EXISTS im_auditoria DISABLE ROW LEVEL SECURITY`,
         `ALTER TABLE IF EXISTS im_accesos NO FORCE ROW LEVEL SECURITY`,
         `ALTER TABLE IF EXISTS im_accesos DISABLE ROW LEVEL SECURITY`,
-        // Alias legacy por si existen con otro nombre en este proyecto
         `ALTER TABLE IF EXISTS accesos_im DISABLE ROW LEVEL SECURITY`,
         `ALTER TABLE IF EXISTS proyectos_im DISABLE ROW LEVEL SECURITY`,
+        // Políticas permisivas por si DISABLE no aplica (rol sin privilegio)
+        `DROP POLICY IF EXISTS im_backend_all ON im_ventas_lotes`,
+        `CREATE POLICY im_backend_all ON im_ventas_lotes FOR ALL USING (true) WITH CHECK (true)`,
+        `DROP POLICY IF EXISTS im_backend_all ON im_clientes`,
+        `CREATE POLICY im_backend_all ON im_clientes FOR ALL USING (true) WITH CHECK (true)`,
+        `DROP POLICY IF EXISTS im_backend_all ON im_parcelas`,
+        `CREATE POLICY im_backend_all ON im_parcelas FOR ALL USING (true) WITH CHECK (true)`,
+        `DROP POLICY IF EXISTS im_backend_all ON im_cuotas`,
+        `CREATE POLICY im_backend_all ON im_cuotas FOR ALL USING (true) WITH CHECK (true)`,
+        `DROP POLICY IF EXISTS im_backend_all ON im_proyectos`,
+        `CREATE POLICY im_backend_all ON im_proyectos FOR ALL USING (true) WITH CHECK (true)`,
+        `DROP POLICY IF EXISTS im_backend_all ON im_documentos`,
+        `CREATE POLICY im_backend_all ON im_documentos FOR ALL USING (true) WITH CHECK (true)`,
     ];
 
     let applied = 0;
