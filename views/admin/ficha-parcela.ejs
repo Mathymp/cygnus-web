@@ -450,6 +450,16 @@
                                             <label>Fecha de Venta</label>
                                             <input type="date" id="venta-fecha" class="styled-input">
                                         </div>
+                                        <div class="im-input-group">
+                                            <label>Estado de la operación</label>
+                                            <select id="venta-estado-op" class="styled-input">
+                                                <option value="vendido" selected>Venta — marca parcela como Vendida</option>
+                                                <option value="reservado">Reserva — marca parcela como Reservada</option>
+                                            </select>
+                                            <p class="price-hint">Por defecto es Venta. Usa Reserva solo si firmó promesa sin escritura.</p>
+                                        </div>
+                                    </div>
+                                    <div class="im-form-row">
                                         <div class="im-input-group" style="display:flex;flex-direction:column;justify-content:flex-end;gap:6px;">
                                             <div class="im-checkbox-row" style="padding:6px 0;"><input type="checkbox" id="venta-promesa"><label for="venta-promesa">Firmó Promesa de Compraventa</label></div>
                                             <div class="im-checkbox-row" style="padding:6px 0;"><input type="checkbox" id="venta-compraventa"><label for="venta-compraventa">Firmó Escritura de Compraventa</label></div>
@@ -531,6 +541,8 @@ let pagoTipoActual = 'contado';
 let fechasCuotasGeneradas = [];
 let usuariosList = [];
 let _docsCache = {};
+let historialPreciosCache = [];
+let historialVentasCache = [];
 const CURRENT_USER_ID   = '<%= user.id %>';
 const CURRENT_USER_NAME = '<%= user.name %>';
 
@@ -730,6 +742,8 @@ async function init(){
         }
         const data=await parcelaRes.json();
         parcelaData=data.parcela;ventaData=data.venta;cuotasData=data.cuotas||[];
+        historialPreciosCache=data.historial_precios||[];
+        historialVentasCache=data.historial_ventas||[];
         proyectoId=parcelaData.proyecto_id;
         renderParcela(data);
         initDM('lote',PARCELA_ID);
@@ -882,6 +896,9 @@ function renderParcela(data){
         $('venta-fecha').value=venta.fecha_venta?String(venta.fecha_venta).split('T')[0]:'';
         $('venta-promesa').checked=!!venta.firmo_promesa;
         $('venta-compraventa').checked=!!venta.firmo_compraventa;
+        if($('venta-estado-op')){
+            $('venta-estado-op').value=(venta.firmo_promesa&&!venta.firmo_compraventa)?'reservado':'vendido';
+        }
         $('venta-notas').value=venta.notas||'';
         $('venta-condiciones').value=venta.condiciones_compra||'';
         $('venta-precio-lista').value=venta.precio_lista?Number(venta.precio_lista).toLocaleString('es-CL'):'';
@@ -1265,44 +1282,79 @@ $('form-venta').addEventListener('submit',async(e)=>{
     const btn=e.submitter||e.target.querySelector('[type="submit"]');
     if(btn){btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...';}
     try{
-        if(!validarRut($('cli-rut').value)){showToast('RUT del comprador inválido (Módulo 11).','error','RUT inválido');return;}
+        const nombre=($('cli-nombre').value||'').trim();
+        const rut=($('cli-rut').value||'').trim();
+        if(!nombre){showToast('Ingresa el nombre del comprador.','warning');return;}
+        if(!validarRut(rut)){showToast('RUT del comprador inválido (Módulo 11).','error','RUT inválido');return;}
+
+        // Si precio acordado vacío, copiar precio de lista en el formulario
+        if(!cleanNum($('venta-precio-acordado').value)&&cleanNum($('venta-precio-lista').value)){
+            $('venta-precio-acordado').value=$('venta-precio-lista').value;
+        }
+
         let clienteId=$('venta-cliente-id').value;
-            const estadoCivil=$('cli-estado-civil').value;
-            const clienteBody={nombre_completo:$('cli-nombre').value,rut:$('cli-rut').value,email:$('cli-email').value||null,telefono:$('cli-telefono').value||null,direccion:$('cli-direccion').value||null,estado_civil:estadoCivil,regimen_matrimonial:(estadoCivil==='Casado/a'&&$('cli-regimen'))?$('cli-regimen').value:null,nombre_conyugue:$('cli-conyuge-nombre').value||null,rut_conyugue:$('cli-conyuge-rut').value||null,email_conyugue:$('cli-conyuge-email').value||null,telefono_conyugue:$('cli-conyuge-tel').value||null,reuse_if_exists:true};
+        const estadoCivil=$('cli-estado-civil').value;
+        const clienteBody={
+            nombre_completo:nombre,rut,
+            email:$('cli-email').value||null,
+            telefono:$('cli-telefono').value||null,
+            direccion:$('cli-direccion').value||null,
+            estado_civil:estadoCivil,
+            regimen_matrimonial:(estadoCivil==='Casado/a'&&$('cli-regimen'))?$('cli-regimen').value:null,
+            nombre_conyugue:$('cli-conyuge-nombre').value||null,
+            rut_conyugue:$('cli-conyuge-rut').value||null,
+            email_conyugue:$('cli-conyuge-email').value||null,
+            telefono_conyugue:$('cli-conyuge-tel').value||null,
+            reuse_if_exists:true
+        };
+
         if(clienteId&&clienteSoloLectura){
-            // Cliente existente en modo visualización: no tocar sus datos, solo usar su ID
+            // Cliente existente en modo visualización: no tocar sus datos
         }else if(clienteId){
             const r=await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(clienteBody)});
             if(!r.ok){
                 const err=await r.json().catch(()=>({}));
-                // Si el RUT ya pertenece a otro cliente, reutilizar ese
                 if(r.status===409&&err.cliente&&err.cliente.id){
                     clienteId=err.cliente.id;$('venta-cliente-id').value=clienteId;
                 }else{
-                    throw new Error(err.message||err.error||`Error ${r.status}`);
+                    throw new Error(err.message||err.error||`Error al actualizar cliente (${r.status})`);
                 }
             }
         }else{
             const r=await fetch('/api/im/clientes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(clienteBody)});
             const body=await r.json().catch(()=>({}));
             if(!r.ok){
-                if(r.status===409&&body.cliente&&body.cliente.id){
+                if((r.status===409||r.status===200)&&body.cliente&&body.cliente.id){
                     clienteId=body.cliente.id;$('venta-cliente-id').value=clienteId;
                 }else{
-                    throw new Error(body.message||body.error||`Error ${r.status}`);
+                    throw new Error(body.message||body.error||`Error al crear cliente (${r.status})`);
                 }
             }else{
-                clienteId=body.id;$('venta-cliente-id').value=clienteId;
+                clienteId=body.id||(body.cliente&&body.cliente.id);
+                if(!clienteId) throw new Error('El servidor no devolvió el ID del cliente creado.');
+                $('venta-cliente-id').value=clienteId;
             }
         }
         if(!clienteId) throw new Error('No se pudo obtener el ID del cliente.');
 
-        const agenteSelId  = $('venta-agente-id')  ? $('venta-agente-id').value  : CURRENT_USER_ID;
-        const agenteSelNom = $('venta-agente-nombre') ? $('venta-agente-nombre').value : CURRENT_USER_NAME;
+        const estadoOp=($('venta-estado-op')&&$('venta-estado-op').value)||'vendido';
+        // Sincronizar checkboxes con el estado elegido para no dejar datos contradictorios
+        if(estadoOp==='vendido'){
+            if(!$('venta-compraventa').checked&&!$('venta-promesa').checked)$('venta-compraventa').checked=true;
+        }else{
+            $('venta-promesa').checked=true;
+            $('venta-compraventa').checked=false;
+        }
+
+        const agenteSelId  = $('venta-agente-id')  ? $('venta-agente-id').value  : '';
+        const agenteSelNom = $('venta-agente-nombre') ? $('venta-agente-nombre').value : '';
 
         const ventaBody={
-            parcela_id:PARCELA_ID,cliente_id:clienteId,
-            firmo_promesa:$('venta-promesa').checked,firmo_compraventa:$('venta-compraventa').checked,
+            parcela_id:PARCELA_ID,
+            cliente_id:clienteId,
+            estado_operacion:estadoOp,
+            firmo_promesa:$('venta-promesa').checked,
+            firmo_compraventa:$('venta-compraventa').checked,
             fecha_venta:$('venta-fecha').value,
             precio_lista:cleanNum($('venta-precio-lista').value),
             precio_acordado:cleanNum($('venta-precio-acordado').value),
@@ -1318,15 +1370,23 @@ $('form-venta').addEventListener('submit',async(e)=>{
             agente_id:   agenteSelId  || null,
             agente_nombre: agenteSelNom || null
         };
-        // Si ya existe venta, actualizarla en lugar de crear otra. Así se
-        // conservan su ID, documentos y cuotas pagadas al cambiar ejecutivo.
-        const ventaExistenteId=ventaData&&ventaData.id?ventaData.id:null;
+
+        // Solo actualizar si la venta activa pertenece a ESTA parcela
+        const ventaExistenteId=(ventaData&&ventaData.id&&String(ventaData.parcela_id||PARCELA_ID)===String(PARCELA_ID))?ventaData.id:null;
         const ventaUrl=ventaExistenteId?`/api/im/ventas/${ventaExistenteId}`:'/api/im/ventas';
         const vRes=await fetch(ventaUrl,{method:ventaExistenteId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ventaBody)});
-        if(!vRes.ok){const err=await vRes.json().catch(()=>({}));throw new Error(err.message||err.error||`Error ${vRes.status}`);}
-        const ventaGuardada=await vRes.json();
+        const ventaGuardada=await vRes.json().catch(()=>({}));
+        if(!vRes.ok){
+            throw new Error(ventaGuardada.message||ventaGuardada.error||`Error al guardar la venta (${vRes.status})`);
+        }
+        if(!ventaGuardada.id){
+            throw new Error('El servidor no confirmó el ID de la venta. No se guardó correctamente.');
+        }
+        if(!ventaGuardada.cliente_id){
+            throw new Error('La venta se guardó sin cliente asociado. Intenta de nuevo.');
+        }
 
-        // Upload comprobante contado
+        // Upload comprobante contado (no bloquea la venta)
         if(pagoTipoActual==='contado'){
             const file=$('comprobante-contado').files[0];
             if(file&&ventaGuardada.id){
@@ -1335,31 +1395,41 @@ $('form-venta').addEventListener('submit',async(e)=>{
             }
         }
 
-        // Habilitar docs de inmediato (antes del re-init)
+        // Pintar UI inmediatamente con la respuesta verificada del servidor
+        const snapshot={
+            parcela:Object.assign({},parcelaData||{},{
+                id:PARCELA_ID,
+                estado_venta:ventaGuardada.parcela_estado||estadoOp
+            }),
+            venta:ventaGuardada,
+            cuotas:ventaGuardada.cuotas||[],
+            historial_precios:historialPreciosCache||[],
+            historial_ventas:historialVentasCache||[]
+        };
         ventaData=ventaGuardada;
-        currentClienteId=clienteId;
-        habilitarDocsVentaCliente(ventaGuardada.id,clienteId);
+        currentClienteId=ventaGuardada.cliente_id;
+        parcelaData=snapshot.parcela;
+        cuotasData=snapshot.cuotas;
+        renderParcela(snapshot);
+        habilitarDocsVentaCliente(ventaGuardada.id,ventaGuardada.cliente_id);
 
         showToast(
-            $('venta-promesa').checked&&!$('venta-compraventa').checked
+            (ventaGuardada.parcela_estado||estadoOp)==='reservado'
                 ? 'Venta guardada. Parcela marcada como Reservada.'
                 : 'Venta guardada. Parcela marcada como Vendida.',
             'success'
         );
-        const idGuardada=ventaGuardada.id;
-        await init();
-        // La recarga puede tardar un instante en reflejar el commit. Reintentar
-        // una vez en silencio antes de avisar, para no alarmar al usuario.
-        if((!ventaData||!ventaData.id)&&idGuardada){
-            await new Promise(r=>setTimeout(r,700));
+
+        // Revalidar contra GET; si falla, mantener el snapshot ya pintado
+        try{
             await init();
-        }
-        // Si aún no se reflejó, mantener visible el estado recién guardado.
-        if((!ventaData||!ventaData.id)&&idGuardada){
-            ventaData={id:idGuardada};
-            currentClienteId=clienteId;
-            habilitarDocsVentaCliente(idGuardada,clienteId);
-            showToast('Venta guardada. Si no ves el detalle, refresca la página.','info','Guardado');
+            if(!ventaData||!ventaData.id||String(ventaData.id)!==String(ventaGuardada.id)){
+                renderParcela(snapshot);
+                habilitarDocsVentaCliente(ventaGuardada.id,ventaGuardada.cliente_id);
+            }
+        }catch(_){
+            renderParcela(snapshot);
+            habilitarDocsVentaCliente(ventaGuardada.id,ventaGuardada.cliente_id);
         }
     }catch(err){showToast(err.message,'error','No se pudo guardar');}
     finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta';}}
