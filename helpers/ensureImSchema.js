@@ -52,6 +52,21 @@ async function ensureImSchema(pool) {
         `ALTER TABLE im_documentos ADD COLUMN IF NOT EXISTS storage_path TEXT`,
         `ALTER TABLE im_documentos ADD COLUMN IF NOT EXISTS subido_por UUID`,
 
+        // ── Auditoría ──
+        `CREATE TABLE IF NOT EXISTS im_auditoria (
+            id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+            tabla_afectada TEXT,
+            entidad_id UUID,
+            accion TEXT,
+            descripcion TEXT,
+            usuario_id UUID,
+            usuario_nombre TEXT,
+            fecha TIMESTAMPTZ DEFAULT NOW()
+        )`,
+        `ALTER TABLE im_auditoria ADD COLUMN IF NOT EXISTS fecha TIMESTAMPTZ DEFAULT NOW()`,
+        `ALTER TABLE im_auditoria ADD COLUMN IF NOT EXISTS usuario_nombre TEXT`,
+        `ALTER TABLE im_auditoria ADD COLUMN IF NOT EXISTS descripcion TEXT`,
+
         // ── Accesos ──
         `ALTER TABLE im_accesos ADD COLUMN IF NOT EXISTS puede_crear BOOLEAN DEFAULT false`,
 

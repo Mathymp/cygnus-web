@@ -63,16 +63,29 @@ function ensureSchemaOnce() {
 // Arranque en background al cargar el módulo (Render/Vercel)
 ensureSchemaOnce();
 
-async function auditLog(client, { tabla, entidadId, accion, descripcion, req }) {
-    const userId   = req.session.user ? req.session.user.id   : null;
-    const userName = req.session.user ? req.session.user.name : 'Sistema';
+async function auditLog(db, { tabla, entidadId, parcelaId, accion, descripcion, req }) {
+    const userId   = req?.session?.user?.id   || null;
+    const userName = req?.session?.user?.name || 'Sistema';
+    // Para la ficha del lote: entidad_id = parcela (así aparecen ventas/reservas/resciliaciones)
+    const linkId = parcelaId || entidadId || null;
     try {
-        await client.query(
-            `INSERT INTO im_auditoria (tabla_afectada, entidad_id, accion, descripcion, usuario_id, usuario_nombre)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [tabla, entidadId || null, accion, descripcion, userId, userName]
+        await db.query(
+            `INSERT INTO im_auditoria (tabla_afectada, entidad_id, accion, descripcion, usuario_id, usuario_nombre, fecha)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+            [tabla || null, linkId, accion || null, descripcion || null, userId, userName]
         );
-    } catch (_) {}
+    } catch (e1) {
+        // Compatibilidad si la columna fecha no admite override / no existe DEFAULT
+        try {
+            await db.query(
+                `INSERT INTO im_auditoria (tabla_afectada, entidad_id, accion, descripcion, usuario_id, usuario_nombre)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [tabla || null, linkId, accion || null, descripcion || null, userId, userName]
+            );
+        } catch (e2) {
+            console.warn('[auditLog]', e2.message || e1.message, { tabla, accion, linkId });
+        }
+    }
 }
 
 /**
@@ -536,9 +549,14 @@ exports.updateParcela = async (req, res) => {
         if (newPrice && parseFloat(oldPrice) !== newPrice) {
             await client.query(`INSERT INTO im_historial_precios (parcela_id, precio) VALUES ($1, $2)`, [id, newPrice]);
         }
-        await auditLog(client, { tabla: 'im_parcelas', entidadId: id,
-            accion: 'ACTUALIZAR',
-            descripcion: `Estado: ${estado_venta}. Precio: ${newPrice ? '$' + Number(newPrice).toLocaleString('es-CL') : 'sin precio'}.`, req });
+        await auditLog(client, {
+            tabla: 'im_parcelas',
+            entidadId: id,
+            parcelaId: id,
+            accion: 'ACTUALIZAR_PARCELA',
+            descripcion: `Datos de parcela actualizados. Estado: ${estado_venta || 'disponible'}${newPrice != null ? ' · Precio: $' + Number(newPrice).toLocaleString('es-CL') : ''}.`,
+            req
+        });
         await client.query('COMMIT');
         res.json(result.rows[0]);
     } catch (e) {
@@ -959,8 +977,9 @@ exports.createVenta = async (req, res) => {
         await auditLog(pool, {
             tabla: 'im_ventas_lotes',
             entidadId: ventaInsertada.id,
-            accion: 'CREAR',
-            descripcion: `Venta ${tipo_pago || 'contado'} por ${agente.nombre || 'sin agente'}. Estado: ${nuevoEstado}. Precio: ${precioAcordadoFinal ? '$' + Number(precioAcordadoFinal).toLocaleString('es-CL') : 'sin precio'}.`,
+            parcelaId: parcela.id,
+            accion: nuevoEstado === 'reservado' ? 'RESERVA' : 'VENTA',
+            descripcion: `${nuevoEstado === 'reservado' ? 'Reserva' : 'Venta'} ${tipo_pago || 'contado'} · Cliente: ${cliente.nombre_completo || cliente.id} · Ejecutivo: ${agente.nombre || 'sin asignar'} · Precio: ${precioAcordadoFinal ? '$' + Number(precioAcordadoFinal).toLocaleString('es-CL') : 'sin precio'} · Promesa: ${firmoPromesa ? 'sí' : 'no'} · Escritura: ${firmoCompraventa ? 'sí' : 'no'}.`,
             req
         });
 
@@ -1099,8 +1118,9 @@ exports.updateVenta = async (req, res) => {
         await auditLog(client, {
             tabla: 'im_ventas_lotes',
             entidadId: venta.id,
-            accion: 'ACTUALIZAR',
-            descripcion: `Venta actualizada. Ejecutivo: ${agente.nombre || 'sin asignar'}. Estado: ${nuevoEstado}.`,
+            parcelaId: parcelaId,
+            accion: 'ACTUALIZAR_VENTA',
+            descripcion: `Venta actualizada · Estado parcela: ${nuevoEstado} · Cliente: ${cliente.nombre_completo || cliente.id} · Ejecutivo: ${agente.nombre || 'sin asignar'} · Promesa: ${firmoPromesa ? 'sí' : 'no'} · Escritura: ${firmoCompraventa ? 'sí' : 'no'}.`,
             req
         });
         await client.query('COMMIT');
@@ -1169,10 +1189,17 @@ exports.deleteVenta = async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Venta no encontrada.' });
         }
+        const parcelaId = ventaRes.rows[0].parcela_id;
         await client.query(`DELETE FROM im_ventas_lotes WHERE id=$1`, [id]);
-        await client.query(`UPDATE im_parcelas SET estado_venta='disponible' WHERE id=$1`, [ventaRes.rows[0].parcela_id]);
-        await auditLog(client, { tabla: 'im_ventas_lotes', entidadId: id,
-            accion: 'ELIMINAR', descripcion: 'Venta eliminada. Parcela devuelta a disponible.', req });
+        await client.query(`UPDATE im_parcelas SET estado_venta='disponible' WHERE id=$1`, [parcelaId]);
+        await auditLog(client, {
+            tabla: 'im_ventas_lotes',
+            entidadId: id,
+            parcelaId,
+            accion: 'ELIMINAR_VENTA',
+            descripcion: 'Venta eliminada. Parcela devuelta a disponible.',
+            req
+        });
         await client.query('COMMIT');
         res.sendStatus(204);
     } catch (e) {
@@ -1297,8 +1324,9 @@ exports.resciliarVenta = async (req, res) => {
         await auditLog(client, {
             tabla: 'im_ventas_lotes',
             entidadId: venta.id,
+            parcelaId: parcela_id,
             accion: 'RESCILIACION',
-            descripcion: `Contrato resciliado por ${agente}. Motivo: ${motivo || 'no especificado'}. Devolución: ${tipoDev}${montoTotal ? ' $' + Number(montoTotal).toLocaleString('es-CL') : ''}. Parcela liberada.`,
+            descripcion: `Contrato resciliado. Motivo: ${motivo || 'no especificado'}. Devolución: ${tipoDev}${montoTotal ? ' $' + Number(montoTotal).toLocaleString('es-CL') : ''}. Parcela liberada a disponible.`,
             req
         });
 
@@ -1403,9 +1431,22 @@ exports.updateCuota = async (req, res) => {
         );
         if (result.rows.length === 0) return res.status(404).json({ message: 'Cuota no encontrada.' });
         const cuota = result.rows[0];
-        await auditLog(client, { tabla: 'im_cuotas', entidadId: cuota.venta_id,
+        let parcelaId = null;
+        try {
+            const pRes = await client.query(
+                `SELECT parcela_id FROM im_ventas_lotes WHERE id=$1`,
+                [cuota.venta_id]
+            );
+            parcelaId = pRes.rows[0]?.parcela_id || null;
+        } catch (_) {}
+        await auditLog(client, {
+            tabla: 'im_cuotas',
+            entidadId: cuota.venta_id,
+            parcelaId,
             accion: pagado ? 'CUOTA_PAGADA' : 'CUOTA_ACTUALIZADA',
-            descripcion: `Cuota N°${cuota.numero_cuota} ${pagado ? 'marcada como pagada' : 'actualizada'}.`, req });
+            descripcion: `Cuota N°${cuota.numero_cuota} ${pagado ? 'marcada como pagada' : 'actualizada'}${monto ? ' · $' + Number(cleanNum(monto) || cuota.monto).toLocaleString('es-CL') : ''}.`,
+            req
+        });
         await client.query('COMMIT');
         res.json(cuota);
     } catch (e) {
@@ -1585,15 +1626,49 @@ exports.getReporte = async (req, res) => {
 
 exports.getAuditoria = async (req, res) => {
     try {
-        const { entidad_id, tabla } = req.query;
-        let query = `SELECT * FROM im_auditoria WHERE 1=1`;
+        await ensureSchemaOnce();
+        const { entidad_id, tabla, parcela_id } = req.query;
+        const pid = parcela_id || entidad_id;
+
+        // Timeline del lote: incluye registros ligados a la parcela, sus ventas, resciliaciones y cuotas
+        if (pid) {
+            const params = [String(pid)];
+            let sql = `
+                SELECT a.id, a.tabla_afectada, a.entidad_id, a.accion, a.descripcion,
+                       a.usuario_id, a.usuario_nombre, a.fecha
+                FROM im_auditoria a
+                WHERE a.entidad_id::text = $1
+                   OR a.entidad_id::text IN (
+                        SELECT v.id::text FROM im_ventas_lotes v WHERE v.parcela_id::text = $1
+                   )
+                   OR a.entidad_id::text IN (
+                        SELECT r.id::text FROM im_resciliaciones r WHERE r.parcela_id::text = $1
+                   )
+                   OR a.entidad_id::text IN (
+                        SELECT q.id::text FROM im_cuotas q
+                        JOIN im_ventas_lotes v ON v.id = q.venta_id
+                        WHERE v.parcela_id::text = $1
+                   )`;
+            if (tabla) {
+                params.push(tabla);
+                sql += ` AND a.tabla_afectada = $${params.length}`;
+            }
+            sql += ` ORDER BY a.fecha DESC NULLS LAST LIMIT 200`;
+            const result = await pool.query(sql, params);
+            return res.json(result.rows);
+        }
+
+        let query = `SELECT id, tabla_afectada, entidad_id, accion, descripcion, usuario_id, usuario_nombre, fecha
+                     FROM im_auditoria WHERE 1=1`;
         const params = [];
-        if (entidad_id) { params.push(entidad_id); query += ` AND entidad_id=$${params.length}`; }
-        if (tabla)      { params.push(tabla);       query += ` AND tabla_afectada=$${params.length}`; }
-        query += ` ORDER BY fecha DESC LIMIT 100`;
+        if (tabla) { params.push(tabla); query += ` AND tabla_afectada=$${params.length}`; }
+        query += ` ORDER BY fecha DESC NULLS LAST LIMIT 100`;
         const result = await pool.query(query, params);
         res.json(result.rows);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) {
+        console.error('[getAuditoria]', e.message);
+        res.status(500).json({ error: e.message, message: e.message });
+    }
 };
 
 // ==========================================
@@ -1746,19 +1821,32 @@ exports.pagarCuotaDevolucion = async (req, res) => {
         );
         if (result.rows.length === 0) return res.status(404).json({ message: 'Cuota de devolución no encontrada.' });
 
-        // Registrar en im_documentos como doc del parcela de la resciliación
-        if (comprobante_url) {
-            const cuota = result.rows[0];
+        const cuota = result.rows[0];
+        let parcelaId = null;
+        try {
             const rescRes = await pool.query(`SELECT parcela_id FROM im_resciliaciones WHERE id=$1`, [cuota.resciliacion_id]);
-            if (rescRes.rows.length > 0) {
-                await pool.query(
-                    `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
-                     VALUES ($1,$2,'parcela',$3::text,$4,$5)`,
-                    [`Comprobante Devolución Cuota N° ${cuota.numero_cuota}`, comprobante_url,
-                     String(rescRes.rows[0].parcela_id), req.session.user?.id || null, storage_path]
-                ).catch(() => {});
-            }
+            parcelaId = rescRes.rows[0]?.parcela_id || null;
+        } catch (_) {}
+
+        // Registrar en im_documentos como doc del parcela de la resciliación
+        if (comprobante_url && parcelaId) {
+            await pool.query(
+                `INSERT INTO im_documentos (nombre_personalizado, url_storage, tipo_asociacion, asociacion_id, subido_por, storage_path)
+                 VALUES ($1,$2,'parcela',$3::text,$4,$5)`,
+                [`Comprobante Devolución Cuota N° ${cuota.numero_cuota}`, comprobante_url,
+                 String(parcelaId), req.session.user?.id || null, storage_path]
+            ).catch(() => {});
         }
+
+        await auditLog(pool, {
+            tabla: 'im_cuotas_devolucion',
+            entidadId: cuota.id,
+            parcelaId,
+            accion: 'DEVOLUCION_PAGADA',
+            descripcion: `Devolución cuota N°${cuota.numero_cuota} pagada${medio_pago ? ' · ' + medio_pago : ''}${cuota.monto != null ? ' · $' + Number(cuota.monto).toLocaleString('es-CL') : ''}.`,
+            req
+        });
+
         res.json(result.rows[0]);
     } catch (e) { res.status(500).json({ error: e.message }); }
 };

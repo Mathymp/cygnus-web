@@ -2004,23 +2004,62 @@ function previewDoc(url,nombre,ext){
 // ──────────────── AUDITORÍA ────────────────
 async function loadAuditoria(){
     const list=$('auditoria-list');
-    list.innerHTML='<div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
+    if(!list)return;
+    list.innerHTML='<div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando movimientos...</p></div>';
     try{
-        const [r1,r2]=await Promise.all([
-            fetch(`/api/im/auditoria?entidad_id=${PARCELA_ID}`).then(r=>r.json()),
-            proyectoId?fetch(`/api/im/auditoria?entidad_id=${proyectoId}`).then(r=>r.json()):[]
-        ]);
-        const all=[...(Array.isArray(r1)?r1:[]),...(Array.isArray(r2)?r2:[])].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
-        if(all.length===0){list.innerHTML='<div class="im-empty"><i class="bi bi-clock-history"></i><p>Sin registros aún.</p></div>';return;}
-        list.innerHTML=all.map(a=>`<div class="im-audit-item">
-            <div class="im-audit-dot"></div>
-            <div class="im-audit-body">
-                <div class="im-audit-accion">${escH(a.accion)}</div>
-                ${a.descripcion?`<div class="im-audit-desc">${escH(a.descripcion)}</div>`:''}
-                <div class="im-audit-meta">${new Date(a.fecha).toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${escH(a.usuario_nombre||'Sistema')}</div>
-            </div>
-        </div>`).join('');
-    }catch(e){list.innerHTML=`<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${escH(e.message)}</p></div>`;}
+        const res=await fetch(`/api/im/auditoria?parcela_id=${encodeURIComponent(PARCELA_ID)}`);
+        if(!res.ok)throw new Error(`No se pudo cargar la auditoría (HTTP ${res.status})`);
+        const all=await res.json();
+        if(!Array.isArray(all)||all.length===0){
+            list.innerHTML='<div class="im-empty"><i class="bi bi-clock-history"></i><p>Sin movimientos registrados aún para este lote.</p></div>';
+            return;
+        }
+        const labelAccion=a=>{
+            const map={
+                VENTA:'Venta registrada',
+                RESERVA:'Reserva registrada',
+                CREAR:'Alta',
+                ACTUALIZAR_VENTA:'Venta actualizada',
+                ACTUALIZAR:'Actualización',
+                ACTUALIZAR_PARCELA:'Parcela actualizada',
+                RESCILIACION:'Resciliación de contrato',
+                ELIMINAR_VENTA:'Venta eliminada',
+                ELIMINAR:'Eliminación',
+                CUOTA_PAGADA:'Cuota pagada',
+                CUOTA_ACTUALIZADA:'Cuota actualizada',
+                CREAR_BULK:'Parcelas creadas'
+            };
+            return map[a]||a||'Movimiento';
+        };
+        const colorAccion=a=>{
+            if(/VENTA|RESERVA|CREAR/i.test(a))return '#16a34a';
+            if(/RESCIL|ELIMIN/i.test(a))return '#dc2626';
+            if(/CUOTA/i.test(a))return '#2563eb';
+            return '#64748b';
+        };
+        list.innerHTML=all.map(a=>{
+            const fecha=a.fecha?new Date(a.fecha):null;
+            const fechaTxt=fecha&&!Number.isNaN(fecha.getTime())
+                ?fecha.toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})
+                :'—';
+            const color=colorAccion(String(a.accion||''));
+            return `<div class="im-audit-item">
+                <div class="im-audit-dot" style="background:${color};"></div>
+                <div class="im-audit-body">
+                    <div class="im-audit-accion" style="color:${color};">${escH(labelAccion(a.accion))}</div>
+                    ${a.descripcion?`<div class="im-audit-desc">${escH(a.descripcion)}</div>`:''}
+                    <div class="im-audit-meta">
+                        <i class="bi bi-clock"></i> ${fechaTxt}
+                        &nbsp;·&nbsp;
+                        <i class="bi bi-person"></i> ${escH(a.usuario_nombre||'Sistema')}
+                        ${a.tabla_afectada?`&nbsp;·&nbsp;<span style="color:#94a3b8;">${escH(a.tabla_afectada)}</span>`:''}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }catch(e){
+        list.innerHTML=`<div class="im-empty" style="color:#ef4444;"><i class="bi bi-exclamation-triangle"></i><p>${escH(e.message)}</p></div>`;
+    }
 }
 
 document.addEventListener('DOMContentLoaded',init);
