@@ -381,9 +381,11 @@ exports.getParcelaById = async (req, res) => {
         const parcela = parcelaRes.rows[0];
         let venta = await loadVentaForParcela(pool, parcela.id);
 
-        // Sincronizar estado de parcela con la venta vigente
+        // Sincronizar estado de parcela con la venta vigente (respeta estado guardado)
         if (venta) {
-            const esperado = (venta.firmo_promesa && !venta.firmo_compraventa) ? 'reservado' : 'vendido';
+            const esperado = (parcela.estado_venta === 'reservado' || parcela.estado_venta === 'vendido')
+                ? parcela.estado_venta
+                : ((venta.firmo_promesa && !venta.firmo_compraventa) ? 'reservado' : 'vendido');
             if (parcela.estado_venta !== esperado) {
                 await pool.query(`UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`, [esperado, parcela.id]).catch(() => {});
                 parcela.estado_venta = esperado;
@@ -398,10 +400,29 @@ exports.getParcelaById = async (req, res) => {
             cuotas = cuotasRes.rows;
         }
 
+        let otrasParcelasCliente = [];
+        if (venta?.cliente_id) {
+            const otrasRes = await pool.query(
+                `SELECT v.id AS venta_id, v.parcela_id, v.fecha_venta, v.precio_acordado, v.tipo_pago,
+                        v.firmo_promesa, v.firmo_compraventa,
+                        p.numero_parcela, p.estado_venta,
+                        pr.nombre AS proyecto_nombre
+                 FROM im_ventas_lotes v
+                 JOIN im_parcelas p ON p.id = v.parcela_id
+                 JOIN im_proyectos pr ON pr.id = p.proyecto_id
+                 WHERE v.cliente_id = $1
+                   AND COALESCE(v.estado,'activa') = 'activa'
+                   AND v.parcela_id <> $2
+                 ORDER BY v.fecha_venta DESC NULLS LAST, v.creado_at DESC`,
+                [venta.cliente_id, parcela.id]
+            );
+            otrasParcelasCliente = otrasRes.rows;
+        }
+
         const historialVentasRes = await pool.query(
             `SELECT v.id, v.estado, v.tipo_pago, v.precio_acordado, v.fecha_venta,
                     v.firmo_promesa, v.firmo_compraventa, v.agente_nombre, v.condiciones_compra,
-                    v.creado_at,
+                    v.notas, v.creado_at,
                     c.nombre_completo, c.rut,
                     r.id as resc_id, r.fecha as resc_fecha, r.motivo as resc_motivo,
                     r.notas as resc_notas, r.creado_por_nombre as resc_agente
@@ -417,7 +438,8 @@ exports.getParcelaById = async (req, res) => {
             historial_precios: historialRes.rows,
             venta,
             cuotas,
-            historial_ventas: historialVentasRes.rows
+            historial_ventas: historialVentasRes.rows,
+            otras_parcelas_cliente: otrasParcelasCliente
         });
     } catch (e) {
         console.error('[getParcelaById]', e.message);
@@ -796,8 +818,8 @@ exports.createVenta = async (req, res) => {
         const precioListaFinal = cleanMoney(precio_lista) ?? (parcela.precio_actual != null ? Number(parcela.precio_actual) : null);
         const precioAcordadoFinal = cleanMoney(precio_acordado) ?? precioListaFinal;
         const nuevoEstado = resolveEstadoOperacion(req.body);
-        const firmoPromesa = firmo_promesa === true || firmo_promesa === 'true' || firmo_promesa === 1 || firmo_promesa === '1' || nuevoEstado === 'reservado';
-        const firmoCompraventa = firmo_compraventa === true || firmo_compraventa === 'true' || firmo_compraventa === 1 || firmo_compraventa === '1' || nuevoEstado === 'vendido';
+        const firmoPromesa = firmo_promesa === true || firmo_promesa === 'true' || firmo_promesa === 1 || firmo_promesa === '1';
+        const firmoCompraventa = firmo_compraventa === true || firmo_compraventa === 'true' || firmo_compraventa === 1 || firmo_compraventa === '1';
         const agente = await resolveVentaAgent(pool, req, agente_id);
 
         const insertParams = [
@@ -997,8 +1019,8 @@ exports.updateVenta = async (req, res) => {
         const precioListaFinal = cleanMoney(precio_lista) ?? (parcela.precio_actual != null ? Number(parcela.precio_actual) : null);
         const precioAcordadoFinal = cleanMoney(precio_acordado) ?? precioListaFinal;
         const nuevoEstado = resolveEstadoOperacion(req.body);
-        const firmoPromesa = firmo_promesa === true || firmo_promesa === 'true' || firmo_promesa === 1 || firmo_promesa === '1' || nuevoEstado === 'reservado';
-        const firmoCompraventa = firmo_compraventa === true || firmo_compraventa === 'true' || firmo_compraventa === 1 || firmo_compraventa === '1' || nuevoEstado === 'vendido';
+        const firmoPromesa = firmo_promesa === true || firmo_promesa === 'true' || firmo_promesa === 1 || firmo_promesa === '1';
+        const firmoCompraventa = firmo_compraventa === true || firmo_compraventa === 'true' || firmo_compraventa === 1 || firmo_compraventa === '1';
         const agente = await resolveVentaAgent(client, req, agente_id);
 
         await client.query(

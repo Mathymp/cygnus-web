@@ -779,9 +779,9 @@ function renderParcela(data){
     $('parcela-titulo').textContent=`Parcela N° ${p.numero_parcela} — ${p.proyecto_nombre}`;
 
     const eMap={disponible:{cl:'disponible',ic:'bi-circle-fill',t:'Disponible'},reservado:{cl:'reservado',ic:'bi-clock-history',t:'Reservado'},vendido:{cl:'vendido',ic:'bi-bag-check-fill',t:'Vendido'}};
-    // Si hay venta vigente, el estado visual sigue la operación (vendido salvo promesa sola)
+    // Estado visual: prioriza el guardado en parcela; docs (promesa/escritura) son independientes
     const estadoVisual=venta
-        ?((venta.firmo_promesa&&!venta.firmo_compraventa)?'reservado':'vendido')
+        ?(p.estado_venta==='reservado'||p.estado_venta==='vendido'?p.estado_venta:'vendido')
         :(p.estado_venta||'disponible');
     const e=eMap[estadoVisual]||eMap.disponible;
     $('parcela-estado-badge').innerHTML=`<span class="im-status-badge ${e.cl}"><i class="bi ${e.ic}"></i> ${e.t}</span>`;
@@ -823,23 +823,27 @@ function renderParcela(data){
                 <span style="min-width:140px;font-size:.78rem;color:#64748b;font-weight:600;padding-top:1px;">${icon?`<i class="bi ${icon}" style="margin-right:4px;"></i>`:''}${label}</span>
                 <span style="font-size:.85rem;color:#0f172a;font-weight:500;word-break:break-word;">${escH(String(val))}</span>
               </div>`:'';
-        const chip=(ok,label)=>`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:700;background:${ok?'#dcfce7':'#f1f5f9'};color:${ok?'#166534':'#94a3b8'};border:1px solid ${ok?'#86efac':'#e2e8f0'};"><i class="bi bi-${ok?'check-circle-fill':'circle'}"></i>${label}</span>`;
+        // Promesa de compraventa / Escritura de compraventa — verde firmado, rojo pendiente
+        const chipDoc=(ok,label)=>`<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.76rem;font-weight:700;background:${ok?'#dcfce7':'#fee2e2'};color:${ok?'#166534':'#991b1b'};border:1px solid ${ok?'#86efac':'#fca5a5'};"><i class="bi bi-${ok?'check-circle-fill':'x-circle-fill'}"></i>${label}</span>`;
         const section=(title,color,content)=>`<div style="background:${color};border-radius:10px;padding:14px 16px;margin-bottom:12px;">${title?`<p style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px;">${title}</p>`:''}${content}</div>`;
 
         const saldoPendiente=cuotas.filter(c=>!c.pagado).reduce((s,c)=>s+(parseFloat(c.monto)||0),0);
+        const otrasParcelas=data.otras_parcelas_cliente||[];
+        const notasTxt=(venta.notas&&String(venta.notas).trim())||'';
+        const condTxt=(venta.condiciones_compra&&String(venta.condiciones_compra).trim())||'';
 
         $('venta-actual').innerHTML=`
         <div style="border:2px solid #86efac;border-radius:14px;overflow:hidden;margin-bottom:4px;">
             <!-- Header -->
-            <div style="background:linear-gradient(135deg,#166534 0%,#16a34a 100%);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="background:linear-gradient(135deg,#166534 0%,#16a34a 100%);padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
                 <div>
                     <p style="color:#fff;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:0 0 2px;opacity:.8;">Comprador Asignado</p>
                     <p style="color:#fff;font-size:1.05rem;font-weight:800;margin:0;">${escH(venta.nombre_completo)}</p>
                     <p style="color:#bbf7d0;font-size:.8rem;margin:2px 0 0;">${escH(venta.rut)}${venta.estado_civil?' · '+escH(venta.estado_civil):''}</p>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-                    ${chip(venta.firmo_promesa,'Promesa')}
-                    ${chip(venta.firmo_compraventa,'Compraventa')}
+                    ${chipDoc(!!venta.firmo_promesa,'Promesa de compraventa')}
+                    ${chipDoc(!!venta.firmo_compraventa,'Escritura de compraventa')}
                 </div>
             </div>
 
@@ -872,9 +876,29 @@ function renderParcela(data){
                     +row('Agente',venta.agente_nombre||'Sin asignar','bi-person-badge')
                 )}
 
-                <!-- Condiciones / Notas -->
-                ${venta.condiciones_compra?`<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:12px;"><p style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;margin:0 0 4px;"><i class="bi bi-file-text"></i> Condiciones de Compra</p><p style="font-size:.83rem;color:#78350f;margin:0;line-height:1.5;">${escH(venta.condiciones_compra)}</p></div>`:''}
-                ${venta.notas?`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:12px;"><p style="font-size:.72rem;font-weight:700;color:#475569;text-transform:uppercase;margin:0 0 4px;"><i class="bi bi-sticky"></i> Notas</p><p style="font-size:.83rem;color:#475569;margin:0;font-style:italic;">${escH(venta.notas)}</p></div>`:''}
+                <!-- Condiciones / Notas (siempre visibles si hay venta) -->
+                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+                    <p style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;margin:0 0 6px;"><i class="bi bi-file-text"></i> Condiciones de compra</p>
+                    <p style="font-size:.83rem;color:#78350f;margin:0;line-height:1.5;${condTxt?'':'font-style:italic;opacity:.7;'}">${condTxt?escH(condTxt):'Sin condiciones registradas.'}</p>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+                    <p style="font-size:.72rem;font-weight:700;color:#475569;text-transform:uppercase;margin:0 0 6px;"><i class="bi bi-sticky"></i> Notas / comentarios</p>
+                    <p style="font-size:.83rem;color:#475569;margin:0;line-height:1.5;${notasTxt?'font-style:italic;':'opacity:.7;'}">${notasTxt?escH(notasTxt):'Sin notas registradas.'}</p>
+                </div>
+
+                <!-- Otras parcelas del mismo comprador -->
+                ${otrasParcelas.length?`
+                <div style="margin-bottom:12px;">
+                    <p style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;"><i class="bi bi-grid-3x3-gap"></i> Otras parcelas de este cliente</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                        ${otrasParcelas.map(op=>`
+                            <a href="/admin/inmobiliaria/parcela/${op.parcela_id}" style="display:inline-flex;flex-direction:column;gap:2px;padding:8px 12px;border-radius:999px;background:#eff6ff;border:1.5px solid #93c5fd;color:#1e40af;text-decoration:none;font-size:.78rem;font-weight:600;max-width:100%;">
+                                <span><i class="bi bi-geo-alt-fill"></i> ${escH(op.proyecto_nombre)} · P${escH(op.numero_parcela)}</span>
+                                <span style="font-size:.7rem;font-weight:500;color:#64748b;">${op.precio_acordado?'$'+fmt(op.precio_acordado):''}${op.fecha_venta?' · '+fmtFechaCL(op.fecha_venta,{day:'2-digit',month:'short',year:'numeric'}):''}</span>
+                            </a>
+                        `).join('')}
+                    </div>
+                </div>`:''}
 
                 <!-- Comprobante -->
                 ${venta.comprobante_url?`<div style="display:flex;gap:8px;margin-bottom:4px;">
@@ -911,7 +935,7 @@ function renderParcela(data){
         $('venta-promesa').checked=!!venta.firmo_promesa;
         $('venta-compraventa').checked=!!venta.firmo_compraventa;
         if($('venta-estado-op')){
-            $('venta-estado-op').value=(venta.firmo_promesa&&!venta.firmo_compraventa)?'reservado':'vendido';
+            $('venta-estado-op').value=(p.estado_venta==='reservado')?'reservado':'vendido';
         }
         $('venta-notas').value=venta.notas||'';
         $('venta-condiciones').value=venta.condiciones_compra||'';
@@ -1022,8 +1046,8 @@ function renderHistorialVentas(histVentas){
                     <span><i class="bi bi-cash"></i> ${precio}</span>
                     <span>${modPago}</span>
                     ${v.agente_nombre?`<span><i class="bi bi-person"></i> ${escH(v.agente_nombre)}</span>`:''}
-                    ${v.firmo_promesa?`<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Promesa</span>`:''}
-                    ${v.firmo_compraventa?`<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Compraventa</span>`:''}
+                    ${v.firmo_promesa?`<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Promesa de compraventa</span>`:`<span style="color:#dc2626;"><i class="bi bi-x-circle-fill"></i> Promesa de compraventa</span>`}
+                    ${v.firmo_compraventa?`<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Escritura de compraventa</span>`:`<span style="color:#dc2626;"><i class="bi bi-x-circle-fill"></i> Escritura de compraventa</span>`}
                 </div>
                 ${rescInfo}
             </div>`;
@@ -1358,10 +1382,8 @@ $('form-venta').addEventListener('submit',async(e)=>{
         if(!clienteId) throw new Error('No se pudo obtener el ID del cliente.');
 
         const estadoOp=($('venta-estado-op')&&$('venta-estado-op').value)||'vendido';
-        // Sincronizar checkboxes con el estado elegido para no dejar datos contradictorios
-        if(estadoOp==='vendido'){
-            if(!$('venta-compraventa').checked&&!$('venta-promesa').checked)$('venta-compraventa').checked=true;
-        }else{
+        // Reservado implica promesa; escritura queda como el usuario la marcó (no se fuerza)
+        if(estadoOp==='reservado'){
             $('venta-promesa').checked=true;
             $('venta-compraventa').checked=false;
         }
