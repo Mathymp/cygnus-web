@@ -375,10 +375,21 @@ exports.getParcelas = async (req, res) => {
         const result = await pool.query(
             `SELECT p.*,
                 (SELECT precio FROM im_historial_precios WHERE parcela_id = p.id ORDER BY fecha_registro DESC LIMIT 1) as ultimo_precio,
-                (SELECT c.nombre_completo FROM im_ventas_lotes v JOIN im_clientes c ON v.cliente_id = c.id
-                 WHERE v.parcela_id = p.id AND COALESCE(v.estado,'activa')='activa'
-                 ORDER BY v.creado_at DESC LIMIT 1) as cliente_nombre
-             FROM im_parcelas p WHERE p.proyecto_id = $1
+                v.id AS venta_id,
+                v.firmo_promesa,
+                v.firmo_compraventa,
+                v.agente_nombre,
+                c.nombre_completo AS cliente_nombre
+             FROM im_parcelas p
+             LEFT JOIN LATERAL (
+                SELECT id, cliente_id, firmo_promesa, firmo_compraventa, agente_nombre
+                FROM im_ventas_lotes
+                WHERE parcela_id = p.id AND COALESCE(estado,'activa')='activa'
+                ORDER BY creado_at DESC
+                LIMIT 1
+             ) v ON true
+             LEFT JOIN im_clientes c ON c.id::text = v.cliente_id::text
+             WHERE p.proyecto_id = $1
              ORDER BY LENGTH(p.numero_parcela::TEXT) ASC, p.numero_parcela ASC`,
             [proyectoId]
         );
