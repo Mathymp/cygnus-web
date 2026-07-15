@@ -1948,8 +1948,12 @@ exports.getCartera = async (req, res) => {
             `, params),
             pool.query(`
                 SELECT COUNT(v.id)::int AS operaciones_activas,
-                       COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_compraventa,false)=true)::int AS ventas_cerradas,
-                       COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_compraventa,false)=false)::int AS reservas_vigentes,
+                       COUNT(v.id) FILTER (WHERE COALESCE(pa.estado_venta,'vendido')='vendido')::int AS ventas_cerradas,
+                       COUNT(v.id) FILTER (WHERE pa.estado_venta='reservado')::int AS reservas_vigentes,
+                       COUNT(v.id) FILTER (
+                           WHERE COALESCE(pa.estado_venta,'vendido')='vendido'
+                             AND COALESCE(v.firmo_compraventa,false)=false
+                       )::int AS ventas_sin_escritura,
                        COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_promesa,false)=true)::int AS promesas_firmadas,
                        COUNT(DISTINCT v.cliente_id)::int AS clientes_activos,
                        COUNT(v.id) FILTER (WHERE COALESCE(v.tipo_pago,'contado')='contado')::int AS operaciones_contado,
@@ -2039,8 +2043,12 @@ exports.getCartera = async (req, res) => {
                 SELECT v.agente_id,
                        COALESCE(NULLIF(MAX(u.name),''),MAX(NULLIF(v.agente_nombre,'')),'Sin asignar') AS agente,
                        COUNT(v.id)::int AS operaciones,
-                       COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_compraventa,false)=true)::int AS cerradas,
-                       COUNT(v.id) FILTER (WHERE COALESCE(v.firmo_compraventa,false)=false)::int AS reservas,
+                       COUNT(v.id) FILTER (WHERE COALESCE(pa.estado_venta,'vendido')='vendido')::int AS cerradas,
+                       COUNT(v.id) FILTER (WHERE pa.estado_venta='reservado')::int AS reservas,
+                       COUNT(v.id) FILTER (
+                           WHERE COALESCE(pa.estado_venta,'vendido')='vendido'
+                             AND COALESCE(v.firmo_compraventa,false)=false
+                       )::int AS sin_escritura,
                        COALESCE(SUM(v.precio_acordado),0) AS monto,
                        COALESCE(AVG(v.precio_acordado) FILTER (WHERE v.precio_acordado IS NOT NULL),0) AS ticket,
                        MAX(COALESCE(v.fecha_venta,v.creado_at::date)) AS ultima_venta

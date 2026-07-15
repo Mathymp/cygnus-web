@@ -123,7 +123,8 @@ function insights(d){
     if(n(c.monto_mora)>0)out.push(`<div class="insight danger"><i class="bi bi-exclamation-octagon-fill"></i><div><strong>Atención de cobranza:</strong> hay ${c.cuotas_vencidas} cuota(s) vencida(s) por ${money(c.monto_mora)}, correspondientes a ${c.contratos_en_mora} contrato(s).</div></div>`);
     else out.push(`<div class="insight ok"><i class="bi bi-check-circle-fill"></i><div><strong>Cartera sin mora registrada:</strong> no existen cuotas vencidas en ventas activas bajo este filtro.</div></div>`);
     if(n(i.disponibles)>0)out.push(`<div class="insight info"><i class="bi bi-box-seam-fill"></i><div><strong>Capacidad comercial:</strong> quedan ${i.disponibles} parcelas disponibles por un valor de lista de ${money(i.valor_inventario_disponible)}.</div></div>`);
-    if(n(v.reservas_vigentes)>0)out.push(`<div class="insight warn"><i class="bi bi-clock-history"></i><div><strong>Pipeline:</strong> ${v.reservas_vigentes} operación(es) siguen reservadas sin compraventa firmada. Conviene revisar su avance documental.</div></div>`);
+    if(n(v.reservas_vigentes)>0)out.push(`<div class="insight warn"><i class="bi bi-clock-history"></i><div><strong>Reservas:</strong> ${v.reservas_vigentes} operación(es) están en estado reserva (no venta).</div></div>`);
+    if(n(v.ventas_sin_escritura)>0)out.push(`<div class="insight info"><i class="bi bi-file-earmark-text"></i><div><strong>Escritura pendiente:</strong> ${v.ventas_sin_escritura} venta(s) ya están vendidas; la escritura de compraventa se firma cuando el proyecto tenga rol.</div></div>`);
     if(n(c.vencen_30_dias)>0)out.push(`<div class="insight info"><i class="bi bi-calendar-event"></i><div><strong>Próximos 30 días:</strong> vencen ${c.vencen_30_dias} cuota(s); prioriza recordatorios preventivos.</div></div>`);
     out.push(`<div class="insight ${ocup>=70?'ok':'info'}"><i class="bi bi-speedometer2"></i><div><strong>Avance comercial global:</strong> ${ocup}% del inventario está vendido o reservado.</div></div>`);
     return out.join('');
@@ -140,7 +141,7 @@ function render(d){
             ${kpi('bi-box-seam-fill','Valor disponible',shortMoney(i.valor_inventario_disponible),`${i.disponibles} parcelas listas para comercializar`,'#059669','#ecfdf5')}
             ${kpi('bi-cash-stack','Cartera acordada',shortMoney(v.cartera_acordada),`${v.operaciones_activas} operaciones activas · ticket ${shortMoney(v.ticket_promedio)}`,'#7c3aed','#f5f3ff')}
             ${kpi('bi-exclamation-triangle-fill','Mora vigente',shortMoney(c.monto_mora),`${c.cuotas_vencidas} cuotas · ${c.contratos_en_mora} contratos`,'#dc2626','#fef2f2')}
-            ${kpi('bi-check2-circle','Ventas cerradas',fmt(v.ventas_cerradas),`${v.reservas_vigentes} reservas aún en proceso`,'#2563eb','#eff6ff')}
+            ${kpi('bi-check2-circle','Ventas',fmt(v.ventas_cerradas),`${v.reservas_vigentes} reservas · ${v.ventas_sin_escritura||0} sin escritura aún`,'#2563eb','#eff6ff')}
             ${kpi('bi-wallet2','Cobrado en cuotas',shortMoney(c.monto_cobrado),`${c.cuotas_pagadas} cuotas registradas como pagadas`,'#059669','#ecfdf5')}
             ${kpi('bi-hourglass-split','Saldo de cuotas',shortMoney(c.saldo_pendiente),`${c.cuotas_pendientes} cuotas pendientes`,'#d97706','#fffbeb')}
             ${kpi('bi-arrow-counterclockwise','Devoluciones pendientes',shortMoney(r.devolucion_pendiente),`${r.total_resciliaciones} resciliaciones · ${r.devoluciones_abiertas} abiertas`,'#e11d48','#fff1f2')}
@@ -172,7 +173,7 @@ function render(d){
             </section>
             <section class="panel">
                 <div class="panel-title"><h2><i class="bi bi-person-badge-fill"></i> Ventas por ejecutivo</h2><small>Asignaciones vigentes guardadas en cada venta</small></div>
-                ${d.agentes.length?d.agentes.map(a=>`<div class="agent-row"><div><div class="agent-name">${esc(a.agente)}</div><div class="agent-meta">${a.cerradas} vendidas · ${a.reservas} reservadas · ${pct(a.cerradas,a.operaciones)}% cierre</div></div><div class="agent-meta"><strong>${a.operaciones}</strong> venta${n(a.operaciones)!==1?'s':''}<br>ticket ${shortMoney(a.ticket)}</div><div><div class="agent-name" style="text-align:right">${shortMoney(a.monto)}</div><div class="progress" style="height:4px;margin-top:4px"><span style="width:${(n(a.monto)/maxAgent)*100}%;background:${a.agente==='Sin asignar'?'#f59e0b':'#2563eb'}"></span></div></div></div>`).join(''):'<div class="empty">Sin ventas vigentes asignadas a ejecutivos.</div>'}
+                ${d.agentes.length?d.agentes.map(a=>`<div class="agent-row"><div><div class="agent-name">${esc(a.agente)}</div><div class="agent-meta">${a.cerradas} venta${n(a.cerradas)!==1?'s':''}${n(a.reservas)>0?` · ${a.reservas} reserva${n(a.reservas)!==1?'s':''}`:''}${n(a.sin_escritura)>0?` · ${a.sin_escritura} sin escritura`:''} · ${pct(a.cerradas,a.operaciones)}% ventas</div></div><div class="agent-meta"><strong>${a.operaciones}</strong> operación${n(a.operaciones)!==1?'es':''}<br>ticket ${shortMoney(a.ticket)}</div><div><div class="agent-name" style="text-align:right">${shortMoney(a.monto)}</div><div class="progress" style="height:4px;margin-top:4px"><span style="width:${(n(a.monto)/maxAgent)*100}%;background:${a.agente==='Sin asignar'?'#f59e0b':'#2563eb'}"></span></div></div></div>`).join(''):'<div class="empty">Sin ventas vigentes asignadas a ejecutivos.</div>'}
             </section>
         </div>
 
