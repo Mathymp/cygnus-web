@@ -152,31 +152,33 @@
                         <div class="im-form-row" style="margin-bottom:10px;">
                             <div class="im-input-group">
                                 <label>Monto total a devolver (CLP)</label>
-                                <input type="text" id="resc-monto-total" class="styled-input" placeholder="Ej: 5.000.000" oninput="fmtPrecio(this);recalcRescCuotas()">
+                                <input type="text" id="resc-monto-total" class="styled-input" placeholder="Ej: 5.000.000" oninput="fmtPrecio(this);recalcRescCuotas(true)">
                             </div>
                             <div class="im-input-group" id="resc-pie-wrap" style="display:none;">
                                 <label>Pago inicial / pie de resciliación</label>
-                                <input type="text" id="resc-monto-pie" class="styled-input" placeholder="Ej: 1.000.000" oninput="fmtPrecio(this);recalcRescCuotas()">
+                                <input type="text" id="resc-monto-pie" class="styled-input" placeholder="Ej: 1.000.000" oninput="fmtPrecio(this);recalcRescCuotas(true)">
                             </div>
                         </div>
                         <div id="resc-cuotas-wrap" style="display:none;">
                             <div class="im-form-row" style="margin-bottom:10px;">
                                 <div class="im-input-group">
                                     <label>N° de cuotas</label>
-                                    <input type="number" id="resc-num-cuotas" class="styled-input" min="1" max="120" value="6" oninput="recalcRescCuotas()">
+                                    <input type="number" id="resc-num-cuotas" class="styled-input" min="1" max="120" value="6" oninput="recalcRescCuotas(true)">
                                 </div>
                                 <div class="im-input-group">
                                     <label>Monto por cuota</label>
-                                    <input type="text" id="resc-monto-cuota" class="styled-input" placeholder="Auto" oninput="fmtPrecio(this)">
+                                    <input type="text" id="resc-monto-cuota" class="styled-input" placeholder="Auto: (total−pie)/N" oninput="fmtPrecio(this);recalcRescCuotas(false)" onblur="recalcRescCuotas(false)">
                                 </div>
                                 <div class="im-input-group">
                                     <label>Primera fecha de pago</label>
-                                    <input type="date" id="resc-primera-cuota" class="styled-input" onchange="recalcRescCuotas()">
+                                    <input type="date" id="resc-primera-cuota" class="styled-input" onchange="recalcRescCuotas(false)">
                                 </div>
                             </div>
+                            <div id="resc-calc-hint" style="font-size:.78rem;color:#64748b;margin:0 0 8px;"></div>
                             <div id="resc-cuotas-preview" style="display:none;">
                                 <p style="font-size:.75rem;font-weight:700;color:#64748b;margin:0 0 6px;">Calendario de devoluciones</p>
                                 <div id="resc-cuotas-preview-list"></div>
+                                <div id="resc-cuotas-total-bar" style="display:none;margin-top:8px;"></div>
                             </div>
                         </div>
                     </div>
@@ -1649,41 +1651,104 @@ function setRescDevTipo(tipo){
     if($('resc-sin-dev-msg'))$('resc-sin-dev-msg').style.display=sin?'block':'none';
     if($('resc-pie-wrap'))$('resc-pie-wrap').style.display=rescDevTipo==='pie_mas_cuotas'?'block':'none';
     if($('resc-cuotas-wrap'))$('resc-cuotas-wrap').style.display=conCuotas?'block':'none';
-    if(conCuotas)recalcRescCuotas();
+    if(conCuotas){
+        // Al cambiar tipo, recalcular monto cuota desde (total−pie)/N
+        if($('resc-monto-cuota'))$('resc-monto-cuota').value='';
+        recalcRescCuotas(true);
+    }
 }
 
-function recalcRescCuotas(){
+/** @param {boolean} recalcMonto si true, recalcula monto por cuota = (total−pie)/N */
+function recalcRescCuotas(recalcMonto=true){
     if(rescDevTipo!=='cuotas'&&rescDevTipo!=='pie_mas_cuotas'){
         if($('resc-cuotas-preview'))$('resc-cuotas-preview').style.display='none';
+        if($('resc-calc-hint'))$('resc-calc-hint').innerHTML='';
         rescFechasCuotas=[];
         return;
     }
     const n=parseInt($('resc-num-cuotas').value,10)||0;
     const total=cleanNum($('resc-monto-total').value)||0;
     const pie=rescDevTipo==='pie_mas_cuotas'?(cleanNum($('resc-monto-pie').value)||0):0;
-    const resto=Math.max(0,total-pie);
-    let montoCuota=cleanNum($('resc-monto-cuota').value);
-    if((!montoCuota||montoCuota<=0)&&n>0&&resto>0){
-        montoCuota=Math.round(resto/n);
+    const objetivo=Math.max(0,total-pie); // monto que deben sumar las cuotas
+
+    const hint=$('resc-calc-hint');
+    if(hint){
+        if(rescDevTipo==='pie_mas_cuotas'){
+            hint.innerHTML=`<i class="bi bi-calculator"></i> Total <strong>$${fmt(total)}</strong> − Pie <strong>$${fmt(pie)}</strong> = <strong>$${fmt(objetivo)}</strong> a repartir en cuotas.`;
+        }else{
+            hint.innerHTML=`<i class="bi bi-calculator"></i> Total a devolver en cuotas: <strong>$${fmt(objetivo)}</strong>.`;
+        }
+    }
+
+    if(recalcMonto&&n>0&&objetivo>0){
+        const mc=Math.round(objetivo/n);
+        $('resc-monto-cuota').value=Number(mc).toLocaleString('es-CL');
+    }
+
+    let montoCuota=cleanNum($('resc-monto-cuota').value)||0;
+    if((!montoCuota||montoCuota<=0)&&n>0&&objetivo>0){
+        montoCuota=Math.round(objetivo/n);
         $('resc-monto-cuota').value=Number(montoCuota).toLocaleString('es-CL');
     }
+
     const fechaBase=$('resc-primera-cuota').value||hoyYmd();
+    if(!$('resc-primera-cuota').value)$('resc-primera-cuota').value=fechaBase;
+
     rescFechasCuotas=[];
-    if(!n||n<1){$('resc-cuotas-preview').style.display='none';return;}
+    if(!n||n<1){
+        if($('resc-cuotas-preview'))$('resc-cuotas-preview').style.display='none';
+        return;
+    }
+
+    let acumulado=0;
     let rows='';
     for(let i=0;i<n;i++){
         const d=new Date(fechaBase+'T12:00:00');
         d.setMonth(d.getMonth()+i);
         const fecha=d.toISOString().split('T')[0];
-        rescFechasCuotas.push({numero:i+1,monto:montoCuota||0,fecha});
-        rows+=`<div style="display:grid;grid-template-columns:36px 1fr 110px 130px;gap:6px;align-items:center;padding:6px 10px;background:#fff;border:1px solid #fee2e2;border-radius:8px;margin-bottom:5px;font-size:.78rem;">
+        // Auto: última cuota ajusta redondeo. Manual: todas iguales y se muestra diferencia.
+        const monto=(recalcMonto&&i===n-1)?Math.max(0,objetivo-acumulado):(montoCuota||0);
+        acumulado+=monto;
+        rescFechasCuotas.push({numero:i+1,monto,fecha});
+        rows+=`<div style="display:grid;grid-template-columns:36px 1fr 120px 130px;gap:6px;align-items:center;padding:6px 10px;background:#fff;border:1px solid #fee2e2;border-radius:8px;margin-bottom:5px;font-size:.78rem;">
             <span style="font-weight:800;color:#dc2626;text-align:center;">${i+1}</span>
             <span style="color:#64748b;">Devolución</span>
-            <span style="font-weight:700;">${montoCuota?'$'+fmt(montoCuota):'—'}</span>
+            <span style="font-weight:700;">$${fmt(monto)}</span>
             <input type="date" value="${fecha}" style="border:1px solid #e2e8f0;border-radius:6px;padding:3px 6px;font-size:.75rem;font-family:inherit;" onchange="rescFechasCuotas[${i}].fecha=this.value">
         </div>`;
     }
+
+    const suma=rescFechasCuotas.reduce((s,c)=>s+Number(c.monto||0),0);
+    const diff=suma-objetivo; // positivo = sobra / negativo = falta
+    const diffAbs=Math.abs(diff);
+    let diffHtml='';
+    if(diff===0){
+        diffHtml=`<span style="color:#16a34a;font-weight:700;"><i class="bi bi-check-circle-fill"></i> Cuadra exacto con el objetivo</span>`;
+    }else if(diff>0){
+        diffHtml=`<span style="color:#dc2626;font-weight:700;"><i class="bi bi-exclamation-triangle-fill"></i> Sobra $${fmt(diffAbs)} respecto al objetivo (total − pie)</span>`;
+    }else{
+        diffHtml=`<span style="color:#d97706;font-weight:700;"><i class="bi bi-exclamation-triangle-fill"></i> Falta $${fmt(diffAbs)} respecto al objetivo (total − pie)</span>`;
+    }
+
     $('resc-cuotas-preview-list').innerHTML=rows;
+    const bar=$('resc-cuotas-total-bar');
+    if(bar){
+        bar.style.display='block';
+        bar.innerHTML=`
+            <div style="display:flex;flex-direction:column;gap:6px;padding:12px 14px;background:#0f172a;border-radius:8px;color:#fff;">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <span style="font-size:.78rem;font-weight:600;opacity:.85;">Total pago de cuotas (${n})</span>
+                    <strong style="font-size:1.05rem;">$${fmt(suma)}</strong>
+                </div>
+                ${pie>0?`<div style="display:flex;justify-content:space-between;font-size:.75rem;opacity:.85;"><span>+ Pie inicial</span><span>$${fmt(pie)}</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;border-top:1px solid rgba(255,255,255,.2);padding-top:6px;"><span>Total a devolver (pie + cuotas)</span><span>$${fmt(suma+pie)}</span></div>`:''}
+            </div>
+            <div style="margin-top:8px;padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:.78rem;">
+                Objetivo cuotas: <strong>$${fmt(objetivo)}</strong>
+                ${pie?` · Pie: <strong>$${fmt(pie)}</strong>`:''}
+                · Diferencia: ${diffHtml}
+            </div>`;
+    }
     $('resc-cuotas-preview').style.display='block';
 }
 
@@ -1734,9 +1799,19 @@ async function resciliarContrato(){
         if(rescDevTipo!=='sin_devolucion'){
             const monto=cleanNum($('resc-monto-total').value);
             if(!monto||monto<=0)throw new Error('Indica el monto total a devolver (o elige Sin devolución).');
-            if((rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas')&&rescFechasCuotas.length===0){
-                recalcRescCuotas();
+            if(rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas'){
+                recalcRescCuotas(false); // respeta monto cuota tipado; asegura tabla al día
                 if(rescFechasCuotas.length===0)throw new Error('Configura el número de cuotas y la primera fecha de pago.');
+                const pie=rescDevTipo==='pie_mas_cuotas'?(cleanNum($('resc-monto-pie').value)||0):0;
+                const objetivo=Math.max(0,monto-pie);
+                const suma=rescFechasCuotas.reduce((s,c)=>s+Number(c.monto||0),0);
+                const diff=suma-objetivo;
+                if(diff!==0){
+                    const msg=diff>0
+                        ?`Las cuotas suman $${fmt(suma)} y sobran $${fmt(diff)} respecto al objetivo ($${fmt(objetivo)}). ¿Confirmas igual?`
+                        :`Las cuotas suman $${fmt(suma)} y faltan $${fmt(Math.abs(diff))} respecto al objetivo ($${fmt(objetivo)}). ¿Confirmas igual?`;
+                    if(!confirm(msg)){btn.disabled=false;btn.innerHTML='<i class="bi bi-file-earmark-x"></i> Confirmar Resciliación';return;}
+                }
             }
         }
         const body={
@@ -1745,7 +1820,7 @@ async function resciliarContrato(){
             notas:  $('resc-notas').value.trim()||null,
             tipo_devolucion: rescDevTipo,
             monto_total_devolucion: rescDevTipo==='sin_devolucion'?null:cleanNum($('resc-monto-total').value),
-            monto_pie_devolucion: rescDevTipo==='pie_mas_cuotas'?cleanNum($('resc-monto-pie').value):null,
+            monto_pie_devolucion: rescDevTipo==='pie_mas_cuotas'?(cleanNum($('resc-monto-pie').value)||0):null,
             numero_cuotas_devolucion: (rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas')?(parseInt($('resc-num-cuotas').value,10)||0):0,
             monto_cuota_devolucion: (rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas')?cleanNum($('resc-monto-cuota').value):null,
             fechas_cuotas_devolucion: (rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas')?rescFechasCuotas:[]
