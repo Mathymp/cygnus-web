@@ -94,6 +94,25 @@ async function ensureImSchema(pool) {
             notas TEXT,
             creado_at TIMESTAMPTZ DEFAULT NOW()
         )`,
+
+        // ── RLS: el backend Node usa DATABASE_URL (sin políticas anon).
+        // Las tablas CRM ya están "IRRESTRICTO"; las im_* con RLS activo
+        // hacen que INSERT/RETURNING parezca ok y luego el SELECT post-commit
+        // no encuentre la fila → "venta no quedó persistida".
+        `ALTER TABLE IF EXISTS im_clientes DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_parcelas DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_proyectos DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_ventas_lotes DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_cuotas DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_cuotas_devolucion DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_documentos DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_historial_precios DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_resciliaciones DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_auditoria DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS im_accesos DISABLE ROW LEVEL SECURITY`,
+        // Alias legacy por si existen con otro nombre en este proyecto
+        `ALTER TABLE IF EXISTS accesos_im DISABLE ROW LEVEL SECURITY`,
+        `ALTER TABLE IF EXISTS proyectos_im DISABLE ROW LEVEL SECURITY`,
     ];
 
     let applied = 0;
