@@ -35,6 +35,18 @@
         .cuota-badge-pendiente{background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:20px;padding:3px 10px;font-size:.72rem;font-weight:700}
         .cuota-badge-vencida{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:20px;padding:3px 10px;font-size:.72rem;font-weight:700}
         @media(max-width:700px){.cuota-row{grid-template-columns:28px 1fr 100px auto;}.cuota-row .cuota-fecha,.cuota-row .cuota-badge-pagada,.cuota-row .cuota-badge-pendiente,.cuota-row .cuota-badge-vencida{display:none}}
+        /* Skeleton loading */
+        @keyframes skPulse{0%{opacity:.55}50%{opacity:1}100%{opacity:.55}}
+        .sk{display:inline-block;background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:skPulse 1.2s ease-in-out infinite;border-radius:8px}
+        .sk-title{height:28px;width:min(420px,70%);margin-bottom:8px}
+        .sk-badge{height:22px;width:90px;border-radius:999px}
+        .sk-line{height:14px;width:100%;margin:6px 0}
+        .sk-line.short{width:38%}
+        .sk-row{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+        .sk-card{border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-bottom:8px}
+        .sk-card-head{height:78px;background:linear-gradient(135deg,#cbd5e1,#e2e8f0);animation:skPulse 1.2s ease-in-out infinite}
+        .sk-card-body{padding:16px}
+        .sk-block{height:64px;width:100%;margin-bottom:10px;border-radius:10px}
     </style>
 </head>
 <body class="dashboard-body">
@@ -261,7 +273,12 @@
                     <div style="display:flex;flex-direction:column;gap:16px;">
                         <div class="im-panel" id="panel-detalles">
                             <p class="im-panel-title"><i class="bi bi-info-circle"></i> Información de la Parcela</p>
-                            <div id="detalle-rows"><div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div></div>
+                            <div id="detalle-rows">
+                                <div class="sk-row"><span class="sk sk-line short"></span><span class="sk sk-line" style="width:45%"></span></div>
+                                <div class="sk-row"><span class="sk sk-line short"></span><span class="sk sk-line" style="width:55%"></span></div>
+                                <div class="sk-row"><span class="sk sk-line short"></span><span class="sk sk-line" style="width:40%"></span></div>
+                                <div class="sk-row"><span class="sk sk-line short"></span><span class="sk sk-line" style="width:50%"></span></div>
+                            </div>
                             <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0;">
                                 <p class="step-title" style="margin-bottom:10px;"><i class="bi bi-pencil-square"></i> Actualizar Datos</p>
                                 <div class="im-form-row">
@@ -311,7 +328,16 @@
                                 <strong>Proyecto en Verde</strong> — Este proyecto se encuentra en proceso de tramitación.
                                 Las parcelas pueden ser vendidas antes de contar con rol propio asignado.
                             </div>
-                            <div id="venta-actual" style="margin-bottom:16px;"></div>
+                            <div id="venta-actual" style="margin-bottom:16px;">
+                                <div class="sk-card" id="venta-skeleton">
+                                    <div class="sk-card-head"></div>
+                                    <div class="sk-card-body">
+                                        <div class="sk sk-block"></div>
+                                        <div class="sk sk-block"></div>
+                                        <div class="sk sk-line" style="width:60%"></div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Botón para editar cuando ya hay venta -->
                             <div id="btn-editar-venta-wrap" style="display:none;margin-bottom:14px;">
@@ -352,6 +378,7 @@
 
                             <form id="form-venta" autocomplete="off">
                                 <input type="hidden" id="venta-cliente-id">
+                                <input type="hidden" id="venta-id-edit" value="">
 
                                 <!-- PASO 2: Datos del comprador -->
                                 <div class="step-box highlight">
@@ -536,7 +563,7 @@
                                     </div>
                                 </div>
 
-                                <button type="submit" class="im-btn im-btn-success im-btn-full"><i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta</button>
+                                <button type="submit" id="btn-submit-venta" class="im-btn im-btn-success im-btn-full"><i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta</button>
                             </form>
 
                             </div><!-- /form-venta-wrapper -->
@@ -664,6 +691,14 @@ function autoFmtTel(input){
     input.value=f;
 }
 let formVentaVisible = false;
+function syncSubmitVentaBtn(){
+    const isUpdate=!!($('venta-id-edit')&&$('venta-id-edit').value);
+    const btn=$('btn-submit-venta');
+    if(!btn)return;
+    btn.innerHTML=isUpdate
+        ?'<i class="bi bi-arrow-repeat"></i> Actualizar Comprador y Venta'
+        :'<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta';
+}
 function toggleFormVenta(){
     formVentaVisible=!formVentaVisible;
     $('form-venta-wrapper').style.display=formVentaVisible?'block':'none';
@@ -671,6 +706,24 @@ function toggleFormVenta(){
     btn.innerHTML=formVentaVisible
         ?'<i class="bi bi-chevron-up"></i> Ocultar formulario'
         :'<i class="bi bi-pencil-square"></i> Editar datos de la venta / comprador';
+    syncSubmitVentaBtn();
+}
+
+function showFichaSkeleton(){
+    $('parcela-titulo').innerHTML='<span class="sk sk-title"></span>';
+    $('parcela-estado-badge').innerHTML='<span class="sk sk-badge"></span>';
+    $('header-actions').innerHTML='';
+    $('detalle-rows').innerHTML=`
+        <div class="sk-row"><span class="sk sk-line short"></span><span class="sk sk-line" style="width:45%"></span></div>
+        <div class="sk-row"><span class="sk sk-line short"></span><span class="sk sk-line" style="width:55%"></span></div>
+        <div class="sk-row"><span class="sk sk-line short"></span><span class="sk sk-line" style="width:40%"></span></div>
+        <div class="sk-row"><span class="sk sk-line short"></span><span class="sk sk-line" style="width:50%"></span></div>`;
+    $('venta-actual').innerHTML=`
+        <div class="sk-card"><div class="sk-card-head"></div>
+        <div class="sk-card-body"><div class="sk sk-block"></div><div class="sk sk-block"></div><div class="sk sk-line" style="width:60%"></div></div></div>`;
+    if($('btn-editar-venta-wrap'))$('btn-editar-venta-wrap').style.display='none';
+    if($('form-venta-wrapper'))$('form-venta-wrapper').style.opacity='0.45';
+    if($('historial-ventas-section'))$('historial-ventas-section').style.display='none';
 }
 
 function toggleConyuge(val){
@@ -795,6 +848,7 @@ function onAgenteChange(sel){
 }
 
 async function init(){
+    showFichaSkeleton();
     try{
         const [parcelaRes]=await Promise.all([
             fetch(`/api/im/parcelas/${PARCELA_ID}`),
@@ -809,10 +863,15 @@ async function init(){
         historialPreciosCache=data.historial_precios||[];
         historialVentasCache=data.historial_ventas||[];
         proyectoId=parcelaData.proyecto_id;
+        if($('form-venta-wrapper'))$('form-venta-wrapper').style.opacity='1';
+        if($('venta-id-edit'))$('venta-id-edit').value=(ventaData&&ventaData.id)?String(ventaData.id):'';
+        syncSubmitVentaBtn();
         renderParcela(data);
         initDM('lote',PARCELA_ID);
     }catch(e){
         $('parcela-titulo').textContent='Error al cargar';
+        $('venta-actual').innerHTML='';
+        if($('form-venta-wrapper'))$('form-venta-wrapper').style.opacity='1';
         showToast(e.message,'error','No se pudo cargar la parcela');
     }
 }
@@ -968,7 +1027,9 @@ function renderParcela(data){
         // Pre-fill form completo (cliente + pago)
         setClienteReadonly(false);
         $('cliente-modo-banner').style.display='none';
+        if($('venta-id-edit'))$('venta-id-edit').value=venta.id?String(venta.id):'';
         $('venta-cliente-id').value=venta.cliente_id||'';
+        syncSubmitVentaBtn();
         $('cli-nombre').value=venta.nombre_completo||'';
         $('cli-rut').value=venta.rut||'';
         $('cli-telefono').value=venta.telefono||'';if(venta.telefono){autoFmtTel($('cli-telefono'));}
@@ -982,8 +1043,8 @@ function renderParcela(data){
         $('cli-conyuge-email').value=venta.email_conyugue||'';
         $('cli-conyuge-tel').value=venta.telefono_conyugue||'';if(venta.telefono_conyugue){autoFmtTel($('cli-conyuge-tel'));}
         $('venta-fecha').value=ymd(venta.fecha_venta)||hoyYmd();
-        $('venta-promesa').checked=!!venta.firmo_promesa;
-        $('venta-compraventa').checked=!!venta.firmo_compraventa;
+        $('venta-promesa').checked=venta.firmo_promesa===true||venta.firmo_promesa===1||venta.firmo_promesa==='true'||venta.firmo_promesa==='t';
+        $('venta-compraventa').checked=venta.firmo_compraventa===true||venta.firmo_compraventa===1||venta.firmo_compraventa==='true'||venta.firmo_compraventa==='t';
         if($('venta-estado-op')){
             $('venta-estado-op').value=(p.estado_venta==='reservado')?'reservado':'vendido';
         }
@@ -1036,7 +1097,9 @@ function renderParcela(data){
         setClienteReadonly(false);
         $('cliente-modo-banner').style.display='none';
         $('venta-actual').innerHTML='';
-        $('venta-fecha').value=new Date().toISOString().split('T')[0];
+        if($('venta-id-edit'))$('venta-id-edit').value='';
+        syncSubmitVentaBtn();
+        $('venta-fecha').value=hoyYmd();
         if(p.precio_actual)$('venta-precio-lista').value=Number(p.precio_actual).toLocaleString('es-CL');
         $('no-cliente-msg').style.display='block';
         $('no-venta-doc-msg').style.display='block';
@@ -1374,11 +1437,14 @@ function quitarClienteSeleccionado(){
     showToast('Cliente quitado. Puedes buscar otro o crear uno nuevo.','info');
 }
 
-// ──────────────── GUARDAR VENTA ────────────────
+// ──────────────── GUARDAR / ACTUALIZAR VENTA ────────────────
 $('form-venta').addEventListener('submit',async(e)=>{
     e.preventDefault();
     const btn=e.submitter||e.target.querySelector('[type="submit"]');
-    if(btn){btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Guardando...';}
+    const ventaExistenteId=($('venta-id-edit')&&$('venta-id-edit').value)
+        ||(ventaData&&ventaData.id&&String(ventaData.parcela_id||PARCELA_ID)===String(PARCELA_ID)?String(ventaData.id):'');
+    const isUpdate=!!ventaExistenteId;
+    if(btn){btn.disabled=true;btn.innerHTML=isUpdate?'<i class="bi bi-hourglass-split"></i> Actualizando...':'<i class="bi bi-hourglass-split"></i> Guardando...';}
     try{
         const nombre=($('cli-nombre').value||'').trim();
         const rut=($('cli-rut').value||'').trim();
@@ -1444,13 +1510,15 @@ $('form-venta').addEventListener('submit',async(e)=>{
 
         const agenteSelId  = $('venta-agente-id')  ? $('venta-agente-id').value  : '';
         const agenteSelNom = $('venta-agente-nombre') ? $('venta-agente-nombre').value : '';
+        const firmoPromesa=!!$('venta-promesa').checked;
+        const firmoCompraventa=!!$('venta-compraventa').checked;
 
         const ventaBody={
             parcela_id:PARCELA_ID,
             cliente_id:clienteId,
             estado_operacion:estadoOp,
-            firmo_promesa:$('venta-promesa').checked,
-            firmo_compraventa:$('venta-compraventa').checked,
+            firmo_promesa:firmoPromesa,
+            firmo_compraventa:firmoCompraventa,
             fecha_venta:($('venta-fecha').value||hoyYmd()),
             precio_lista:cleanNum($('venta-precio-lista').value),
             precio_acordado:cleanNum($('venta-precio-acordado').value),
@@ -1467,19 +1535,24 @@ $('form-venta').addEventListener('submit',async(e)=>{
             agente_nombre: agenteSelNom || null
         };
 
-        // Solo actualizar si la venta activa pertenece a ESTA parcela
-        const ventaExistenteId=(ventaData&&ventaData.id&&String(ventaData.parcela_id||PARCELA_ID)===String(PARCELA_ID))?ventaData.id:null;
-        const ventaUrl=ventaExistenteId?`/api/im/ventas/${ventaExistenteId}`:'/api/im/ventas';
-        const vRes=await fetch(ventaUrl,{method:ventaExistenteId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ventaBody)});
+        // Actualizar venta existente (PUT) — nunca crear otra al editar
+        const ventaUrl=isUpdate?`/api/im/ventas/${ventaExistenteId}`:'/api/im/ventas';
+        const vRes=await fetch(ventaUrl,{method:isUpdate?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ventaBody)});
         const ventaGuardada=await vRes.json().catch(()=>({}));
         if(!vRes.ok){
-            throw new Error(ventaGuardada.message||ventaGuardada.error||`Error al guardar la venta (${vRes.status})`);
+            throw new Error(ventaGuardada.message||ventaGuardada.error||`Error al ${isUpdate?'actualizar':'guardar'} la venta (${vRes.status})`);
         }
         if(!ventaGuardada.id){
             throw new Error('El servidor no confirmó el ID de la venta. No se guardó correctamente.');
         }
         if(!ventaGuardada.cliente_id){
             throw new Error('La venta se guardó sin cliente asociado. Intenta de nuevo.');
+        }
+        // Confirmar que los ticks quedaron como se enviaron
+        const savedPromesa=ventaGuardada.firmo_promesa===true||ventaGuardada.firmo_promesa===1;
+        const savedEscritura=ventaGuardada.firmo_compraventa===true||ventaGuardada.firmo_compraventa===1;
+        if(savedPromesa!==firmoPromesa||savedEscritura!==firmoCompraventa){
+            throw new Error('Los documentos firmados no coinciden con lo marcado. Intenta actualizar de nuevo.');
         }
 
         // Upload comprobante contado (no bloquea la venta)
@@ -1491,43 +1564,40 @@ $('form-venta').addEventListener('submit',async(e)=>{
             }
         }
 
-        // Pintar UI solo tras confirmación del servidor
-        const snapshot={
-            parcela:Object.assign({},parcelaData||{},{
-                id:PARCELA_ID,
-                estado_venta:ventaGuardada.parcela_estado||estadoOp
-            }),
-            venta:ventaGuardada,
-            cuotas:ventaGuardada.cuotas||[],
-            historial_precios:historialPreciosCache||[],
-            historial_ventas:historialVentasCache||[]
-        };
         ventaData=ventaGuardada;
+        if($('venta-id-edit'))$('venta-id-edit').value=String(ventaGuardada.id);
         currentClienteId=ventaGuardada.cliente_id;
-        parcelaData=snapshot.parcela;
-        cuotasData=snapshot.cuotas;
+        syncSubmitVentaBtn();
 
-        // Revalidar contra GET: si no está en BD, NO mostrar éxito
+        // Revalidar contra GET
         await init();
         if(!ventaData||!ventaData.id||String(ventaData.id)!==String(ventaGuardada.id)){
-            throw new Error('El servidor respondió OK pero la venta no quedó en la base de datos. Espera el redeploy o revisa en Render que DATABASE_URL use puerto 5432 (Session), no 6543.');
+            throw new Error('El servidor respondió OK pero la venta no quedó en la base de datos.');
         }
-        if(!parcelaData||!['vendido','reservado'].includes(String(parcelaData.estado_venta||''))){
-            // Puede venir sincronizado por la venta; si hay venta activa igual OK
-            if(!ventaData||!ventaData.id){
-                throw new Error('La parcela no quedó marcada como vendida/reservada en la base de datos.');
-            }
+        if(!!ventaData.firmo_compraventa!==firmoCompraventa||!!ventaData.firmo_promesa!==firmoPromesa){
+            // Reintentar forzar ticks con PUT
+            await fetch(`/api/im/ventas/${ventaGuardada.id}`,{
+                method:'PUT',headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({...ventaBody,firmo_promesa:firmoPromesa,firmo_compraventa:firmoCompraventa})
+            });
+            await init();
         }
 
         habilitarDocsVentaCliente(ventaGuardada.id,ventaGuardada.cliente_id);
+        formVentaVisible=false;
+        if($('form-venta-wrapper'))$('form-venta-wrapper').style.display='none';
+        if($('btn-toggle-form'))$('btn-toggle-form').innerHTML='<i class="bi bi-pencil-square"></i> Editar datos de la venta / comprador';
+
         showToast(
-            (ventaGuardada.parcela_estado||estadoOp)==='reservado'
-                ? 'Venta guardada. Parcela marcada como Reservada.'
-                : 'Venta guardada. Parcela marcada como Vendida.',
+            isUpdate
+                ? 'Venta actualizada correctamente.'
+                : ((ventaGuardada.parcela_estado||estadoOp)==='reservado'
+                    ? 'Venta guardada. Parcela marcada como Reservada.'
+                    : 'Venta guardada. Parcela marcada como Vendida.'),
             'success'
         );
-    }catch(err){showToast(err.message,'error','No se pudo guardar');}
-    finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta';}}
+    }catch(err){showToast(err.message,'error',isUpdate?'No se pudo actualizar':'No se pudo guardar');}
+    finally{if(btn){btn.disabled=false;syncSubmitVentaBtn();}}
 });
 
 // ──────────────── RESCILIACIÓN ────────────────

@@ -104,6 +104,11 @@ function cleanMoney(v) {
     return Number.isFinite(n) ? n : null;
 }
 
+/** Boolean estricto: solo true explícito. Evita que "false"/null se guarden como true. */
+function toBool(v) {
+    return v === true || v === 1 || v === '1' || v === 'true' || v === 't' || v === 'on';
+}
+
 function resolveEstadoOperacion(body = {}) {
     const explicit = String(body.estado_operacion || '').toLowerCase();
     if (explicit === 'reservado' || explicit === 'reserva') return 'reservado';
@@ -191,8 +196,8 @@ function hydrateVentaRow(venta, cliente) {
         id: venta.id,
         parcela_id: venta.parcela_id,
         cliente_id: venta.cliente_id,
-        firmo_promesa: venta.firmo_promesa,
-        firmo_compraventa: venta.firmo_compraventa,
+        firmo_promesa: toBool(venta.firmo_promesa),
+        firmo_compraventa: toBool(venta.firmo_compraventa),
         forma_pago: venta.forma_pago,
         fecha_venta: fechaVenta,
         precio_lista: venta.precio_lista,
@@ -381,68 +386,62 @@ exports.getParcelaById = async (req, res) => {
         const parcela = parcelaRes.rows[0];
         let venta = await loadVentaForParcela(pool, parcela.id);
 
-        // Sincronizar estado de parcela con la venta vigente (respeta estado guardado)
+        // Sync estado en background (no bloquear respuesta)
         if (venta) {
             const esperado = (parcela.estado_venta === 'reservado' || parcela.estado_venta === 'vendido')
                 ? parcela.estado_venta
                 : ((venta.firmo_promesa && !venta.firmo_compraventa) ? 'reservado' : 'vendido');
             if (parcela.estado_venta !== esperado) {
-                await pool.query(`UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`, [esperado, parcela.id]).catch(() => {});
                 parcela.estado_venta = esperado;
+                pool.query(`UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`, [esperado, parcela.id]).catch(() => {});
             }
         }
 
-        let cuotas = [];
-        if (venta) {
-            const cuotasRes = await pool.query(
-                `SELECT * FROM im_cuotas WHERE venta_id=$1 ORDER BY numero_cuota ASC`, [venta.id]
-            );
-            cuotas = cuotasRes.rows;
-        }
-
-        let otrasParcelasCliente = [];
-        if (venta?.cliente_id) {
-            const otrasRes = await pool.query(
-                `SELECT v.id AS venta_id, v.parcela_id, v.fecha_venta, v.precio_acordado, v.tipo_pago,
-                        v.firmo_promesa, v.firmo_compraventa,
-                        p.numero_parcela, p.estado_venta,
-                        pr.nombre AS proyecto_nombre
+        const [cuotasRes, otrasRes, historialVentasRes] = await Promise.all([
+            venta
+                ? pool.query(`SELECT * FROM im_cuotas WHERE venta_id=$1 ORDER BY numero_cuota ASC`, [venta.id])
+                : Promise.resolve({ rows: [] }),
+            venta?.cliente_id
+                ? pool.query(
+                    `SELECT v.id AS venta_id, v.parcela_id, v.fecha_venta, v.precio_acordado, v.tipo_pago,
+                            v.firmo_promesa, v.firmo_compraventa,
+                            p.numero_parcela, p.estado_venta,
+                            pr.nombre AS proyecto_nombre
+                     FROM im_ventas_lotes v
+                     JOIN im_parcelas p ON p.id = v.parcela_id
+                     JOIN im_proyectos pr ON pr.id = p.proyecto_id
+                     WHERE v.cliente_id = $1
+                       AND COALESCE(v.estado,'activa') = 'activa'
+                       AND v.parcela_id <> $2
+                     ORDER BY v.fecha_venta DESC NULLS LAST, v.creado_at DESC`,
+                    [venta.cliente_id, parcela.id]
+                )
+                : Promise.resolve({ rows: [] }),
+            pool.query(
+                `SELECT v.id, v.estado, v.tipo_pago, v.precio_acordado, v.precio_lista, v.monto_pie,
+                        v.fecha_venta, v.firmo_promesa, v.firmo_compraventa, v.agente_nombre,
+                        v.condiciones_compra, v.notas AS venta_notas, v.creado_at,
+                        c.nombre_completo, c.rut,
+                        r.id as resc_id, r.fecha as resc_fecha, r.motivo as resc_motivo,
+                        r.notas as resc_notas, r.creado_por_nombre as resc_agente,
+                        r.tipo_devolucion as resc_tipo_dev, r.monto_total_devolucion as resc_monto_dev,
+                        r.monto_pie_devolucion as resc_pie_dev, r.numero_cuotas_devolucion as resc_num_cuotas,
+                        r.estado as resc_estado
                  FROM im_ventas_lotes v
-                 JOIN im_parcelas p ON p.id = v.parcela_id
-                 JOIN im_proyectos pr ON pr.id = p.proyecto_id
-                 WHERE v.cliente_id = $1
-                   AND COALESCE(v.estado,'activa') = 'activa'
-                   AND v.parcela_id <> $2
-                 ORDER BY v.fecha_venta DESC NULLS LAST, v.creado_at DESC`,
-                [venta.cliente_id, parcela.id]
-            );
-            otrasParcelasCliente = otrasRes.rows;
-        }
-
-        const historialVentasRes = await pool.query(
-            `SELECT v.id, v.estado, v.tipo_pago, v.precio_acordado, v.precio_lista, v.monto_pie,
-                    v.fecha_venta, v.firmo_promesa, v.firmo_compraventa, v.agente_nombre,
-                    v.condiciones_compra, v.notas AS venta_notas, v.creado_at,
-                    c.nombre_completo, c.rut,
-                    r.id as resc_id, r.fecha as resc_fecha, r.motivo as resc_motivo,
-                    r.notas as resc_notas, r.creado_por_nombre as resc_agente,
-                    r.tipo_devolucion as resc_tipo_dev, r.monto_total_devolucion as resc_monto_dev,
-                    r.monto_pie_devolucion as resc_pie_dev, r.numero_cuotas_devolucion as resc_num_cuotas,
-                    r.estado as resc_estado
-             FROM im_ventas_lotes v
-             LEFT JOIN im_clientes c ON c.id::text = v.cliente_id::text
-             LEFT JOIN im_resciliaciones r ON r.venta_id = v.id
-             WHERE v.parcela_id::text=$1 AND COALESCE(v.estado,'activa') <> 'activa'
-             ORDER BY v.creado_at DESC`, [String(id)]
-        );
+                 LEFT JOIN im_clientes c ON c.id::text = v.cliente_id::text
+                 LEFT JOIN im_resciliaciones r ON r.venta_id = v.id
+                 WHERE v.parcela_id::text=$1 AND COALESCE(v.estado,'activa') <> 'activa'
+                 ORDER BY v.creado_at DESC`, [String(id)]
+            )
+        ]);
 
         res.json({
             parcela,
             historial_precios: historialRes.rows,
             venta,
-            cuotas,
+            cuotas: cuotasRes.rows,
             historial_ventas: historialVentasRes.rows,
-            otras_parcelas_cliente: otrasParcelasCliente
+            otras_parcelas_cliente: otrasRes.rows
         });
     } catch (e) {
         console.error('[getParcelaById]', e.message);
@@ -821,8 +820,8 @@ exports.createVenta = async (req, res) => {
         const precioListaFinal = cleanMoney(precio_lista) ?? (parcela.precio_actual != null ? Number(parcela.precio_actual) : null);
         const precioAcordadoFinal = cleanMoney(precio_acordado) ?? precioListaFinal;
         const nuevoEstado = resolveEstadoOperacion(req.body);
-        const firmoPromesa = firmo_promesa === true || firmo_promesa === 'true' || firmo_promesa === 1 || firmo_promesa === '1';
-        const firmoCompraventa = firmo_compraventa === true || firmo_compraventa === 'true' || firmo_compraventa === 1 || firmo_compraventa === '1';
+        const firmoPromesa = toBool(firmo_promesa);
+        const firmoCompraventa = toBool(firmo_compraventa);
         const agente = await resolveVentaAgent(pool, req, agente_id);
 
         const insertParams = [
@@ -1022,8 +1021,8 @@ exports.updateVenta = async (req, res) => {
         const precioListaFinal = cleanMoney(precio_lista) ?? (parcela.precio_actual != null ? Number(parcela.precio_actual) : null);
         const precioAcordadoFinal = cleanMoney(precio_acordado) ?? precioListaFinal;
         const nuevoEstado = resolveEstadoOperacion(req.body);
-        const firmoPromesa = firmo_promesa === true || firmo_promesa === 'true' || firmo_promesa === 1 || firmo_promesa === '1';
-        const firmoCompraventa = firmo_compraventa === true || firmo_compraventa === 'true' || firmo_compraventa === 1 || firmo_compraventa === '1';
+        const firmoPromesa = toBool(firmo_promesa);
+        const firmoCompraventa = toBool(firmo_compraventa);
         const agente = await resolveVentaAgent(client, req, agente_id);
 
         await client.query(
@@ -1103,7 +1102,7 @@ exports.updateVenta = async (req, res) => {
 
         // Confirmar persistencia fuera de la TX (detecta writes fantasma)
         const persistida = await pool.query(
-            `SELECT v.id, v.cliente_id, p.estado_venta
+            `SELECT v.id, v.cliente_id, v.firmo_promesa, v.firmo_compraventa, p.estado_venta
              FROM im_ventas_lotes v
              JOIN im_parcelas p ON p.id = v.parcela_id
              WHERE v.id = $1`,
@@ -1116,6 +1115,16 @@ exports.updateVenta = async (req, res) => {
             err.status = 500;
             throw err;
         }
+        // Forzar ticks exactos si el pooler devolvió valores viejos
+        if (toBool(persistida.rows[0].firmo_promesa) !== firmoPromesa
+            || toBool(persistida.rows[0].firmo_compraventa) !== firmoCompraventa) {
+            await pool.query(
+                `UPDATE im_ventas_lotes SET firmo_promesa=$1, firmo_compraventa=$2 WHERE id=$3`,
+                [firmoPromesa, firmoCompraventa, venta.id]
+            );
+            venta.firmo_promesa = firmoPromesa;
+            venta.firmo_compraventa = firmoCompraventa;
+        }
         if (persistida.rows[0].estado_venta !== nuevoEstado) {
             await pool.query(
                 `UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`,
@@ -1123,7 +1132,10 @@ exports.updateVenta = async (req, res) => {
             );
         }
 
-        const verificada = hydrateVentaRow(venta, cliente);
+        const verificada = hydrateVentaRow(
+            { ...venta, firmo_promesa: firmoPromesa, firmo_compraventa: firmoCompraventa },
+            cliente
+        );
         let cuotas = [];
         try {
             const cuotasRes = await pool.query(
