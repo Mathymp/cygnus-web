@@ -1333,6 +1333,10 @@ $('form-venta').addEventListener('submit',async(e)=>{
             'success'
         );
         await init();
+        // Verificar que la venta quedó efectivamente asociada tras recargar
+        if(!ventaData||!ventaData.id){
+            showToast('La venta se registró, pero no se pudo confirmar la recarga. Refresca la página para verla.','warning','Verifica la carga');
+        }
     }catch(err){showToast(err.message,'error','No se pudo guardar');}
     finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta';}}
 });

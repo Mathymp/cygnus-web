@@ -205,9 +205,11 @@ exports.getParcelaById = async (req, res) => {
         const parcela = parcelaRes.rows[0];
         let venta = ventaRes.rows[0] || null;
 
-        // Si la parcela está vendida/reservada pero no hay venta "activa",
-        // recuperar la última venta no resciliada (corrige datos desfasados).
-        if (!venta && (parcela.estado_venta === 'vendido' || parcela.estado_venta === 'reservado')) {
+        // Si no hay venta "activa" pero SÍ existe una venta no resciliada para
+        // esta parcela (p.ej. quedó marcada como 'liberada' o el estado de la
+        // parcela se desfasó), recuperarla y re-activarla. Esto evita que una
+        // compra recién guardada "desaparezca" al recargar el lote.
+        if (!venta) {
             const fallback = await pool.query(
                 `${ventaSelect}
                  WHERE v.parcela_id=$1 AND COALESCE(v.estado,'activa') <> 'resciliada'

@@ -601,7 +601,7 @@ function renderExpand(id,c){
             </form>
         </div>
 
-        <!-- Lateral: parcelas + auditoría -->
+        <!-- Lateral: parcelas + documentos + auditoría -->
         <div class="cli-side-stack">
             <div class="cli-expand-section">
                 <p class="section-label"><i class="bi bi-geo-alt-fill"></i> Parcelas Adquiridas (${ventas.length})</p>
@@ -609,14 +609,13 @@ function renderExpand(id,c){
                 <div style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;">
                     ${ventas.map(v=>{
                         const tb=v.tipo_pago==='credito'?`<span class="badge-credito badge-proyecto">Crédito</span>`:`<span class="badge-contado badge-proyecto">Contado</span>`;
-                        const estadoV=v.estado&&v.estado!=='activa'?`<span style="font-size:.68rem;color:#94a3b8;">(${escH(v.estado)})</span>`:'';
                         return `<div class="cli-parcela-item">
                             <div style="min-width:0;">
-                                <div style="font-weight:700;color:#0f172a;">${escH(v.proyecto_nombre)} <span style="color:#64748b;font-weight:500;font-size:.82rem;">· P${escH(v.numero_parcela||v.parcela_numero||'?')}</span> ${estadoV}</div>
+                                <div style="font-weight:700;color:#0f172a;">${escH(v.proyecto_nombre)} <span style="color:#64748b;font-weight:500;font-size:.82rem;">· P${escH(v.numero_parcela||v.parcela_numero||'?')}</span> ${estadoVentaBadge(v)}</div>
                                 <div style="margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                                     ${tb}
                                     ${v.precio_acordado?`<span style="font-size:.78rem;color:#475569;">$${Math.floor(parseFloat(v.precio_acordado)).toLocaleString('es-CL')}</span>`:''}
-                                    ${v.fecha_venta?`<span style="font-size:.72rem;color:#94a3b8;">${new Date(v.fecha_venta).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'})}</span>`:''}
+                                    ${v.fecha_venta?`<span style="font-size:.72rem;color:#94a3b8;"><i class="bi bi-calendar3"></i> ${new Date(v.fecha_venta).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'})}</span>`:''}
                                 </div>
                             </div>
                             <a href="/admin/inmobiliaria/parcela/${v.parcela_id}" class="im-btn im-btn-sm im-btn-ghost" onclick="event.stopPropagation()"><i class="bi bi-arrow-up-right"></i> Ver</a>
@@ -624,12 +623,27 @@ function renderExpand(id,c){
                     }).join('')}
                 </div>`:`<p style="margin:0;font-size:.84rem;color:#94a3b8;">Sin parcelas asignadas todavía.</p>`}
             </div>
+
+            <!-- Documentos del cliente -->
+            <div class="cli-expand-section">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+                    <p class="section-label" style="margin:0;"><i class="bi bi-folder2-open"></i> Documentos del Cliente</p>
+                    <label class="im-btn im-btn-sm im-btn-primary" style="cursor:pointer;margin:0;">
+                        <i class="bi bi-upload"></i> Subir
+                        <input type="file" style="display:none;" onchange="uploadClienteDoc('${c.id}',this)" onclick="event.stopPropagation()">
+                    </label>
+                </div>
+                <div id="docs-cli-${id}" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto;font-size:.82rem;color:#64748b;">Cargando documentos...</div>
+            </div>
+
             <div class="cli-expand-section">
                 <p class="section-label"><i class="bi bi-clock-history"></i> Actividad Reciente</p>
                 <div id="audit-cli-${id}" style="font-size:.8rem;color:#64748b;max-height:220px;overflow-y:auto;">Cargando...</div>
             </div>
         </div>
     </div>`;
+
+    loadClienteDocs(c.id);
 
     fetch(`/api/im/auditoria?entidad_id=${c.id}`)
         .then(r=>r.json()).then(logs=>{
@@ -641,6 +655,63 @@ function renderExpand(id,c){
                 <span style="color:#94a3b8;font-size:.72rem;display:block;">${new Date(l.fecha).toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${escH(l.usuario_nombre||'Sistema')}</span>
             </div>`).join('');
         }).catch(()=>{const el2=$(`audit-cli-${id}`);if(el2)el2.textContent='No se pudo cargar la actividad.';});
+}
+
+// ── Estado de una compra (para la previsualización) ──
+function estadoVentaBadge(v){
+    const st=(s,bg,c,b)=>`<span style="font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:999px;background:${bg};color:${c};border:1px solid ${b};">${s}</span>`;
+    if(v.estado==='resciliada') return st('Resciliada','#fee2e2','#991b1b','#fca5a5');
+    if(v.estado==='liberada')   return st('Liberada','#f1f5f9','#64748b','#e2e8f0');
+    if(v.firmo_compraventa||v.estado_venta==='vendido') return st('Vendida','#dcfce7','#166534','#86efac');
+    if(v.firmo_promesa||v.estado_venta==='reservado')   return st('Reservada','#fef3c7','#92400e','#fde68a');
+    return st('Vigente','#dcfce7','#166534','#86efac');
+}
+
+// ── Documentos del cliente (tipo_asociacion = persona) ──
+async function loadClienteDocs(clienteId){
+    const cont=$(`docs-cli-${clienteId}`);
+    if(!cont)return;
+    try{
+        const res=await fetch(`/api/im/documentos?tipo_asociacion=persona&asociacion_id=${encodeURIComponent(clienteId)}`);
+        if(!res.ok)throw new Error(`HTTP ${res.status}`);
+        const docs=await res.json();
+        if(!docs||docs.length===0){cont.innerHTML='<p style="margin:0;color:#94a3b8;">Aún no hay documentos. Usa “Subir” para agregar cédula, contrato u otros.</p>';return;}
+        cont.innerHTML=docs.map(d=>`
+            <div style="display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;">
+                <i class="bi bi-file-earmark-text" style="color:#2563eb;font-size:1rem;flex-shrink:0;"></i>
+                <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f172a;font-weight:600;">${escH(d.nombre_personalizado||'Documento')}</span>
+                <a href="${escH(d.url_storage||'#')}" target="_blank" title="Ver / descargar" class="im-btn im-btn-sm im-btn-ghost" onclick="event.stopPropagation()"><i class="bi bi-eye"></i></a>
+                <button title="Eliminar" class="im-btn im-btn-sm im-btn-ghost" style="color:#ef4444;" onclick="event.stopPropagation();deleteClienteDoc('${d.id}','${clienteId}')"><i class="bi bi-trash"></i></button>
+            </div>`).join('');
+    }catch(e){cont.innerHTML='<p style="margin:0;color:#ef4444;">No se pudieron cargar los documentos.</p>';}
+}
+
+async function uploadClienteDoc(clienteId,input){
+    const file=input.files&&input.files[0];
+    if(!file)return;
+    const cont=$(`docs-cli-${clienteId}`);
+    if(cont)cont.innerHTML='<p style="margin:0;color:#64748b;"><i class="bi bi-hourglass-split"></i> Subiendo documento...</p>';
+    try{
+        const fd=new FormData();
+        fd.append('archivo',file,file.name);
+        fd.append('tipo_asociacion','persona');
+        fd.append('asociacion_id',clienteId);
+        fd.append('nombre_personalizado',file.name.replace(/\.[^/.]+$/,''));
+        const res=await fetch('/api/im/documentos',{method:'POST',body:fd});
+        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`No se pudo subir (HTTP ${res.status}).`);}
+        showToast('Documento subido correctamente.','success');
+    }catch(e){showToast(e.message,'error','No se pudo subir');}
+    finally{input.value='';loadClienteDocs(clienteId);}
+}
+
+async function deleteClienteDoc(docId,clienteId){
+    if(!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.'))return;
+    try{
+        const res=await fetch(`/api/im/documentos/${docId}`,{method:'DELETE'});
+        if(!res.ok&&res.status!==204){const e=await res.json().catch(()=>({}));throw new Error(e.message||`No se pudo eliminar (HTTP ${res.status}).`);}
+        showToast('Documento eliminado.','success');
+    }catch(e){showToast(e.message,'error','No se pudo eliminar');}
+    finally{loadClienteDocs(clienteId);}
 }
 
 function toggleConyugeExpand(id,val){
