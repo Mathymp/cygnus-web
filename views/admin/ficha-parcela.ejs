@@ -641,6 +641,7 @@ function cleanNum(v){return v&&String(v).trim()?parseFloat(String(v).replace(/\.
 /** Fecha segura para UI (evita Invalid Date cuando PG manda ISO completo). */
 function ymd(val){
     if(val==null||val==='')return '';
+    if(val instanceof Date&&!Number.isNaN(val.getTime()))return val.toISOString().slice(0,10);
     const m=String(val).match(/(\d{4}-\d{2}-\d{2})/);
     return m?m[1]:'';
 }
@@ -927,11 +928,14 @@ function renderParcela(data){
         const cuotasTotales=cuotas.length;
 
         // ── Helpers locales ─────────────────────────────────────
-        const row=(label,val,icon='')=>val&&val!=='—'
-            ?`<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;">
+        const row=(label,val,icon='',always=false)=>{
+            const show=always||(val!=null&&val!==''&&val!=='—');
+            if(!show)return '';
+            return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;">
                 <span style="min-width:140px;font-size:.78rem;color:#64748b;font-weight:600;padding-top:1px;">${icon?`<i class="bi ${icon}" style="margin-right:4px;"></i>`:''}${label}</span>
-                <span style="font-size:.85rem;color:#0f172a;font-weight:500;word-break:break-word;">${escH(String(val))}</span>
-              </div>`:'';
+                <span style="font-size:.85rem;color:#0f172a;font-weight:500;word-break:break-word;">${escH(String(val||'—'))}</span>
+              </div>`;
+        };
         // Promesa de compraventa / Escritura de compraventa — verde firmado, rojo pendiente
         const chipDoc=(ok,label)=>`<span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.76rem;font-weight:700;background:${ok?'#dcfce7':'#fee2e2'};color:${ok?'#166534':'#991b1b'};border:1px solid ${ok?'#86efac':'#fca5a5'};"><i class="bi bi-${ok?'check-circle-fill':'x-circle-fill'}"></i>${label}</span>`;
         const section=(title,color,content)=>`<div style="background:${color};border-radius:10px;padding:14px 16px;margin-bottom:12px;">${title?`<p style="font-size:.72rem;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px;">${title}</p>`:''}${content}</div>`;
@@ -975,7 +979,7 @@ function renderParcela(data){
 
                 <!-- Venta -->
                 ${section('Datos de la Operación','#eff6ff',
-                    row('Fecha de Venta',fmtFechaCL(venta.fecha_venta),'bi-calendar-event')
+                    row('Fecha de compra',fmtFechaCL(venta.fecha_venta)||'—','bi-calendar-event',true)
                     +row('Modalidad de Pago',tipoPago==='contado'?'Al Contado':'Crédito / Cuotas','bi-wallet2')
                     +row('Precio Lista',venta.precio_lista?'$'+fmt(venta.precio_lista):'—','bi-tag')
                     +row('Precio Acordado',venta.precio_acordado?'$'+fmt(venta.precio_acordado):'—','bi-currency-dollar')

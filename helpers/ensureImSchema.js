@@ -79,6 +79,7 @@ async function ensureImSchema(pool) {
             notas TEXT,
             creado_at TIMESTAMPTZ DEFAULT NOW()
         )`,
+        `ALTER TABLE im_cuotas ADD COLUMN IF NOT EXISTS medio_pago TEXT`,
 
         // ── Cuotas de devolución (resciliación) ──
         `CREATE TABLE IF NOT EXISTS im_cuotas_devolucion (
@@ -94,6 +95,7 @@ async function ensureImSchema(pool) {
             notas TEXT,
             creado_at TIMESTAMPTZ DEFAULT NOW()
         )`,
+        `ALTER TABLE im_cuotas_devolucion ADD COLUMN IF NOT EXISTS medio_pago TEXT`,
 
         // ── RLS: solo DISABLE una vez al arranque (NO en cada request) ──
         `ALTER TABLE IF EXISTS im_clientes NO FORCE ROW LEVEL SECURITY`,

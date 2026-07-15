@@ -109,6 +109,16 @@ function toBool(v) {
     return v === true || v === 1 || v === '1' || v === 'true' || v === 't' || v === 'on';
 }
 
+/** Normaliza fecha PG (Date/ISO/string) a YYYY-MM-DD sin perder el día por timezone. */
+function normalizeFechaYmd(val) {
+    if (val == null || val === '') return null;
+    if (val instanceof Date && !Number.isNaN(val.getTime())) {
+        return val.toISOString().slice(0, 10);
+    }
+    const m = String(val).match(/(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : null;
+}
+
 function resolveEstadoOperacion(body = {}) {
     const explicit = String(body.estado_operacion || '').toLowerCase();
     if (explicit === 'reservado' || explicit === 'reserva') return 'reservado';
@@ -187,11 +197,6 @@ async function loadVentaForParcela(db, parcelaId) {
 }
 
 function hydrateVentaRow(venta, cliente) {
-    let fechaVenta = venta.fecha_venta || null;
-    if (fechaVenta) {
-        const m = String(fechaVenta).match(/(\d{4}-\d{2}-\d{2})/);
-        fechaVenta = m ? m[1] : null;
-    }
     return {
         id: venta.id,
         parcela_id: venta.parcela_id,
@@ -199,7 +204,7 @@ function hydrateVentaRow(venta, cliente) {
         firmo_promesa: toBool(venta.firmo_promesa),
         firmo_compraventa: toBool(venta.firmo_compraventa),
         forma_pago: venta.forma_pago,
-        fecha_venta: fechaVenta,
+        fecha_venta: normalizeFechaYmd(venta.fecha_venta),
         precio_lista: venta.precio_lista,
         precio_acordado: venta.precio_acordado,
         notas: venta.notas,
@@ -1644,12 +1649,13 @@ exports.getResciliacionById = async (req, res) => {
         const [resc, cuotas] = await Promise.all([
             pool.query(`
                 SELECT r.*,
-                    v.tipo_pago, v.precio_acordado, v.fecha_venta,
+                    v.tipo_pago, v.precio_acordado, v.precio_lista, v.monto_pie AS venta_monto_pie, v.fecha_venta,
                     c.nombre_completo AS cliente_nombre, c.rut AS cliente_rut,
                     c.telefono AS cliente_telefono, c.email AS cliente_email,
                     c.nombre_conyugue, c.rut_conyugue, c.telefono_conyugue, c.email_conyugue,
                     c.estado_civil, c.regimen_matrimonial,
-                    pa.numero_parcela, pr.nombre AS proyecto_nombre
+                    pa.numero_parcela, pa.precio_actual AS parcela_precio,
+                    pr.nombre AS proyecto_nombre
                 FROM im_resciliaciones r
                 JOIN im_ventas_lotes v ON r.venta_id = v.id
                 JOIN im_clientes c ON v.cliente_id = c.id
@@ -1713,8 +1719,9 @@ exports.setCuotasDevolucion = async (req, res) => {
 
 exports.pagarCuotaDevolucion = async (req, res) => {
     try {
+        await ensureSchemaOnce();
         const { id } = req.params;
-        const { fecha_pago, notas } = req.body;
+        const { fecha_pago, notas, medio_pago } = req.body;
 
         let comprobante_url = null, storage_path = null;
         if (req.file) {
@@ -1727,7 +1734,8 @@ exports.pagarCuotaDevolucion = async (req, res) => {
 
         const sets = [`pagado=true`, `fecha_pago=COALESCE($1, CURRENT_DATE)`];
         const params = [fecha_pago || null];
-        if (notas !== undefined) { params.push(notas); sets.push(`notas=$${params.length}`); }
+        if (notas !== undefined) { params.push(notas || null); sets.push(`notas=$${params.length}`); }
+        if (medio_pago) { params.push(String(medio_pago)); sets.push(`medio_pago=$${params.length}`); }
         if (comprobante_url)     { params.push(comprobante_url); sets.push(`comprobante_url=$${params.length}`); }
         if (storage_path)        { params.push(storage_path);    sets.push(`storage_path=$${params.length}`); }
         params.push(id);

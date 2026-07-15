@@ -201,34 +201,44 @@
     <div class="rm-overlay" id="modal-pagar-dev">
         <div class="rm-box">
             <div class="rm-header">
-                <span style="font-weight:700;font-size:1rem;"><i class="bi bi-cash-coin"></i> Registrar Devolución Cuota</span>
+                <span style="font-weight:700;font-size:1rem;"><i class="bi bi-cash-coin"></i> Registrar pago de devolución</span>
                 <button onclick="closeModal('pagar-dev')" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;">×</button>
             </div>
             <div class="rm-body">
                 <input type="hidden" id="pd-cuota-id">
                 <div class="im-form-row" style="margin-bottom:12px;">
                     <div class="im-input-group">
-                        <label>Fecha de Pago</label>
+                        <label>Fecha de pago</label>
                         <input type="date" id="pd-fecha" class="styled-input">
                     </div>
                     <div class="im-input-group">
-                        <label>Notas (opcional)</label>
-                        <input type="text" id="pd-notas" class="styled-input" placeholder="Ej: transferencia banco X">
+                        <label>Medio de pago</label>
+                        <select id="pd-medio" class="styled-input">
+                            <option value="Transferencia">Transferencia</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Vale vista">Vale vista</option>
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Otro">Otro</option>
+                        </select>
                     </div>
                 </div>
+                <div class="im-input-group" style="margin-bottom:12px;">
+                    <label>Notas (opcional)</label>
+                    <input type="text" id="pd-notas" class="styled-input" placeholder="Banco, N° cheque, referencia...">
+                </div>
                 <div class="im-input-group" style="margin-bottom:14px;">
-                    <label><i class="bi bi-paperclip"></i> Comprobante de Pago</label>
+                    <label><i class="bi bi-camera"></i> Captura / comprobante <span style="font-weight:400;color:#94a3b8;">(transferencia, cheque, vale…)</span></label>
                     <div class="dz-mini">
                         <input type="file" id="pd-file" accept="image/*,.pdf">
                         <i class="bi bi-cloud-arrow-up" style="font-size:1.5rem;color:#2563eb;"></i>
-                        <p>Foto/PDF del comprobante (opcional)</p>
+                        <p>Foto o PDF del comprobante</p>
                         <p id="pd-file-name" style="font-weight:600;color:#0f172a;display:none;"></p>
                     </div>
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;">
                     <button class="im-btn im-btn-ghost" onclick="closeModal('pagar-dev')">Cancelar</button>
                     <button class="im-btn im-btn-primary" id="pd-btn" onclick="confirmarPagarDev()" style="background:#16a34a;border:none;">
-                        <i class="bi bi-check-circle"></i> Confirmar Devolución
+                        <i class="bi bi-check-circle"></i> Confirmar pago
                     </button>
                 </div>
             </div>
@@ -307,7 +317,13 @@ function openModal(id){const el=$id(`modal-${id}`);if(el)el.classList.add('open'
 function closeModal(id){const el=$id(`modal-${id}`);if(el)el.classList.remove('open');}
 function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmtCLP(v){return v?'$'+Number(v).toLocaleString('es-CL'):'—';}
-function fmtFecha(d){return d?new Date(d).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';}
+function fmtFecha(d){
+    if(!d)return '—';
+    const m=String(d instanceof Date?d.toISOString():d).match(/(\d{4}-\d{2}-\d{2})/);
+    if(!m)return '—';
+    const x=new Date(m[1]+'T12:00:00');
+    return Number.isNaN(x.getTime())?'—':x.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'});
+}
 function showToast(msg,type='info'){
     const t=$id('im-toast'),ti=$id('im-toast-inner');
     ti.textContent=msg;
@@ -693,16 +709,22 @@ async function renderDetail(rescId, container){
             </div>
 
             <div id="dev-monto-section-${rescId}" style="margin-bottom:14px;">
+                <div style="background:#fff1f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:.8rem;color:#7f1d1d;">
+                    <strong>Referencia venta:</strong> precio acordado ${fmtCLP(r.precio_acordado||r.parcela_precio||0)}
+                    ${r.venta_monto_pie?` · pie pagado en compra ${fmtCLP(r.venta_monto_pie)}`:''}.
+                    Las cuotas se calculan como <strong>(total a devolver − pie de resciliación) ÷ N°</strong>.
+                </div>
                 <div class="im-form-row">
                     <div class="im-input-group">
                         <label>Monto Total a Devolver (CLP)</label>
-                        <input type="text" id="dev-monto-${rescId}" class="styled-input" value="${r.monto_total_devolucion||''}" placeholder="Ej: 5.000.000" oninput="fmtDevInput(this)">
+                        <input type="text" id="dev-monto-${rescId}" class="styled-input" value="${Number(r.monto_total_devolucion!=null?r.monto_total_devolucion:(r.precio_acordado||0)).toLocaleString('es-CL')}" placeholder="Ej: 5.000.000" oninput="fmtDevInput(this);recalcDevCuotas(${rescId})">
                     </div>
                     <div class="im-input-group" id="dev-pie-wrap-${rescId}" style="${tipoDev!=='pie_mas_cuotas'?'display:none':''}">
-                        <label>Monto Pie de Devolución (CLP)</label>
-                        <input type="text" id="dev-pie-${rescId}" class="styled-input" value="${r.monto_pie_devolucion||''}" placeholder="Monto inicial entregado" oninput="fmtDevInput(this)">
+                        <label>Pie inicial de devolución (CLP)</label>
+                        <input type="text" id="dev-pie-${rescId}" class="styled-input" value="${r.monto_pie_devolucion!=null?Number(r.monto_pie_devolucion).toLocaleString('es-CL'):(r.venta_monto_pie?Number(r.venta_monto_pie).toLocaleString('es-CL'):'')}" placeholder="Se resta del total antes de cuotas" oninput="fmtDevInput(this);recalcDevCuotas(${rescId})">
                     </div>
                 </div>
+                <div id="dev-calc-hint-${rescId}" style="font-size:.78rem;color:#64748b;margin:0 0 10px;"></div>
                 <div id="dev-cuotas-config-${rescId}" style="${!tipoDev||tipoDev==='completa'?'display:none':''}">
                     <div class="im-form-row">
                         <div class="im-input-group">
@@ -711,7 +733,7 @@ async function renderDetail(rescId, container){
                         </div>
                         <div class="im-input-group">
                             <label>Monto por Cuota (CLP)</label>
-                            <input type="text" id="dev-mcuota-${rescId}" class="styled-input" value="${r.monto_cuota_devolucion||''}" placeholder="Ej: 500.000" oninput="fmtDevInput(this)">
+                            <input type="text" id="dev-mcuota-${rescId}" class="styled-input" value="${r.monto_cuota_devolucion!=null?Number(r.monto_cuota_devolucion).toLocaleString('es-CL'):''}" placeholder="Auto: (total−pie)/N" oninput="fmtDevInput(this)">
                         </div>
                         <div class="im-input-group">
                             <label>Primera Cuota (fecha)</label>
@@ -746,8 +768,11 @@ async function renderDetail(rescId, container){
             <div id="rel-docs-${rescId}"><div style="color:#94a3b8;font-size:.8rem;padding:8px 0;"><i class="bi bi-hourglass-split"></i> Cargando...</div></div>
         </div>`;
 
-        // Auto-cargar docs parcela
-        setTimeout(()=>loadRelDocs(rescId,'parcela',r.parcela_id,$id(`doc-tab-${rescId}-parcela`)),100);
+        // Auto-cargar docs parcela + recalcular hint de cuotas
+        setTimeout(()=>{
+            loadRelDocs(rescId,'parcela',r.parcela_id,$id(`doc-tab-${rescId}-parcela`));
+            try{recalcDevCuotas(rescId);}catch(_){}
+        },100);
     }catch(e){
         container.innerHTML=`<div style="color:#ef4444;padding:16px;">${escH(e.message)}</div>`;
     }
@@ -763,6 +788,7 @@ function setDevTipo(rescId, tipo, btn){
     const pieWrap=$id(`dev-pie-wrap-${rescId}`);
     if(tipo==='completa'){cuotasConfig.style.display='none';if(pieWrap)pieWrap.style.display='none';}
     else{cuotasConfig.style.display='block';if(pieWrap)pieWrap.style.display=(tipo==='pie_mas_cuotas'?'block':'none');}
+    recalcDevCuotas(rescId);
 }
 
 function fmtDevInput(inp){
@@ -770,36 +796,68 @@ function fmtDevInput(inp){
     if(raw)inp.value=Number(raw).toLocaleString('es-CL');
 }
 
-function parsePesos(s){return parseInt((s||'').replace(/\./g,'').replace(/[^0-9]/g,''))||null;}
+function parsePesos(s){return parseInt((s||'').replace(/\./g,'').replace(/[^0-9]/g,''))||0;}
 
 function recalcDevCuotas(rescId){
+    const total=parsePesos($id(`dev-monto-${rescId}`)?.value);
+    const tipoEl=$id(`dev-type-btns-${rescId}`);
+    const tipoTxt=tipoEl?.querySelector('.dev-type-btn.active')?.textContent?.trim()||'';
+    const conPie=tipoTxt.includes('Pie');
+    const pie=conPie?parsePesos($id(`dev-pie-${rescId}`)?.value):0;
     const nc=parseInt($id(`dev-ncuotas-${rescId}`)?.value)||0;
-    const mc=parsePesos($id(`dev-mcuota-${rescId}`)?.value);
-    if(nc&&mc) {
-        // auto fill monto cuota if total is set
+    const base=Math.max(0,total-pie);
+    const hint=$id(`dev-calc-hint-${rescId}`);
+    if(hint){
+        if(conPie){
+            hint.innerHTML=`<i class="bi bi-calculator"></i> Total $${total.toLocaleString('es-CL')} − Pie $${pie.toLocaleString('es-CL')} = <strong>$${base.toLocaleString('es-CL')}</strong> a repartir en cuotas.`;
+        }else if(nc>0){
+            hint.innerHTML=`<i class="bi bi-calculator"></i> Total a devolver en cuotas: <strong>$${base.toLocaleString('es-CL')}</strong>.`;
+        }else{
+            hint.innerHTML=`<i class="bi bi-info-circle"></i> Usa el precio de la parcela/venta como total. Si hay pie, elígelo en «Pie + Cuotas».`;
+        }
+    }
+    if(nc>0&&base>0){
+        const mc=Math.round(base/nc);
+        const inp=$id(`dev-mcuota-${rescId}`);
+        if(inp)inp.value=mc.toLocaleString('es-CL');
     }
 }
 
 function generarCuotasDev(rescId){
+    recalcDevCuotas(rescId);
     const nc=parseInt($id(`dev-ncuotas-${rescId}`)?.value)||0;
     const mc=parsePesos($id(`dev-mcuota-${rescId}`)?.value);
     const fecha1=$id(`dev-fecha1-${rescId}`)?.value;
-    if(!nc||!mc){showToast('Completa cantidad y monto de cuotas.','error');return;}
+    const total=parsePesos($id(`dev-monto-${rescId}`)?.value);
+    const tipoEl=$id(`dev-type-btns-${rescId}`);
+    const conPie=(tipoEl?.querySelector('.dev-type-btn.active')?.textContent||'').includes('Pie');
+    const pie=conPie?parsePesos($id(`dev-pie-${rescId}`)?.value):0;
+    const base=Math.max(0,total-pie);
+    if(!nc||nc<1){showToast('Indica la cantidad de cuotas.','error');return;}
+    if(!base){showToast('Indica el monto total a devolver (y pie si aplica).','error');return;}
+    const montoCuota=mc||Math.round(base/nc);
 
     const filas=[];
+    let acumulado=0;
     for(let i=1;i<=nc;i++){
         let fv='';
         if(fecha1){
-            const d=new Date(fecha1);
+            const d=new Date(fecha1+'T12:00:00');
             d.setMonth(d.getMonth()+(i-1));
             fv=d.toISOString().split('T')[0];
         }
-        filas.push({numero_cuota:i,monto:mc,fecha_vencimiento:fv});
+        // Última cuota ajusta redondeo
+        const monto=i===nc?Math.max(0,base-acumulado):montoCuota;
+        acumulado+=monto;
+        filas.push({numero_cuota:i,monto,fecha_vencimiento:fv});
     }
-    // Preview en UI
     const tbl=$id(`dev-cuotas-table-${rescId}`);
-    tbl.innerHTML=previewCuotasDevHTML(filas,rescId)+
-        `<button class="im-btn im-btn-primary" style="margin-top:10px;background:#dc2626;border:none;" onclick='guardarCuotasDev(${rescId},${JSON.stringify(filas)})'>
+    tbl.innerHTML=`
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:.78rem;color:#166534;">
+            <i class="bi bi-check2-circle"></i> Tabla: total $${total.toLocaleString('es-CL')}${pie?` − pie $${pie.toLocaleString('es-CL')}`:''} = <strong>$${base.toLocaleString('es-CL')}</strong> en ${nc} cuota(s).
+        </div>
+        ${previewCuotasDevHTML(filas,rescId)}
+        <button class="im-btn im-btn-primary" style="margin-top:10px;background:#dc2626;border:none;" onclick='guardarCuotasDev(${rescId},${JSON.stringify(filas)})'>
             <i class="bi bi-floppy"></i> Guardar Cuotas de Devolución
          </button>`;
 }
@@ -848,7 +906,7 @@ function renderCuotasDev(cuotas,rescId){
         const venc=isOverdue({pagado:c.pagado,fecha_vencimiento:c.fecha_vencimiento});
         const cls=c.pagado?'pagada-mini':venc?'vencida-mini':'';
         const badge=c.pagado
-            ?`<span class="badge-pagada"><i class="bi bi-check-circle-fill"></i> Pagada ${c.fecha_pago?'· '+fmtFecha(c.fecha_pago):''}</span>`
+            ?`<span class="badge-pagada"><i class="bi bi-check-circle-fill"></i> Pagada ${c.fecha_pago?'· '+fmtFecha(c.fecha_pago):''}${c.medio_pago?' · '+escH(c.medio_pago):''}</span>`
             :venc?`<span class="badge-vencida"><i class="bi bi-exclamation-triangle-fill"></i> Vencida</span>`
             :`<span class="badge-pendiente"><i class="bi bi-clock"></i> Pendiente</span>`;
         const compIcon=c.comprobante_url
@@ -856,8 +914,8 @@ function renderCuotasDev(cuotas,rescId){
                 <i class="bi bi-eye"></i></button>`
             :'';
         const pagarBtn=!c.pagado
-            ?`<button class="im-btn im-btn-sm im-btn-primary" style="background:#16a34a;border:none;" onclick="abrirPagarDev(${c.id})">
-                <i class="bi bi-check-circle"></i> Marcar Pagada</button>`
+            ?`<button class="im-btn im-btn-sm im-btn-primary" style="background:#16a34a;border:none;" onclick="abrirPagarDev(${c.id}, ${c.monto||0})">
+                <i class="bi bi-camera"></i> Registrar pago</button>`
             :'';
         return `<div class="mini-cuota-dev ${cls}">
             <span style="font-weight:800;min-width:30px;color:#0f172a;">N°${c.numero_cuota}</span>
@@ -920,10 +978,11 @@ async function actualizarEstado(rescId,estado){
 // ─────────────────────────────────────────────
 //  Pagar cuota de devolución
 // ─────────────────────────────────────────────
-function abrirPagarDev(cuotaId){
+function abrirPagarDev(cuotaId, monto){
     $id('pd-cuota-id').value=cuotaId;
     $id('pd-fecha').value=new Date().toISOString().split('T')[0];
     $id('pd-notas').value='';
+    if($id('pd-medio'))$id('pd-medio').value='Transferencia';
     $id('pd-file').value='';
     $id('pd-file-name').style.display='none';
     $id('pd-file').onchange=function(){
@@ -940,17 +999,18 @@ async function confirmarPagarDev(){
     try{
         const fd=new FormData();
         fd.append('fecha_pago',$id('pd-fecha').value||'');
+        fd.append('medio_pago',$id('pd-medio')?$id('pd-medio').value:'Transferencia');
         fd.append('notas',$id('pd-notas').value||'');
         const file=$id('pd-file').files[0];
         if(file) fd.append('archivo',file,file.name);
         const res=await fetch(`/api/im/cuotas-devolucion/${cuotaId}/pagar`,{method:'PATCH',body:fd});
         if(!res.ok)throw new Error((await res.json().catch(()=>({}))).message||`Error ${res.status}`);
-        showToast('Devolución registrada correctamente.','success');
+        showToast('Pago de devolución registrado.','success');
         closeModal('pagar-dev');
         await loadResc();
         if(activeRow){const inner=$id('resc-inner-'+activeRow);if(inner)await renderDetail(activeRow.replace('resc-',''),inner);}
     }catch(e){showToast(e.message,'error');}
-    finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-check-circle"></i> Confirmar Devolución';}
+    finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-check-circle"></i> Confirmar pago';}
 }
 
 // ─────────────────────────────────────────────
