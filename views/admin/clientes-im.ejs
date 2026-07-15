@@ -300,7 +300,13 @@ async function crearCliente(){
             telefono_conyugue:$('nc-con-tel').value||null
         };
         const res=await fetch('/api/im/clientes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`No se pudo crear el cliente (HTTP ${res.status}). Verifica que el RUT no esté duplicado.`);}
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok){
+            if(res.status===409&&data.cliente){
+                throw new Error(`Ya existe un cliente con ese RUT: ${data.cliente.nombre_completo}. Búscalo en la lista en lugar de crear uno nuevo.`);
+            }
+            throw new Error(data.message||data.error||`No se pudo crear el cliente (HTTP ${res.status}).`);
+        }
         closeNuevo();
         showToast(`Cliente "${nombre}" creado correctamente.`,'success');
         loadClientes();
@@ -332,7 +338,7 @@ async function loadClientes(){
     if(proj)url+=`proyecto_id=${encodeURIComponent(proj)}&`;
     try{
         const res=await fetch(url);
-        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`No se pudieron cargar los clientes (HTTP ${res.status}). Intenta recargar la página.`);}
+        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||eb.error||`No se pudieron cargar los clientes (HTTP ${res.status}). Intenta recargar la página.`);}
         allClientes=await res.json();
         $('total-count').textContent=allClientes.length;
         renderTable(allClientes);
@@ -346,7 +352,7 @@ function renderTable(list){
     if(list.length===0){tbody.innerHTML='<tr><td colspan="6" class="no-results"><i class="bi bi-people"></i><br>No se encontraron clientes con esos filtros.<br><button class="im-btn im-btn-primary" style="margin-top:12px;" onclick="openNuevo()"><i class="bi bi-person-plus-fill"></i> Crear primer cliente</button></td></tr>';return;}
     tbody.innerHTML=list.map((c,idx)=>{
         const ventas=c.ventas||[];
-        const parcelas=ventas.map(v=>`<span class="badge-proyecto" style="margin:2px;"><i class="bi bi-geo-alt"></i>${escH(v.proyecto_nombre)} · P${v.parcela_numero}</span>`).join('');
+        const parcelas=ventas.map(v=>`<span class="badge-proyecto" style="margin:2px;"><i class="bi bi-geo-alt"></i>${escH(v.proyecto_nombre)} · P${escH(v.numero_parcela||v.parcela_numero||'?')}</span>`).join('');
         const totalC=parseInt(c.total_compras)||0;
         return `
         <tr id="row-${c.id}" onclick="toggleExpand('${c.id}',${idx})" style="cursor:pointer;">
@@ -467,7 +473,7 @@ function renderExpand(id,c){
                     return `<div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;">
                         <div>
                             <span style="font-weight:700;color:#0f172a;">${escH(v.proyecto_nombre)}</span>
-                            <span style="color:#64748b;font-size:.82rem;"> · Parcela N° ${v.parcela_numero}</span>
+                            <span style="color:#64748b;font-size:.82rem;"> · Parcela N° ${escH(v.numero_parcela||v.parcela_numero||'?')}</span>
                             <div style="margin-top:4px;display:flex;gap:6px;align-items:center;">
                                 ${tb}
                                 ${v.precio_acordado?`<span style="font-size:.78rem;color:#475569;">$${Math.floor(parseFloat(v.precio_acordado)).toLocaleString('es-CL')}</span>`:''}

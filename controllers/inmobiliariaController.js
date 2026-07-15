@@ -12,6 +12,36 @@ const isAdmin = (req) => {
     return role === 'admin' || role === 'administrador';
 };
 
+/** Normaliza RUT chileno: quita puntos, guiones y espacios; mayúsculas. */
+function normalizeRut(rut) {
+    return String(rut || '').replace(/[.\-\s]/g, '').toUpperCase();
+}
+
+/** Expresión SQL para normalizar columna RUT. */
+function rutSqlExpr(col = 'rut') {
+    return `REPLACE(REPLACE(REPLACE(UPPER(COALESCE(${col},'')), '.', ''), '-', ''), ' ', '')`;
+}
+
+// Verificación lazy del esquema (por si el proceso no arrancó vía app.listen)
+let _schemaReady = null;
+function ensureSchemaOnce() {
+    if (!_schemaReady) {
+        try {
+            const { ensureImSchema } = require('../helpers/ensureImSchema');
+            _schemaReady = ensureImSchema(pool).catch((e) => {
+                console.warn('[imSchema] lazy ensure falló:', e.message);
+                _schemaReady = null;
+            });
+        } catch (e) {
+            console.warn('[imSchema] no se pudo cargar helper:', e.message);
+            _schemaReady = Promise.resolve();
+        }
+    }
+    return _schemaReady || Promise.resolve();
+}
+// Arranque en background al cargar el módulo (Render/Vercel)
+ensureSchemaOnce();
+
 async function auditLog(client, { tabla, entidadId, accion, descripcion, req }) {
     const userId   = req.session.user ? req.session.user.id   : null;
     const userName = req.session.user ? req.session.user.name : 'Sistema';
@@ -119,21 +149,25 @@ exports.getParcelas = async (req, res) => {
         const result = await pool.query(
             `SELECT p.*,
                 (SELECT precio FROM im_historial_precios WHERE parcela_id = p.id ORDER BY fecha_registro DESC LIMIT 1) as ultimo_precio,
-                (SELECT c.nombre_completo FROM im_ventas_lotes v JOIN im_clientes c ON v.cliente_id = c.id WHERE v.parcela_id = p.id ORDER BY v.creado_at DESC LIMIT 1) as cliente_nombre
+                (SELECT c.nombre_completo FROM im_ventas_lotes v JOIN im_clientes c ON v.cliente_id = c.id
+                 WHERE v.parcela_id = p.id AND COALESCE(v.estado,'activa')='activa'
+                 ORDER BY v.creado_at DESC LIMIT 1) as cliente_nombre
              FROM im_parcelas p WHERE p.proyecto_id = $1
              ORDER BY LENGTH(p.numero_parcela::TEXT) ASC, p.numero_parcela ASC`,
             [proyectoId]
         );
         res.json(result.rows);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(500).json({ error: e.message, message: e.message }); }
 };
 
 exports.getParcelaById = async (req, res) => {
     try {
+        await ensureSchemaOnce();
         const { id } = req.params;
         const [parcelaRes, historialRes, ventaRes] = await Promise.all([
             pool.query(
-                `SELECT p.*, pr.nombre as proyecto_nombre, pr.numero_rol_1, pr.numero_rol_2, pr.numero_matriz
+                `SELECT p.*, pr.nombre as proyecto_nombre, pr.numero_rol_1, pr.numero_rol_2, pr.numero_matriz,
+                        pr.tipo_proyecto
                  FROM im_parcelas p JOIN im_proyectos pr ON p.proyecto_id = pr.id WHERE p.id = $1`, [id]
             ),
             pool.query(`SELECT precio, fecha_registro FROM im_historial_precios WHERE parcela_id=$1 ORDER BY fecha_registro ASC`, [id]),
@@ -143,7 +177,7 @@ exports.getParcelaById = async (req, res) => {
                          c.email_conyugue, c.telefono_conyugue,
                          c.direccion, c.id as cliente_id, v.agente_id, v.agente_nombre
                  FROM im_ventas_lotes v JOIN im_clientes c ON v.cliente_id = c.id
-                 WHERE v.parcela_id=$1 AND v.estado='activa' ORDER BY v.creado_at DESC LIMIT 1`, [id]
+                 WHERE v.parcela_id=$1 AND COALESCE(v.estado,'activa')='activa' ORDER BY v.creado_at DESC LIMIT 1`, [id]
             )
         ]);
         if (parcelaRes.rows.length === 0) return res.status(404).json({ message: 'Parcela no encontrada.' });
@@ -294,6 +328,7 @@ exports.deleteParcela = async (req, res) => {
 
 exports.getClientes = async (req, res) => {
     try {
+        await ensureSchemaOnce();
         const { q, proyecto_id } = req.query;
         let query = `
             SELECT c.*,
@@ -301,8 +336,18 @@ exports.getClientes = async (req, res) => {
             FROM im_clientes c WHERE 1=1`;
         const params = [];
         if (q) {
+            const qNorm = normalizeRut(q);
             params.push(`%${q}%`);
-            query += ` AND (c.nombre_completo ILIKE $${params.length} OR c.rut ILIKE $${params.length} OR c.email ILIKE $${params.length} OR c.telefono ILIKE $${params.length})`;
+            const qIdx = params.length;
+            params.push(qNorm);
+            const rutIdx = params.length;
+            query += ` AND (
+                c.nombre_completo ILIKE $${qIdx}
+                OR c.rut ILIKE $${qIdx}
+                OR COALESCE(c.email,'') ILIKE $${qIdx}
+                OR COALESCE(c.telefono,'') ILIKE $${qIdx}
+                OR ${rutSqlExpr('c.rut')} LIKE '%' || $${rutIdx} || '%'
+            )`;
         }
         if (proyecto_id) {
             params.push(proyecto_id);
@@ -315,23 +360,43 @@ exports.getClientes = async (req, res) => {
         query += ` ORDER BY c.nombre_completo ASC`;
         const clientes = await pool.query(query, params);
 
-        // For each client, get all their parcelas/ventas
-        const result = await Promise.all(clientes.rows.map(async (c) => {
+        // Una sola query de ventas para todos los clientes (evita N+1 y agotar el pool)
+        const ids = clientes.rows.map((c) => c.id);
+        let ventasByCliente = {};
+        if (ids.length > 0) {
             const ventas = await pool.query(
                 `SELECT v.id as venta_id, v.tipo_pago, v.precio_acordado, v.fecha_venta,
-                        v.firmo_promesa, v.firmo_compraventa, v.estado_cuotas,
-                        pa.id as parcela_id, pa.numero_parcela, pa.estado_venta,
-                        pr.id as proyecto_id, pr.nombre as proyecto_nombre
+                        v.firmo_promesa, v.firmo_compraventa, v.estado,
+                        CASE
+                          WHEN COALESCE(v.tipo_pago,'contado') <> 'credito' THEN NULL
+                          WHEN NOT EXISTS (SELECT 1 FROM im_cuotas q WHERE q.venta_id = v.id) THEN 'sin_cuotas'
+                          WHEN EXISTS (SELECT 1 FROM im_cuotas q WHERE q.venta_id = v.id AND q.pagado = false) THEN 'pendiente'
+                          ELSE 'al_dia'
+                        END as estado_cuotas,
+                        pa.id as parcela_id, pa.numero_parcela, pa.numero_parcela as parcela_numero, pa.estado_venta,
+                        pr.id as proyecto_id, pr.nombre as proyecto_nombre,
+                        v.cliente_id
                  FROM im_ventas_lotes v
                  JOIN im_parcelas pa ON v.parcela_id = pa.id
                  JOIN im_proyectos pr ON pa.proyecto_id = pr.id
-                 WHERE v.cliente_id=$1 ORDER BY v.creado_at DESC`, [c.id]
+                 WHERE v.cliente_id = ANY($1::uuid[])
+                 ORDER BY v.creado_at DESC`,
+                [ids]
             );
-            return { ...c, ventas: ventas.rows };
+            ventasByCliente = ventas.rows.reduce((acc, row) => {
+                if (!acc[row.cliente_id]) acc[row.cliente_id] = [];
+                acc[row.cliente_id].push(row);
+                return acc;
+            }, {});
+        }
+
+        const result = clientes.rows.map((c) => ({
+            ...c,
+            ventas: ventasByCliente[c.id] || []
         }));
 
         res.json(result);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(500).json({ error: e.message, message: e.message }); }
 };
 
 exports.buscarClientePorRut = async (req, res) => {
@@ -340,30 +405,69 @@ exports.buscarClientePorRut = async (req, res) => {
         const term = (rut || q || '').trim();
         if (!term) return res.status(400).json({ message: 'Ingresa un RUT o nombre para buscar.' });
 
-        // Si parece RUT (contiene guion o solo dígitos+K), buscar por RUT exacto primero
-        const esRut = /[0-9kK][-]/.test(term) || /^\d{7,9}[kK\d]$/.test(term.replace(/\./g,''));
-        if (esRut) {
-            const r = await pool.query(`SELECT * FROM im_clientes WHERE rut = $1 LIMIT 1`, [term]);
+        const rutNorm = normalizeRut(term);
+        // Si parece RUT (contiene guion o solo dígitos+K), buscar por RUT normalizado
+        const esRut = /[0-9kK]-/.test(term) || /^\d{7,9}[kK\d]?$/.test(rutNorm);
+        if (esRut && rutNorm.length >= 7) {
+            const r = await pool.query(
+                `SELECT * FROM im_clientes WHERE ${rutSqlExpr('rut')} = $1 LIMIT 1`,
+                [rutNorm]
+            );
             if (r.rows.length > 0) return res.json(r.rows[0]);
         }
 
-        // Búsqueda flexible por nombre o RUT parcial (devuelve hasta 8 resultados)
+        // Búsqueda flexible por nombre o RUT (con y sin formato)
         const result = await pool.query(
-            `SELECT * FROM im_clientes WHERE nombre_completo ILIKE $1 OR rut ILIKE $1 ORDER BY nombre_completo ASC LIMIT 8`,
-            [`%${term}%`]
+            `SELECT * FROM im_clientes
+             WHERE nombre_completo ILIKE $1
+                OR rut ILIKE $1
+                OR ${rutSqlExpr('rut')} LIKE '%' || $2 || '%'
+             ORDER BY nombre_completo ASC LIMIT 8`,
+            [`%${term}%`, rutNorm]
         );
         if (result.rows.length === 0) return res.status(404).json({ message: 'No se encontró ningún cliente con ese nombre o RUT.' });
         if (result.rows.length === 1) return res.json(result.rows[0]);
         res.json({ multiple: true, clientes: result.rows });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { res.status(500).json({ error: e.message, message: e.message }); }
 };
 
 exports.createCliente = async (req, res) => {
     try {
+        await ensureSchemaOnce();
         const { nombre_completo, rut, direccion, estado_civil, regimen_matrimonial,
                 nombre_conyugue, rut_conyugue, email_conyugue, telefono_conyugue,
-                email, telefono } = req.body;
+                email, telefono, reuse_if_exists } = req.body;
         if (!nombre_completo || !rut) return res.status(400).json({ message: 'Nombre y RUT son obligatorios.' });
+
+        const rutNorm = normalizeRut(rut);
+        const existing = await pool.query(
+            `SELECT * FROM im_clientes WHERE ${rutSqlExpr('rut')} = $1 LIMIT 1`,
+            [rutNorm]
+        );
+
+        if (existing.rows.length > 0) {
+            const cliente = existing.rows[0];
+            // Desde ficha de venta: reutilizar y actualizar datos del formulario
+            if (reuse_if_exists) {
+                const updated = await pool.query(
+                    `UPDATE im_clientes SET nombre_completo=$1, rut=$2, direccion=$3, estado_civil=$4,
+                     regimen_matrimonial=$5, nombre_conyugue=$6, rut_conyugue=$7,
+                     email_conyugue=$8, telefono_conyugue=$9, email=$10, telefono=$11
+                     WHERE id=$12 RETURNING *`,
+                    [nombre_completo, rut, direccion || null, estado_civil || 'Soltero/a',
+                     regimen_matrimonial || null,
+                     nombre_conyugue || null, rut_conyugue || null,
+                     email_conyugue || null, telefono_conyugue || null,
+                     email || null, telefono || null, cliente.id]
+                );
+                return res.status(200).json({ ...updated.rows[0], _existing: true });
+            }
+            return res.status(409).json({
+                message: 'Ya existe un cliente con ese RUT.',
+                cliente
+            });
+        }
+
         const result = await pool.query(
             `INSERT INTO im_clientes (nombre_completo, rut, direccion, estado_civil, regimen_matrimonial,
              nombre_conyugue, rut_conyugue, email_conyugue, telefono_conyugue, email, telefono)
@@ -376,8 +480,23 @@ exports.createCliente = async (req, res) => {
         );
         res.status(201).json(result.rows[0]);
     } catch (e) {
-        if (e.code === '23505') return res.status(409).json({ message: 'Ya existe un cliente con ese RUT.' });
-        res.status(500).json({ error: e.message });
+        if (e.code === '23505') {
+            try {
+                const rutNorm = normalizeRut(req.body.rut);
+                const existing = await pool.query(
+                    `SELECT * FROM im_clientes WHERE ${rutSqlExpr('rut')} = $1 LIMIT 1`, [rutNorm]
+                );
+                if (existing.rows[0]) {
+                    return res.status(409).json({
+                        message: 'Ya existe un cliente con ese RUT.',
+                        cliente: existing.rows[0]
+                    });
+                }
+            } catch (_) {}
+            return res.status(409).json({ message: 'Ya existe un cliente con ese RUT.' });
+        }
+        console.error('[createCliente]', e.message);
+        res.status(500).json({ error: e.message, message: e.message });
     }
 };
 
@@ -387,6 +506,18 @@ exports.updateCliente = async (req, res) => {
         const { nombre_completo, rut, direccion, estado_civil, regimen_matrimonial,
                 nombre_conyugue, rut_conyugue, email_conyugue, telefono_conyugue,
                 email, telefono } = req.body;
+
+        if (rut) {
+            const rutNorm = normalizeRut(rut);
+            const dup = await pool.query(
+                `SELECT id FROM im_clientes WHERE ${rutSqlExpr('rut')} = $1 AND id <> $2 LIMIT 1`,
+                [rutNorm, id]
+            );
+            if (dup.rows.length > 0) {
+                return res.status(409).json({ message: 'Ya existe otro cliente con ese RUT.' });
+            }
+        }
+
         const result = await pool.query(
             `UPDATE im_clientes SET nombre_completo=$1, rut=$2, direccion=$3, estado_civil=$4,
              regimen_matrimonial=$5, nombre_conyugue=$6, rut_conyugue=$7,
@@ -401,7 +532,8 @@ exports.updateCliente = async (req, res) => {
         res.json(result.rows[0]);
     } catch (e) {
         if (e.code === '23505') return res.status(409).json({ message: 'Ya existe un cliente con ese RUT.' });
-        res.status(500).json({ error: e.message });
+        console.error('[updateCliente]', e.message);
+        res.status(500).json({ error: e.message, message: e.message });
     }
 };
 
@@ -436,19 +568,28 @@ exports.createVenta = async (req, res) => {
             condiciones_compra, fechas_cuotas,
             agente_id, agente_nombre
         } = req.body;
-        if (!parcela_id || !cliente_id) return res.status(400).json({ message: 'Parcela y cliente son obligatorios.' });
+        if (!parcela_id || !cliente_id) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'Parcela y cliente son obligatorios.' });
+        }
 
         const cleanNum = (v) => v && String(v).trim() ? parseFloat(String(v).replace(/\./g,'').replace(',','.')) : null;
 
         // Marcar ventas activas anteriores como 'liberada' (no eliminar — preservar historial)
         await client.query(
-            `UPDATE im_ventas_lotes SET estado='liberada' WHERE parcela_id=$1 AND estado='activa'`,
+            `UPDATE im_ventas_lotes SET estado='liberada' WHERE parcela_id=$1 AND COALESCE(estado,'activa')='activa'`,
             [parcela_id]
         );
 
-        // Agente: usar el que viene en el body (admin puede elegir otro) o el usuario actual
-        const agenteId   = agente_id   || req.session.user.id;
-        const agenteNombre = agente_nombre || req.session.user.name;
+        // Agente: si el body envía agente_id (incluso null/"sin asignar"), respetarlo.
+        // Solo usar el usuario de sesión cuando el campo no viene en el body.
+        const hasAgenteField = Object.prototype.hasOwnProperty.call(req.body, 'agente_id');
+        const agenteId = hasAgenteField
+            ? (agente_id || null)
+            : (req.session.user ? req.session.user.id : null);
+        const agenteNombre = hasAgenteField
+            ? (agente_nombre || null)
+            : (req.session.user ? req.session.user.name : null);
 
         const result = await client.query(
             `INSERT INTO im_ventas_lotes (
@@ -491,13 +632,14 @@ exports.createVenta = async (req, res) => {
 
         await auditLog(client, { tabla: 'im_ventas_lotes', entidadId: venta.id,
             accion: 'CREAR',
-            descripcion: `Venta ${tipo_pago||'contado'} por ${agenteNombre}. Estado: ${nuevoEstado}. Precio: ${precio_acordado ? '$' + Number(cleanNum(precio_acordado)).toLocaleString('es-CL') : 'sin precio'}.`, req });
+            descripcion: `Venta ${tipo_pago||'contado'} por ${agenteNombre || 'sin agente'}. Estado: ${nuevoEstado}. Precio: ${precio_acordado ? '$' + Number(cleanNum(precio_acordado)).toLocaleString('es-CL') : 'sin precio'}.`, req });
 
         await client.query('COMMIT');
         res.status(201).json(venta);
     } catch (e) {
-        await client.query('ROLLBACK');
-        res.status(500).json({ error: e.message });
+        try { await client.query('ROLLBACK'); } catch (_) {}
+        console.error('[createVenta]', e.message);
+        res.status(500).json({ error: e.message, message: e.message });
     } finally { client.release(); }
 };
 

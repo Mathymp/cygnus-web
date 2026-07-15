@@ -253,9 +253,14 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`✅ Servidor Cygnus Profesional listo en Puerto ${PORT} | Zona: ${CHILE_TZ}`);
-    });
+    const { ensureImSchema } = require('./helpers/ensureImSchema');
+    ensureImSchema(pgPool)
+        .catch((e) => console.warn('[imSchema] No se pudo verificar esquema IM:', e.message))
+        .finally(() => {
+            app.listen(PORT, () => {
+                console.log(`✅ Servidor Cygnus Profesional listo en Puerto ${PORT} | Zona: ${CHILE_TZ}`);
+            });
+        });
 }
 
 module.exports = app;

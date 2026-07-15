@@ -600,9 +600,18 @@ function switchTab(name,btn){
             initDM('venta',ventaData.id);loadDocs('venta',ventaData.id);
         } else {
             $('no-venta-doc-msg').style.display='block';
+            $('dm-venta').innerHTML='';
         }
     }
-    if(name==='docs-persona'&&currentClienteId){initDM('persona',currentClienteId);loadDocs('persona',currentClienteId);}
+    if(name==='docs-persona'){
+        if(currentClienteId){
+            $('no-cliente-msg').style.display='none';
+            initDM('persona',currentClienteId);loadDocs('persona',currentClienteId);
+        } else {
+            $('no-cliente-msg').style.display='block';
+            $('dm-persona').innerHTML='';
+        }
+    }
     if(name==='docs-lote'){initDM('lote',PARCELA_ID);loadDocs('parcela',PARCELA_ID);}
     if(name==='docs-proyecto'&&proyectoId){initDM('proyecto',proyectoId);loadDocs('proyecto',proyectoId);}
     if(name==='auditoria')loadAuditoria();
@@ -853,11 +862,21 @@ function renderParcela(data){
         }
 
         $('no-cliente-msg').style.display='none';
+        $('no-venta-doc-msg').style.display='none';
         initDM('persona',venta.cliente_id);
+        initDM('venta',venta.id);
     }else{
+        currentClienteId=null;
+        ventaData=null;
         $('venta-actual').innerHTML='';
         $('venta-fecha').value=new Date().toISOString().split('T')[0];
         if(p.precio_actual)$('venta-precio-lista').value=Number(p.precio_actual).toLocaleString('es-CL');
+        $('no-cliente-msg').style.display='block';
+        $('no-venta-doc-msg').style.display='block';
+        // Mostrar formulario si no hay venta
+        $('form-venta-wrapper').style.display='block';
+        if($('btn-editar-venta-wrap'))$('btn-editar-venta-wrap').style.display='none';
+        formVentaVisible=true;
     }
 
     renderHistorialVentas(histVentas);
@@ -1050,13 +1069,21 @@ async function guardarParcela(event){
 
 // ──────────────── BUSCAR CLIENTE ────────────────
 function clienteCard(c){
-    const data=JSON.stringify(c).replace(/"/g,'&quot;');
+    const data=JSON.stringify(c).replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+    const detalle=[
+        c.rut,
+        c.estado_civil,
+        c.telefono,
+        c.email,
+        c.direccion?('Dir: '+c.direccion):null
+    ].filter(Boolean).map(escH).join(' · ');
     return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">
-        <div>
+        <div style="min-width:0;">
             <div style="font-weight:700;font-size:.88rem;color:#0f172a;">${escH(c.nombre_completo)}</div>
-            <div style="font-size:.76rem;color:#64748b;">${escH(c.rut)}${c.estado_civil?' · '+escH(c.estado_civil):''}${c.telefono?' · '+escH(c.telefono):''}</div>
+            <div style="font-size:.76rem;color:#64748b;word-break:break-word;">${detalle}</div>
+            ${c.nombre_conyugue?`<div style="font-size:.72rem;color:#7c3aed;margin-top:2px;">Cónyuge: ${escH(c.nombre_conyugue)}${c.rut_conyugue?' · '+escH(c.rut_conyugue):''}</div>`:''}
         </div>
-        <button class="im-btn im-btn-sm im-btn-primary" onclick='cargarCliente(${data})'><i class="bi bi-person-check"></i> Usar</button>
+        <button type="button" class="im-btn im-btn-sm im-btn-primary" onclick='cargarCliente(${JSON.stringify(c).replace(/'/g,"&#39;")})'><i class="bi bi-person-check"></i> Usar</button>
     </div>`;
 }
 
@@ -1070,25 +1097,61 @@ async function buscarCliente(){
         if(res.status===404){
             el.innerHTML=`<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:.84rem;color:#92400e;">
                 <i class="bi bi-exclamation-triangle"></i> No se encontró ningún cliente. Puedes crearlo directamente en el formulario de abajo.</div>`;
+            $('venta-cliente-id').value='';
             return;
         }
-        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`Error ${res.status}`);}
+        if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||eb.error||`Error ${res.status}`);}
         const data=await res.json();
         if(data.multiple){
             el.innerHTML=`<div style="font-size:.78rem;color:#64748b;margin-bottom:6px;font-weight:600;">Se encontraron ${data.clientes.length} clientes — selecciona uno:</div>`
-                +data.clientes.map(clienteCard).join('');
+                +data.clientes.map(c=>{
+                    const safe=JSON.stringify(c).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+                    const detalle=[c.rut,c.estado_civil,c.telefono,c.email].filter(Boolean).map(escH).join(' · ');
+                    return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;">
+                        <div style="min-width:0;">
+                            <div style="font-weight:700;font-size:.88rem;color:#0f172a;">${escH(c.nombre_completo)}</div>
+                            <div style="font-size:.76rem;color:#64748b;">${detalle}</div>
+                        </div>
+                        <button type="button" class="im-btn im-btn-sm im-btn-primary" data-cliente="${safe}" onclick="cargarClienteFromBtn(this)"><i class="bi bi-person-check"></i> Usar</button>
+                    </div>`;
+                }).join('');
         } else {
-            el.innerHTML=`<div style="font-size:.78rem;color:#64748b;margin-bottom:6px;font-weight:600;">Cliente encontrado:</div>`+clienteCard(data);
+            // Un solo resultado: cargar automáticamente la ficha completa
+            el.innerHTML=`<div style="font-size:.78rem;color:#166534;margin-bottom:6px;font-weight:600;"><i class="bi bi-check-circle-fill"></i> Cliente encontrado — datos cargados en el formulario:</div>`
+                +`<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;font-size:.84rem;color:#065f46;">
+                    <strong>${escH(data.nombre_completo)}</strong> · ${escH(data.rut)}
+                    ${data.telefono?' · '+escH(data.telefono):''}
+                    ${data.email?' · '+escH(data.email):''}
+                </div>`;
+            cargarCliente(data);
         }
     }catch(e){showToast(e.message,'error','Error al buscar');el.style.display='none';}
 }
 
+function cargarClienteFromBtn(btn){
+    try{
+        const raw=(btn.getAttribute('data-cliente')||'').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
+        cargarCliente(JSON.parse(raw));
+    }catch(e){showToast('No se pudo cargar el cliente.','error');}
+}
+
 function cargarCliente(c){
-    $('venta-cliente-id').value=c.id;$('cli-nombre').value=c.nombre_completo;$('cli-rut').value=c.rut;
-    $('cli-telefono').value=c.telefono||'';if(c.telefono)autoFmtTel($('cli-telefono'));$('cli-email').value=c.email||'';$('cli-direccion').value=c.direccion||'';
-    $('cli-estado-civil').value=c.estado_civil;toggleConyuge(c.estado_civil);
-    $('cli-conyuge-nombre').value=c.nombre_conyugue||'';$('cli-conyuge-rut').value=c.rut_conyugue||'';
-    showToast(`Cliente "${c.nombre_completo}" cargado.`,'info');
+    if(!c||!c.id){showToast('Cliente inválido.','error');return;}
+    $('venta-cliente-id').value=c.id;
+    $('cli-nombre').value=c.nombre_completo||'';
+    $('cli-rut').value=c.rut||'';
+    $('cli-telefono').value=c.telefono||'';if(c.telefono)autoFmtTel($('cli-telefono'));
+    $('cli-email').value=c.email||'';
+    $('cli-direccion').value=c.direccion||'';
+    $('cli-estado-civil').value=c.estado_civil||'Soltero/a';
+    toggleConyuge(c.estado_civil||'Soltero/a');
+    if($('cli-regimen'))$('cli-regimen').value=c.regimen_matrimonial||'';
+    $('cli-conyuge-nombre').value=c.nombre_conyugue||'';
+    $('cli-conyuge-rut').value=c.rut_conyugue||'';
+    $('cli-conyuge-email').value=c.email_conyugue||'';
+    $('cli-conyuge-tel').value=c.telefono_conyugue||'';
+    if(c.telefono_conyugue)autoFmtTel($('cli-conyuge-tel'));
+    showToast(`Cliente "${c.nombre_completo}" cargado con todos sus datos.`,'success');
 }
 
 // ──────────────── GUARDAR VENTA ────────────────
@@ -1100,15 +1163,32 @@ $('form-venta').addEventListener('submit',async(e)=>{
         if(!validarRut($('cli-rut').value)){showToast('RUT del comprador inválido (Módulo 11).','error','RUT inválido');return;}
         let clienteId=$('venta-cliente-id').value;
             const estadoCivil=$('cli-estado-civil').value;
-            const clienteBody={nombre_completo:$('cli-nombre').value,rut:$('cli-rut').value,email:$('cli-email').value||null,telefono:$('cli-telefono').value||null,direccion:$('cli-direccion').value||null,estado_civil:estadoCivil,regimen_matrimonial:(estadoCivil==='Casado/a'&&$('cli-regimen'))?$('cli-regimen').value:null,nombre_conyugue:$('cli-conyuge-nombre').value||null,rut_conyugue:$('cli-conyuge-rut').value||null,email_conyugue:$('cli-conyuge-email').value||null,telefono_conyugue:$('cli-conyuge-tel').value||null};
+            const clienteBody={nombre_completo:$('cli-nombre').value,rut:$('cli-rut').value,email:$('cli-email').value||null,telefono:$('cli-telefono').value||null,direccion:$('cli-direccion').value||null,estado_civil:estadoCivil,regimen_matrimonial:(estadoCivil==='Casado/a'&&$('cli-regimen'))?$('cli-regimen').value:null,nombre_conyugue:$('cli-conyuge-nombre').value||null,rut_conyugue:$('cli-conyuge-rut').value||null,email_conyugue:$('cli-conyuge-email').value||null,telefono_conyugue:$('cli-conyuge-tel').value||null,reuse_if_exists:true};
         if(clienteId){
             const r=await fetch(`/api/im/clientes/${clienteId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(clienteBody)});
-            if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.message||`Error ${r.status}`);}
+            if(!r.ok){
+                const err=await r.json().catch(()=>({}));
+                // Si el RUT ya pertenece a otro cliente, reutilizar ese
+                if(r.status===409&&err.cliente&&err.cliente.id){
+                    clienteId=err.cliente.id;$('venta-cliente-id').value=clienteId;
+                }else{
+                    throw new Error(err.message||err.error||`Error ${r.status}`);
+                }
+            }
         }else{
             const r=await fetch('/api/im/clientes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(clienteBody)});
-            if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.message||`Error ${r.status}`);}
-            clienteId=(await r.json()).id;$('venta-cliente-id').value=clienteId;
+            const body=await r.json().catch(()=>({}));
+            if(!r.ok){
+                if(r.status===409&&body.cliente&&body.cliente.id){
+                    clienteId=body.cliente.id;$('venta-cliente-id').value=clienteId;
+                }else{
+                    throw new Error(body.message||body.error||`Error ${r.status}`);
+                }
+            }else{
+                clienteId=body.id;$('venta-cliente-id').value=clienteId;
+            }
         }
+        if(!clienteId) throw new Error('No se pudo obtener el ID del cliente.');
 
         const agenteSelId  = $('venta-agente-id')  ? $('venta-agente-id').value  : CURRENT_USER_ID;
         const agenteSelNom = $('venta-agente-nombre') ? $('venta-agente-nombre').value : CURRENT_USER_NAME;
@@ -1132,7 +1212,7 @@ $('form-venta').addEventListener('submit',async(e)=>{
             agente_nombre: agenteSelNom || null
         };
         const vRes=await fetch('/api/im/ventas',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ventaBody)});
-        if(!vRes.ok){const err=await vRes.json().catch(()=>({}));throw new Error(err.message||`Error ${vRes.status}`);}
+        if(!vRes.ok){const err=await vRes.json().catch(()=>({}));throw new Error(err.message||err.error||`Error ${vRes.status}`);}
         const ventaGuardada=await vRes.json();
 
         // Upload comprobante contado
@@ -1144,7 +1224,16 @@ $('form-venta').addEventListener('submit',async(e)=>{
             }
         }
 
-        showToast('Comprador y venta guardados correctamente.','success');init();
+        // Habilitar docs de inmediato (antes del re-init)
+        ventaData=ventaGuardada;
+        currentClienteId=clienteId;
+        $('no-venta-doc-msg').style.display='none';
+        $('no-cliente-msg').style.display='none';
+        initDM('venta',ventaGuardada.id);
+        initDM('persona',clienteId);
+
+        showToast('Comprador y venta guardados correctamente.','success');
+        await init();
     }catch(err){showToast(err.message,'error','No se pudo guardar');}
     finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta';}}
 });
