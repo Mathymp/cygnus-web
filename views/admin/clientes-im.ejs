@@ -5,24 +5,104 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/inmobiliaria.css">
     <style>
-        /* ── Input base (funciona sin im-input-group wrapper) ── */
+        /* ── Fix scroll: forzar área scrolleable en esta página ── */
+        html, body.dashboard-body {
+            height: 100% !important;
+            overflow: hidden !important;
+        }
+        body.dashboard-body .app-layout {
+            height: 100vh !important;
+            overflow: hidden !important;
+        }
+        body.dashboard-body .main-content {
+            height: 100% !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        body.dashboard-body .dashboard-scroll {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            height: auto !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 80px !important;
+        }
+
+        /* ── Input base ── */
         .si { width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:10px; font-size:.88rem; font-family:inherit; transition:all .2s; background:#f8fafc; color:#0f172a; box-sizing:border-box; }
         .si:focus { outline:none; border-color:#2563eb; background:#fff; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
         select.si { cursor:pointer; }
         textarea.si { resize:vertical; }
-
         .field-lbl { display:block; font-size:.78rem; font-weight:700; color:#475569; margin-bottom:5px; }
 
+        /* ── Filtros sticky ── */
+        .cli-filters-sticky {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #f1f5f9;
+            padding: 4px 0 12px;
+            margin: 0 -4px;
+            padding-left: 4px;
+            padding-right: 4px;
+        }
+
+        /* ── Tabla ── */
+        .cli-table-wrap {
+            overflow: visible;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,.04);
+        }
+        .cli-table-scroll {
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+        }
         .cli-table { width:100%; border-collapse:collapse; }
-        .cli-table th { background:#f1f5f9; font-size:.73rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.5px; padding:10px 14px; text-align:left; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+        .cli-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background:#f8fafc;
+            font-size:.73rem; font-weight:700; color:#475569;
+            text-transform:uppercase; letter-spacing:.5px;
+            padding:12px 14px; text-align:left;
+            border-bottom:2px solid #e2e8f0; white-space:nowrap;
+            box-shadow: 0 1px 0 #e2e8f0;
+        }
         .cli-table td { padding:12px 14px; border-bottom:1px solid #f1f5f9; font-size:.85rem; color:#334155; vertical-align:middle; }
-        .cli-table tr:hover td { background:#f8fafc; }
-        .cli-table tr.expanded td { background:#eff6ff; }
-        .cli-expand { background:#eff6ff; border-bottom:2px solid #bfdbfe; }
-        .cli-expand td { padding:0; }
-        .cli-expand-inner { padding:18px 20px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-        .cli-expand-section { background:#fff; border-radius:10px; border:1px solid #e2e8f0; padding:16px; }
-        .section-label { font-size:.72rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.5px; margin:0 0 10px; }
+        .cli-table tbody tr.cli-row:hover td { background:#f8fafc; }
+        .cli-table tbody tr.cli-row.expanded td { background:#eff6ff; border-bottom-color:transparent; }
+        .cli-table tbody tr.cli-row { cursor:pointer; }
+
+        /* ── Expand panel ── */
+        .cli-expand { background:#f0f7ff; }
+        .cli-expand td { padding:0 !important; border-bottom:2px solid #bfdbfe !important; }
+        .cli-expand-inner {
+            padding:16px 18px 20px;
+            display:flex;
+            flex-direction:column;
+            gap:14px;
+            max-width:100%;
+        }
+        .cli-expand-section {
+            background:#fff;
+            border-radius:12px;
+            border:1px solid #e2e8f0;
+            padding:16px 18px;
+        }
+        .cli-expand-grid {
+            display:grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap:14px;
+            align-items:start;
+        }
+        .section-label { font-size:.72rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.5px; margin:0 0 10px; display:flex; align-items:center; gap:6px; }
         .cli-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
         .cli-form-field { display:flex; flex-direction:column; gap:4px; }
         .cli-form-field.full { grid-column:1/-1; }
@@ -31,22 +111,34 @@
         .badge-credito  { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
         .rut-wrap { position:relative; }
         .rut-icon { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:.88rem; pointer-events:none; }
-        .no-results { text-align:center; padding:40px 20px; color:#94a3b8; }
+        .no-results { text-align:center; padding:48px 20px; color:#94a3b8; }
         .no-results i { font-size:2.5rem; display:block; margin-bottom:10px; }
-        .conyuge-box { border-top:1px solid #e2e8f0; padding-top:12px; margin-top:6px; }
-        .conyuge-box .section-label { color:#8b5cf6; }
+
+        .cli-side-stack { display:flex; flex-direction:column; gap:12px; }
+        .cli-parcela-item {
+            display:flex; justify-content:space-between; align-items:center; gap:10px;
+            background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px;
+        }
+        .cli-chevron { color:#94a3b8; transition:transform .2s; display:inline-block; }
 
         /* Modal */
-        .cm-overlay { position:fixed; inset:0; background:rgba(15,23,42,.7); backdrop-filter:blur(6px); display:flex; align-items:flex-start; justify-content:center; padding-top:5vh; z-index:1000; opacity:0; pointer-events:none; transition:.3s; }
+        .cm-overlay { position:fixed; inset:0; background:rgba(15,23,42,.7); backdrop-filter:blur(6px); display:flex; align-items:flex-start; justify-content:center; padding-top:5vh; z-index:1000; opacity:0; pointer-events:none; transition:.3s; overflow-y:auto; }
         .cm-overlay.show { opacity:1; pointer-events:auto; }
-        .cm-card { background:#fff; width:100%; max-width:620px; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,.4); max-height:90vh; display:flex; flex-direction:column; transform:translateY(20px); transition:transform .3s; overflow:hidden; }
+        .cm-card { background:#fff; width:100%; max-width:620px; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,.4); max-height:90vh; display:flex; flex-direction:column; transform:translateY(20px); transition:transform .3s; overflow:hidden; margin-bottom:5vh; }
         .cm-overlay.show .cm-card { transform:translateY(0); }
         .cm-header { padding:18px 22px; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
         .cm-header h3 { margin:0; font-size:1.1rem; font-weight:700; color:#0f172a; }
-        .cm-body { flex-grow:1; overflow-y:auto; padding:20px 22px; }
+        .cm-body { flex-grow:1; overflow-y:auto; padding:20px 22px; -webkit-overflow-scrolling:touch; }
         .cm-footer { padding:14px 22px; border-top:1px solid #f1f5f9; display:flex; justify-content:flex-end; gap:10px; flex-shrink:0; }
 
-        @media(max-width:640px){ .cli-expand-inner,.cli-form-grid{grid-template-columns:1fr;} }
+        @media(max-width:900px){
+            .cli-expand-grid { grid-template-columns:1fr; }
+        }
+        @media(max-width:640px){
+            .cli-form-grid { grid-template-columns:1fr; }
+            .cli-table th:nth-child(3), .cli-table td:nth-child(3),
+            .cli-table th:nth-child(4), .cli-table td:nth-child(4) { display:none; }
+        }
     </style>
 </head>
 <body class="dashboard-body">
@@ -179,27 +271,29 @@
                     </div>
                 </div>
 
-                <!-- Filtros -->
-                <div class="im-panel" style="margin-bottom:16px;padding:14px 18px;">
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                        <div style="flex:1;min-width:220px;position:relative;">
-                            <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;"></i>
-                            <input type="text" id="filter-q" class="si" style="padding-left:36px;" placeholder="Buscar por nombre, RUT o email...">
+                <!-- Filtros (sticky) -->
+                <div class="cli-filters-sticky">
+                    <div class="im-panel" style="margin-bottom:0;padding:14px 18px;">
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                            <div style="flex:1;min-width:220px;position:relative;">
+                                <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;"></i>
+                                <input type="text" id="filter-q" class="si" style="padding-left:36px;" placeholder="Buscar por nombre, RUT o email...">
+                            </div>
+                            <div style="min-width:200px;">
+                                <select id="filter-proyecto" class="si">
+                                    <option value="">Todos los proyectos</option>
+                                </select>
+                            </div>
+                            <button class="im-btn im-btn-ghost" onclick="clearFilters()">
+                                <i class="bi bi-x-circle"></i> Limpiar
+                            </button>
                         </div>
-                        <div style="min-width:200px;">
-                            <select id="filter-proyecto" class="si">
-                                <option value="">Todos los proyectos</option>
-                            </select>
-                        </div>
-                        <button class="im-btn im-btn-ghost" onclick="clearFilters()">
-                            <i class="bi bi-x-circle"></i> Limpiar
-                        </button>
                     </div>
                 </div>
 
                 <!-- Tabla -->
-                <div class="im-panel" style="overflow:hidden;padding:0;">
-                    <div style="overflow-x:auto;">
+                <div class="cli-table-wrap">
+                    <div class="cli-table-scroll">
                         <table class="cli-table">
                             <thead>
                                 <tr>
@@ -355,10 +449,10 @@ function renderTable(list){
         const parcelas=ventas.map(v=>`<span class="badge-proyecto" style="margin:2px;"><i class="bi bi-geo-alt"></i>${escH(v.proyecto_nombre)} · P${escH(v.numero_parcela||v.parcela_numero||'?')}</span>`).join('');
         const totalC=parseInt(c.total_compras)||0;
         return `
-        <tr id="row-${c.id}" onclick="toggleExpand('${c.id}',${idx})" style="cursor:pointer;">
+        <tr id="row-${c.id}" class="cli-row" onclick="toggleExpand(event,'${c.id}',${idx})">
             <td>
                 <strong>${escH(c.nombre_completo)}</strong>
-                ${totalC>1?`<span style="margin-left:6px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:20px;padding:1px 8px;font-size:.7rem;font-weight:700;">${totalC} parcelas</span>`:''}
+                ${totalC>0?`<span style="margin-left:6px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:20px;padding:1px 8px;font-size:.7rem;font-weight:700;">${totalC} parcela${totalC!==1?'s':''}</span>`:''}
             </td>
             <td><span style="font-family:monospace;font-size:.82rem;background:#f1f5f9;padding:2px 8px;border-radius:5px;">${escH(c.rut)}</span></td>
             <td>
@@ -366,142 +460,187 @@ function renderTable(list){
                 ${c.telefono?`<div style="font-size:.8rem;"><i class="bi bi-telephone" style="color:#64748b;"></i> ${escH(c.telefono)}</div>`:''}
                 ${!c.email&&!c.telefono?'<span style="color:#94a3b8;font-size:.8rem;">—</span>':''}
             </td>
-            <td>${escH(c.estado_civil)}</td>
+            <td>${escH(c.estado_civil)||'—'}</td>
             <td>${ventas.length>0?`<div style="display:flex;flex-wrap:wrap;gap:2px;">${parcelas}</div>`:'<span style="color:#94a3b8;font-size:.8rem;">Sin asignar</span>'}</td>
-            <td style="text-align:center;"><i class="bi bi-chevron-down" id="chevron-${c.id}" style="color:#94a3b8;transition:transform .2s;"></i></td>
+            <td style="text-align:center;"><i class="bi bi-chevron-down cli-chevron" id="chevron-${c.id}"></i></td>
         </tr>
         <tr class="cli-expand" id="expand-${c.id}" style="display:none;"><td colspan="6"><div class="cli-expand-inner" id="expand-inner-${c.id}"></div></td></tr>`;
     }).join('');
 }
 
-function toggleExpand(id,idx){
+function getScrollRoot(){
+    return document.querySelector('.dashboard-scroll')||document.documentElement;
+}
+
+function cerrarExpand(id){
+    const row=$(`expand-${id}`),chev=$(`chevron-${id}`),mainRow=$(`row-${id}`);
+    if(row)row.style.display='none';
+    if(chev)chev.style.transform='';
+    if(mainRow)mainRow.classList.remove('expanded');
+    if(expandedRow===id)expandedRow=null;
+}
+
+function toggleExpand(event,id,idx){
+    // No colapsar/abrir si se clickea un control interactivo dentro del expand
+    if(event&&event.target){
+        const t=event.target;
+        if(t.closest('a,button,input,select,textarea,label,form'))return;
+    }
     const row=$(`expand-${id}`),chev=$(`chevron-${id}`),mainRow=$(`row-${id}`),isOpen=row.style.display!=='none';
-    if(expandedRow&&expandedRow!==id){$(`expand-${expandedRow}`).style.display='none';const oc=$(`chevron-${expandedRow}`);if(oc)oc.style.transform='';const or=$(`row-${expandedRow}`);if(or)or.classList.remove('expanded');}
-    if(isOpen){row.style.display='none';chev.style.transform='';mainRow.classList.remove('expanded');expandedRow=null;}
-    else{row.style.display='table-row';chev.style.transform='rotate(180deg)';mainRow.classList.add('expanded');expandedRow=id;renderExpand(id,allClientes[idx]);}
+    if(expandedRow&&expandedRow!==id){
+        const prev=$(`expand-${expandedRow}`);if(prev)prev.style.display='none';
+        const oc=$(`chevron-${expandedRow}`);if(oc)oc.style.transform='';
+        const or=$(`row-${expandedRow}`);if(or)or.classList.remove('expanded');
+    }
+    if(isOpen){
+        row.style.display='none';
+        if(chev)chev.style.transform='';
+        mainRow.classList.remove('expanded');
+        expandedRow=null;
+    }else{
+        row.style.display='table-row';
+        if(chev)chev.style.transform='rotate(180deg)';
+        mainRow.classList.add('expanded');
+        expandedRow=id;
+        renderExpand(id,allClientes[idx]);
+        // Scroll suave para ver el panel expandido completo
+        requestAnimationFrame(()=>{
+            setTimeout(()=>{
+                const target=$(`expand-inner-${id}`)||row;
+                const root=getScrollRoot();
+                const rect=target.getBoundingClientRect();
+                const rootRect=root.getBoundingClientRect?root.getBoundingClientRect():{top:0};
+                const offset=rect.top-rootRect.top+root.scrollTop-80;
+                root.scrollTo({top:Math.max(0,offset),behavior:'smooth'});
+            },60);
+        });
+    }
 }
 
 function renderExpand(id,c){
     const el=$(`expand-inner-${id}`);
+    if(!el||!c)return;
     const tieneC=c.estado_civil==='Casado/a'||c.estado_civil==='Conviviente Civil';
     const ventas=c.ventas||[];
 
     el.innerHTML=`
-    <!-- Datos del cliente -->
-    <div class="cli-expand-section" style="grid-column:1/-1;">
-        <p class="section-label"><i class="bi bi-person-fill"></i> Datos del Cliente</p>
-        <form onsubmit="saveCliente(event,'${c.id}')">
-            <div class="cli-form-grid">
-                <div class="cli-form-field full">
-                    <label class="field-lbl">Nombre Completo</label>
-                    <input type="text" id="ec-nombre-${id}" class="si" value="${escH(c.nombre_completo)}" required>
-                </div>
-                <div class="cli-form-field">
-                    <label class="field-lbl">RUT</label>
-                    <div class="rut-wrap">
-                        <input type="text" id="ec-rut-${id}" class="si" value="${escH(c.rut)}"
-                            oninput="autoFmtRut(this,'ec-rut-ic-${id}')" style="padding-right:36px;">
-                        <span id="ec-rut-ic-${id}" class="rut-icon">${validarRut(c.rut)?'✅':''}</span>
-                    </div>
-                </div>
-                <div class="cli-form-field">
-                    <label class="field-lbl">Teléfono</label>
-                    <input type="tel" id="ec-tel-${id}" class="si" value="${escH(c.telefono||'')}" oninput="autoFmtTel(this)">
-                </div>
-                <div class="cli-form-field full">
-                    <label class="field-lbl">Correo Electrónico</label>
-                    <input type="email" id="ec-email-${id}" class="si" value="${escH(c.email||'')}">
-                </div>
-                <div class="cli-form-field full">
-                    <label class="field-lbl">Dirección</label>
-                    <textarea id="ec-dir-${id}" class="si" rows="2">${escH(c.direccion||'')}</textarea>
-                </div>
-                <div class="cli-form-field">
-                    <label class="field-lbl">Estado Civil</label>
-                    <select id="ec-civil-${id}" class="si" onchange="toggleConyugeExpand('${id}',this.value)">
-                        ${['Soltero/a','Casado/a','Divorciado/a','Viudo/a','Conviviente Civil'].map(op=>`<option value="${op}" ${c.estado_civil===op?'selected':''}>${op}</option>`).join('')}
-                    </select>
-                </div>
-                <div class="cli-form-field" id="ec-regimen-box-${id}" style="display:${c.estado_civil==='Casado/a'?'flex':'none'};">
-                    <label class="field-lbl">Régimen Matrimonial</label>
-                    <select id="ec-regimen-${id}" class="si">
-                        ${['Sociedad Conyugal','Separación de Bienes','Participación en los Gananciales'].map(op=>`<option value="${op}" ${c.regimen_matrimonial===op?'selected':''}>${op}</option>`).join('')}
-                    </select>
-                </div>
-                <div class="cli-form-field full" style="margin-top:4px;">
-                    <button type="submit" class="im-btn im-btn-success"><i class="bi bi-save"></i> Guardar Cambios</button>
-                </div>
-            </div>
-
-            <!-- Cónyuge -->
-            <div id="ec-conyuge-${id}" style="display:${tieneC?'block':'none'};margin-top:14px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:14px;">
-                <p class="section-label" style="color:#7c3aed;"><i class="bi bi-people-fill"></i> Cónyuge / Conviviente Civil</p>
+    <div class="cli-expand-grid" onclick="event.stopPropagation()">
+        <!-- Datos del cliente -->
+        <div class="cli-expand-section">
+            <p class="section-label"><i class="bi bi-person-fill"></i> Datos del Cliente</p>
+            <form onsubmit="saveCliente(event,'${c.id}')">
                 <div class="cli-form-grid">
-                    <div class="cli-form-field">
-                        <label class="field-lbl">Nombre</label>
-                        <input type="text" id="ec-con-nombre-${id}" class="si" value="${escH(c.nombre_conyugue||'')}">
+                    <div class="cli-form-field full">
+                        <label class="field-lbl">Nombre Completo</label>
+                        <input type="text" id="ec-nombre-${id}" class="si" value="${escH(c.nombre_completo)}" required>
                     </div>
                     <div class="cli-form-field">
                         <label class="field-lbl">RUT</label>
                         <div class="rut-wrap">
-                            <input type="text" id="ec-con-rut-${id}" class="si" value="${escH(c.rut_conyugue||'')}"
-                                oninput="autoFmtRut(this,'ec-con-rut-ic-${id}')" style="padding-right:36px;">
-                            <span id="ec-con-rut-ic-${id}" class="rut-icon">${c.rut_conyugue&&validarRut(c.rut_conyugue)?'✅':''}</span>
+                            <input type="text" id="ec-rut-${id}" class="si" value="${escH(c.rut)}"
+                                oninput="autoFmtRut(this,'ec-rut-ic-${id}')" style="padding-right:36px;">
+                            <span id="ec-rut-ic-${id}" class="rut-icon">${validarRut(c.rut)?'✅':''}</span>
                         </div>
                     </div>
                     <div class="cli-form-field">
-                        <label class="field-lbl">Email <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                        <input type="email" id="ec-con-email-${id}" class="si" value="${escH(c.email_conyugue||'')}">
+                        <label class="field-lbl">Teléfono</label>
+                        <input type="tel" id="ec-tel-${id}" class="si" value="${escH(c.telefono||'')}" oninput="autoFmtTel(this)">
+                    </div>
+                    <div class="cli-form-field full">
+                        <label class="field-lbl">Correo Electrónico</label>
+                        <input type="email" id="ec-email-${id}" class="si" value="${escH(c.email||'')}">
+                    </div>
+                    <div class="cli-form-field full">
+                        <label class="field-lbl">Dirección</label>
+                        <textarea id="ec-dir-${id}" class="si" rows="2">${escH(c.direccion||'')}</textarea>
                     </div>
                     <div class="cli-form-field">
-                        <label class="field-lbl">Teléfono <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
-                            <input type="tel" id="ec-con-tel-${id}" class="si" value="${escH(c.telefono_conyugue||'')}" oninput="autoFmtTel(this)">
+                        <label class="field-lbl">Estado Civil</label>
+                        <select id="ec-civil-${id}" class="si" onchange="toggleConyugeExpand('${id}',this.value)">
+                            ${['Soltero/a','Casado/a','Divorciado/a','Viudo/a','Conviviente Civil'].map(op=>`<option value="${op}" ${c.estado_civil===op?'selected':''}>${op}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="cli-form-field" id="ec-regimen-box-${id}" style="display:${c.estado_civil==='Casado/a'?'flex':'none'};">
+                        <label class="field-lbl">Régimen Matrimonial</label>
+                        <select id="ec-regimen-${id}" class="si">
+                            ${['Sociedad Conyugal','Separación de Bienes','Participación en los Gananciales'].map(op=>`<option value="${op}" ${c.regimen_matrimonial===op?'selected':''}>${op}</option>`).join('')}
+                        </select>
                     </div>
                 </div>
-            </div>
-        </form>
-    </div>
 
-    <!-- Parcelas + auditoría -->
-    <div style="display:flex;flex-direction:column;gap:12px;">
-        ${ventas.length>0?`
-        <div class="cli-expand-section">
-            <p class="section-label"><i class="bi bi-geo-alt-fill"></i> Parcelas Adquiridas (${ventas.length})</p>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-                ${ventas.map(v=>{
-                    const tb=v.tipo_pago==='credito'?`<span class="badge-credito badge-proyecto">Crédito</span>`:`<span class="badge-contado badge-proyecto">Contado</span>`;
-                    return `<div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;">
-                        <div>
-                            <span style="font-weight:700;color:#0f172a;">${escH(v.proyecto_nombre)}</span>
-                            <span style="color:#64748b;font-size:.82rem;"> · Parcela N° ${escH(v.numero_parcela||v.parcela_numero||'?')}</span>
-                            <div style="margin-top:4px;display:flex;gap:6px;align-items:center;">
-                                ${tb}
-                                ${v.precio_acordado?`<span style="font-size:.78rem;color:#475569;">$${Math.floor(parseFloat(v.precio_acordado)).toLocaleString('es-CL')}</span>`:''}
-                                ${v.fecha_venta?`<span style="font-size:.72rem;color:#94a3b8;">${new Date(v.fecha_venta).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'})}</span>`:''}
+                <div id="ec-conyuge-${id}" style="display:${tieneC?'block':'none'};margin-top:14px;background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:14px;">
+                    <p class="section-label" style="color:#7c3aed;"><i class="bi bi-people-fill"></i> Cónyuge / Conviviente Civil</p>
+                    <div class="cli-form-grid">
+                        <div class="cli-form-field">
+                            <label class="field-lbl">Nombre</label>
+                            <input type="text" id="ec-con-nombre-${id}" class="si" value="${escH(c.nombre_conyugue||'')}">
+                        </div>
+                        <div class="cli-form-field">
+                            <label class="field-lbl">RUT</label>
+                            <div class="rut-wrap">
+                                <input type="text" id="ec-con-rut-${id}" class="si" value="${escH(c.rut_conyugue||'')}"
+                                    oninput="autoFmtRut(this,'ec-con-rut-ic-${id}')" style="padding-right:36px;">
+                                <span id="ec-con-rut-ic-${id}" class="rut-icon">${c.rut_conyugue&&validarRut(c.rut_conyugue)?'✅':''}</span>
                             </div>
                         </div>
-                        <a href="/admin/inmobiliaria/parcela/${v.parcela_id}" class="im-btn im-btn-sm im-btn-ghost"><i class="bi bi-arrow-up-right"></i> Ver</a>
-                    </div>`;
-                }).join('')}
+                        <div class="cli-form-field">
+                            <label class="field-lbl">Email <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                            <input type="email" id="ec-con-email-${id}" class="si" value="${escH(c.email_conyugue||'')}">
+                        </div>
+                        <div class="cli-form-field">
+                            <label class="field-lbl">Teléfono <span style="color:#94a3b8;font-weight:400;">(opcional)</span></label>
+                            <input type="tel" id="ec-con-tel-${id}" class="si" value="${escH(c.telefono_conyugue||'')}" oninput="autoFmtTel(this)">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="submit" class="im-btn im-btn-success"><i class="bi bi-save"></i> Guardar Cambios</button>
+                    <button type="button" class="im-btn im-btn-ghost" onclick="cerrarExpand('${id}')"><i class="bi bi-chevron-up"></i> Cerrar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lateral: parcelas + auditoría -->
+        <div class="cli-side-stack">
+            <div class="cli-expand-section">
+                <p class="section-label"><i class="bi bi-geo-alt-fill"></i> Parcelas Adquiridas (${ventas.length})</p>
+                ${ventas.length>0?`
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;">
+                    ${ventas.map(v=>{
+                        const tb=v.tipo_pago==='credito'?`<span class="badge-credito badge-proyecto">Crédito</span>`:`<span class="badge-contado badge-proyecto">Contado</span>`;
+                        const estadoV=v.estado&&v.estado!=='activa'?`<span style="font-size:.68rem;color:#94a3b8;">(${escH(v.estado)})</span>`:'';
+                        return `<div class="cli-parcela-item">
+                            <div style="min-width:0;">
+                                <div style="font-weight:700;color:#0f172a;">${escH(v.proyecto_nombre)} <span style="color:#64748b;font-weight:500;font-size:.82rem;">· P${escH(v.numero_parcela||v.parcela_numero||'?')}</span> ${estadoV}</div>
+                                <div style="margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                                    ${tb}
+                                    ${v.precio_acordado?`<span style="font-size:.78rem;color:#475569;">$${Math.floor(parseFloat(v.precio_acordado)).toLocaleString('es-CL')}</span>`:''}
+                                    ${v.fecha_venta?`<span style="font-size:.72rem;color:#94a3b8;">${new Date(v.fecha_venta).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'})}</span>`:''}
+                                </div>
+                            </div>
+                            <a href="/admin/inmobiliaria/parcela/${v.parcela_id}" class="im-btn im-btn-sm im-btn-ghost" onclick="event.stopPropagation()"><i class="bi bi-arrow-up-right"></i> Ver</a>
+                        </div>`;
+                    }).join('')}
+                </div>`:`<p style="margin:0;font-size:.84rem;color:#94a3b8;">Sin parcelas asignadas todavía.</p>`}
             </div>
-        </div>`:''}
-        <div class="cli-expand-section">
-            <p class="section-label"><i class="bi bi-clock-history"></i> Actividad Reciente</p>
-            <div id="audit-cli-${id}" style="font-size:.8rem;color:#64748b;">Cargando...</div>
+            <div class="cli-expand-section">
+                <p class="section-label"><i class="bi bi-clock-history"></i> Actividad Reciente</p>
+                <div id="audit-cli-${id}" style="font-size:.8rem;color:#64748b;max-height:220px;overflow-y:auto;">Cargando...</div>
+            </div>
         </div>
     </div>`;
 
-    // Auditoría
     fetch(`/api/im/auditoria?entidad_id=${c.id}`)
         .then(r=>r.json()).then(logs=>{
             const el2=$(`audit-cli-${id}`);if(!el2)return;
             if(!logs||logs.length===0){el2.textContent='Sin actividad registrada.';return;}
-            el2.innerHTML=logs.slice(0,6).map(l=>`<div style="padding:5px 0;border-bottom:1px solid #f1f5f9;">
+            el2.innerHTML=logs.slice(0,8).map(l=>`<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;">
                 <span style="font-weight:700;color:#334155;">${escH(l.accion)}</span>
                 ${l.descripcion?` — ${escH(l.descripcion)}`:''}
                 <span style="color:#94a3b8;font-size:.72rem;display:block;">${new Date(l.fecha).toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${escH(l.usuario_nombre||'Sistema')}</span>
             </div>`).join('');
-        }).catch(()=>{});
+        }).catch(()=>{const el2=$(`audit-cli-${id}`);if(el2)el2.textContent='No se pudo cargar la actividad.';});
 }
 
 function toggleConyugeExpand(id,val){
