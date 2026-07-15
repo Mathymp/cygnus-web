@@ -89,7 +89,7 @@
 
     <!-- Resciliar contrato modal -->
     <div id="modal-liberar" class="im-modal-overlay">
-        <div class="im-modal-card" style="max-width:520px;">
+        <div class="im-modal-card" style="max-width:640px;max-height:92vh;overflow:auto;">
             <div class="im-modal-header">
                 <h3><i class="bi bi-file-earmark-x"></i> Resciliar Contrato</h3>
                 <button class="btn-close" onclick="closeModal('liberar')"><i class="bi bi-x-lg"></i></button>
@@ -97,10 +97,12 @@
             <div class="im-modal-body" style="padding:20px;display:flex;flex-direction:column;gap:14px;">
                 <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:12px 14px;font-size:.83rem;color:#92400e;">
                     <i class="bi bi-exclamation-triangle-fill"></i>
-                    Esta operación registrará formalmente la <strong>resciliación del contrato</strong>.
-                    La parcela volverá al estado <strong>Disponible</strong> y quedará un historial completo de la operación.
-                    <strong>No se elimina ningún dato.</strong>
+                    Se registra el <strong>contrato de resciliación</strong>, se libera la parcela a <strong>Disponible</strong>
+                    y queda el historial de la venta (precio, pie, docs). Define también cómo se devolverá el dinero.
                 </div>
+
+                <div id="resc-resumen-venta" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;font-size:.82rem;color:#334155;"></div>
+
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div>
                         <label style="font-size:.78rem;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Fecha de Resciliación</label>
@@ -118,12 +120,60 @@
                     </div>
                 </div>
                 <div>
-                    <label style="font-size:.78rem;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Notas adicionales <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
-                    <textarea id="resc-notas" class="styled-input" rows="3" placeholder="Observaciones, acuerdos, referencias a documentos..."></textarea>
+                    <label style="font-size:.78rem;font-weight:600;color:#475569;display:block;margin-bottom:4px;">Notas del contrato <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
+                    <textarea id="resc-notas" class="styled-input" rows="2" placeholder="Acuerdos, referencias a escrituras, observaciones..."></textarea>
                 </div>
+
+                <!-- Plan de devolución -->
+                <div style="border:1.5px solid #fecaca;border-radius:12px;padding:14px;background:#fff;">
+                    <p style="font-size:.78rem;font-weight:800;color:#991b1b;text-transform:uppercase;margin:0 0 10px;letter-spacing:.4px;">
+                        <i class="bi bi-arrow-return-left"></i> Plan de devolución al cliente
+                    </p>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                        <button type="button" class="im-btn im-btn-sm resc-dev-tab active" id="resc-tab-contado" onclick="setRescDevTipo('contado')">Al Contado</button>
+                        <button type="button" class="im-btn im-btn-sm resc-dev-tab" id="resc-tab-cuotas" onclick="setRescDevTipo('cuotas')">En Cuotas</button>
+                        <button type="button" class="im-btn im-btn-sm resc-dev-tab" id="resc-tab-pie" onclick="setRescDevTipo('pie_mas_cuotas')">Pie + Cuotas</button>
+                        <button type="button" class="im-btn im-btn-sm resc-dev-tab" id="resc-tab-sin" onclick="setRescDevTipo('sin_devolucion')">Sin devolución</button>
+                    </div>
+
+                    <div id="resc-dev-campos">
+                        <div class="im-form-row" style="margin-bottom:10px;">
+                            <div class="im-input-group">
+                                <label>Monto total a devolver (CLP)</label>
+                                <input type="text" id="resc-monto-total" class="styled-input" placeholder="Ej: 5.000.000" oninput="fmtPrecio(this);recalcRescCuotas()">
+                            </div>
+                            <div class="im-input-group" id="resc-pie-wrap" style="display:none;">
+                                <label>Pago inicial / pie de resciliación</label>
+                                <input type="text" id="resc-monto-pie" class="styled-input" placeholder="Ej: 1.000.000" oninput="fmtPrecio(this);recalcRescCuotas()">
+                            </div>
+                        </div>
+                        <div id="resc-cuotas-wrap" style="display:none;">
+                            <div class="im-form-row" style="margin-bottom:10px;">
+                                <div class="im-input-group">
+                                    <label>N° de cuotas</label>
+                                    <input type="number" id="resc-num-cuotas" class="styled-input" min="1" max="120" value="6" oninput="recalcRescCuotas()">
+                                </div>
+                                <div class="im-input-group">
+                                    <label>Monto por cuota</label>
+                                    <input type="text" id="resc-monto-cuota" class="styled-input" placeholder="Auto" oninput="fmtPrecio(this)">
+                                </div>
+                                <div class="im-input-group">
+                                    <label>Primera fecha de pago</label>
+                                    <input type="date" id="resc-primera-cuota" class="styled-input" onchange="recalcRescCuotas()">
+                                </div>
+                            </div>
+                            <div id="resc-cuotas-preview" style="display:none;">
+                                <p style="font-size:.75rem;font-weight:700;color:#64748b;margin:0 0 6px;">Calendario de devoluciones</p>
+                                <div id="resc-cuotas-preview-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="resc-sin-dev-msg" style="display:none;font-size:.8rem;color:#64748b;margin:0;">No se registrará plan de devolución monetaria.</p>
+                </div>
+
                 <div>
                     <label style="font-size:.78rem;font-weight:600;color:#475569;display:block;margin-bottom:6px;"><i class="bi bi-paperclip"></i> Documentos de resciliación <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
-                    <p style="font-size:.76rem;color:#64748b;margin:0 0 8px;">Escritura de resciliación, notificaciones, comprobantes. Se guardarán en la carpeta del lote.</p>
+                    <p style="font-size:.76rem;color:#64748b;margin:0 0 8px;">Contrato de resciliación, notificaciones, comprobantes. Quedan en la carpeta del lote (los docs de la venta se conservan).</p>
                     <div class="im-upload-zone" style="padding:14px;" onclick="document.getElementById('resc-file-input').click()">
                         <input type="file" id="resc-file-input" multiple accept="image/*,.pdf,.doc,.docx" style="display:none">
                         <i class="bi bi-cloud-arrow-up" style="font-size:1.6rem;color:#94a3b8;"></i>
@@ -1030,10 +1080,12 @@ function renderHistorialVentas(histVentas){
                 <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #fca5a5;font-size:.78rem;color:#7f1d1d;">
                     <i class="bi bi-file-earmark-x-fill" style="color:#ef4444;"></i>
                     <strong>Resciliación:</strong>
-                    ${v.resc_fecha?new Date(v.resc_fecha+'T12:00:00').toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—'}
+                    ${fmtFechaCL(v.resc_fecha,{day:'2-digit',month:'short',year:'numeric'})}
                     — ${escH(v.resc_motivo||'Sin motivo')}
                     ${v.resc_agente?`<span style="color:#94a3b8;"> · Por: ${escH(v.resc_agente)}</span>`:''}
+                    ${v.resc_monto_dev!=null?`<div style="margin-top:4px;"><strong>Devolución:</strong> $${fmt(v.resc_monto_dev)}${v.resc_tipo_dev?` (${escH(v.resc_tipo_dev)})`:''}${v.resc_pie_dev?` · Pie: $${fmt(v.resc_pie_dev)}`:''}${v.resc_num_cuotas?` · ${v.resc_num_cuotas} cuotas`:''}</div>`:''}
                     ${v.resc_notas?`<div style="margin-top:4px;color:#92400e;font-style:italic;">${escH(v.resc_notas)}</div>`:''}
+                    <a href="/admin/inmobiliaria/resciliaciones" style="display:inline-block;margin-top:6px;font-size:.75rem;color:#2563eb;">Gestionar cuotas de devolución →</a>
                 </div>`:'';
             return`<div style="border:1px solid ${v.estado==='resciliada'?'#fca5a5':'#e2e8f0'};border-radius:8px;padding:12px;background:${v.estado==='resciliada'?'#fff5f5':'#fafafa'};">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
@@ -1043,12 +1095,14 @@ function renderHistorialVentas(histVentas){
                     <span style="margin-left:auto;font-size:.78rem;color:#64748b;">${fechaVenta}</span>
                 </div>
                 <div style="display:flex;gap:12px;font-size:.79rem;color:#64748b;flex-wrap:wrap;">
-                    <span><i class="bi bi-cash"></i> ${precio}</span>
+                    <span><i class="bi bi-cash"></i> Compró a ${precio}</span>
+                    ${v.monto_pie?`<span>Pie: $${fmt(v.monto_pie)}</span>`:''}
                     <span>${modPago}</span>
                     ${v.agente_nombre?`<span><i class="bi bi-person"></i> ${escH(v.agente_nombre)}</span>`:''}
                     ${v.firmo_promesa?`<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Promesa de compraventa</span>`:`<span style="color:#dc2626;"><i class="bi bi-x-circle-fill"></i> Promesa de compraventa</span>`}
                     ${v.firmo_compraventa?`<span style="color:#16a34a;"><i class="bi bi-check-circle-fill"></i> Escritura de compraventa</span>`:`<span style="color:#dc2626;"><i class="bi bi-x-circle-fill"></i> Escritura de compraventa</span>`}
                 </div>
+                ${v.venta_notas?`<div style="margin-top:6px;font-size:.78rem;color:#475569;font-style:italic;">Notas venta: ${escH(v.venta_notas)}</div>`:''}
                 ${rescInfo}
             </div>`;
         }).join('')}
@@ -1477,17 +1531,96 @@ $('form-venta').addEventListener('submit',async(e)=>{
 });
 
 // ──────────────── RESCILIACIÓN ────────────────
+let rescDevTipo='contado';
+let rescFechasCuotas=[];
+
+function setRescDevTipo(tipo){
+    rescDevTipo=tipo||'contado';
+    ['contado','cuotas','pie','sin'].forEach(k=>{
+        const el=$('resc-tab-'+k);
+        if(el)el.classList.toggle('active',
+            (k==='contado'&&rescDevTipo==='contado')||
+            (k==='cuotas'&&rescDevTipo==='cuotas')||
+            (k==='pie'&&rescDevTipo==='pie_mas_cuotas')||
+            (k==='sin'&&rescDevTipo==='sin_devolucion')
+        );
+    });
+    const sin=rescDevTipo==='sin_devolucion';
+    const conCuotas=rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas';
+    if($('resc-dev-campos'))$('resc-dev-campos').style.display=sin?'none':'block';
+    if($('resc-sin-dev-msg'))$('resc-sin-dev-msg').style.display=sin?'block':'none';
+    if($('resc-pie-wrap'))$('resc-pie-wrap').style.display=rescDevTipo==='pie_mas_cuotas'?'block':'none';
+    if($('resc-cuotas-wrap'))$('resc-cuotas-wrap').style.display=conCuotas?'block':'none';
+    if(conCuotas)recalcRescCuotas();
+}
+
+function recalcRescCuotas(){
+    if(rescDevTipo!=='cuotas'&&rescDevTipo!=='pie_mas_cuotas'){
+        if($('resc-cuotas-preview'))$('resc-cuotas-preview').style.display='none';
+        rescFechasCuotas=[];
+        return;
+    }
+    const n=parseInt($('resc-num-cuotas').value,10)||0;
+    const total=cleanNum($('resc-monto-total').value)||0;
+    const pie=rescDevTipo==='pie_mas_cuotas'?(cleanNum($('resc-monto-pie').value)||0):0;
+    const resto=Math.max(0,total-pie);
+    let montoCuota=cleanNum($('resc-monto-cuota').value);
+    if((!montoCuota||montoCuota<=0)&&n>0&&resto>0){
+        montoCuota=Math.round(resto/n);
+        $('resc-monto-cuota').value=Number(montoCuota).toLocaleString('es-CL');
+    }
+    const fechaBase=$('resc-primera-cuota').value||hoyYmd();
+    rescFechasCuotas=[];
+    if(!n||n<1){$('resc-cuotas-preview').style.display='none';return;}
+    let rows='';
+    for(let i=0;i<n;i++){
+        const d=new Date(fechaBase+'T12:00:00');
+        d.setMonth(d.getMonth()+i);
+        const fecha=d.toISOString().split('T')[0];
+        rescFechasCuotas.push({numero:i+1,monto:montoCuota||0,fecha});
+        rows+=`<div style="display:grid;grid-template-columns:36px 1fr 110px 130px;gap:6px;align-items:center;padding:6px 10px;background:#fff;border:1px solid #fee2e2;border-radius:8px;margin-bottom:5px;font-size:.78rem;">
+            <span style="font-weight:800;color:#dc2626;text-align:center;">${i+1}</span>
+            <span style="color:#64748b;">Devolución</span>
+            <span style="font-weight:700;">${montoCuota?'$'+fmt(montoCuota):'—'}</span>
+            <input type="date" value="${fecha}" style="border:1px solid #e2e8f0;border-radius:6px;padding:3px 6px;font-size:.75rem;font-family:inherit;" onchange="rescFechasCuotas[${i}].fecha=this.value">
+        </div>`;
+    }
+    $('resc-cuotas-preview-list').innerHTML=rows;
+    $('resc-cuotas-preview').style.display='block';
+}
+
 function openResciliarModal(){
-    $('resc-fecha').value=new Date().toISOString().split('T')[0];
+    if(!ventaData){showToast('No hay venta activa para resciliar.','error');return;}
+    $('resc-fecha').value=hoyYmd();
     $('resc-motivo').value='Desistimiento del comprador';
     $('resc-notas').value='';
     $('resc-file-list').innerHTML='';
+    if($('resc-file-input'))$('resc-file-input').value='';
+    $('resc-monto-total').value=ventaData.precio_acordado?Number(ventaData.precio_acordado).toLocaleString('es-CL'):'';
+    $('resc-monto-pie').value=ventaData.monto_pie?Number(ventaData.monto_pie).toLocaleString('es-CL'):'';
+    $('resc-num-cuotas').value='6';
+    $('resc-monto-cuota').value='';
+    $('resc-primera-cuota').value=hoyYmd();
+    const resumen=$('resc-resumen-venta');
+    if(resumen){
+        resumen.innerHTML=`
+            <div style="font-weight:800;color:#0f172a;margin-bottom:6px;"><i class="bi bi-receipt"></i> Venta a resciliar</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px 16px;">
+                <span><strong>Cliente:</strong> ${escH(ventaData.nombre_completo||'—')}</span>
+                <span><strong>Compró en:</strong> ${fmtFechaCL(ventaData.fecha_venta,{day:'2-digit',month:'short',year:'numeric'})}</span>
+                <span><strong>Precio:</strong> ${ventaData.precio_acordado?'$'+fmt(ventaData.precio_acordado):'—'}</span>
+                ${ventaData.monto_pie?`<span><strong>Pie pagado:</strong> $${fmt(ventaData.monto_pie)}</span>`:''}
+                <span><strong>Modalidad:</strong> ${resolverTipoPago(ventaData)==='credito'?'Crédito':'Contado'}</span>
+            </div>
+            <p style="margin:8px 0 0;font-size:.75rem;color:#64748b;">Los documentos de venta/cliente/lote se conservan. Puedes marcar cuotas de devolución después en <a href="/admin/inmobiliaria/resciliaciones" target="_blank">Resciliaciones</a>.</p>`;
+    }
+    setRescDevTipo('contado');
     openModal('liberar');
 }
 
 document.getElementById('resc-file-input').addEventListener('change',function(){
     const list=$('resc-file-list');
-    list.innerHTML=Array.from(this.files).map((f,i)=>`
+    list.innerHTML=Array.from(this.files).map((f)=>`
         <div style="display:flex;align-items:center;gap:8px;background:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:.78rem;">
             <i class="bi bi-paperclip" style="color:#2563eb;"></i>
             <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(f.name)}</span>
@@ -1500,17 +1633,32 @@ async function resciliarContrato(){
     const btn=$('btn-resciliar');
     btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Procesando...';
     try{
+        if(rescDevTipo!=='sin_devolucion'){
+            const monto=cleanNum($('resc-monto-total').value);
+            if(!monto||monto<=0)throw new Error('Indica el monto total a devolver (o elige Sin devolución).');
+            if((rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas')&&rescFechasCuotas.length===0){
+                recalcRescCuotas();
+                if(rescFechasCuotas.length===0)throw new Error('Configura el número de cuotas y la primera fecha de pago.');
+            }
+        }
         const body={
-            fecha:  $('resc-fecha').value,
+            fecha:  $('resc-fecha').value||hoyYmd(),
             motivo: $('resc-motivo').value,
-            notas:  $('resc-notas').value.trim()||null
+            notas:  $('resc-notas').value.trim()||null,
+            tipo_devolucion: rescDevTipo,
+            monto_total_devolucion: rescDevTipo==='sin_devolucion'?null:cleanNum($('resc-monto-total').value),
+            monto_pie_devolucion: rescDevTipo==='pie_mas_cuotas'?cleanNum($('resc-monto-pie').value):null,
+            numero_cuotas_devolucion: (rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas')?(parseInt($('resc-num-cuotas').value,10)||0):0,
+            monto_cuota_devolucion: (rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas')?cleanNum($('resc-monto-cuota').value):null,
+            fechas_cuotas_devolucion: (rescDevTipo==='cuotas'||rescDevTipo==='pie_mas_cuotas')?rescFechasCuotas:[]
         };
         const res=await fetch(`/api/im/ventas/${ventaData.id}/resciliar`,{
             method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)
         });
-        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`Error ${res.status}`);}
+        const payload=await res.json().catch(()=>({}));
+        if(!res.ok)throw new Error(payload.message||payload.error||`Error ${res.status}`);
+        if(!payload.id)throw new Error('La resciliación no quedó confirmada en la base de datos.');
 
-        // Subir documentos de resciliación al lote (si hay)
         const files=$('resc-file-input').files;
         if(files.length>0){
             for(const f of files){
@@ -1519,15 +1667,22 @@ async function resciliarContrato(){
                 fd.append('nombre_personalizado',`Resciliación — ${f.name.replace(/\.[^/.]+$/,'')}`);
                 fd.append('tipo_asociacion','parcela');
                 fd.append('asociacion_id',PARCELA_ID);
-                await fetch('/api/im/documentos',{method:'POST',body:fd});
+                await fetch('/api/im/documentos',{method:'POST',body:fd}).catch(()=>{});
+            }
+            if(payload.id){
+                const first=files[0];
+                const fd2=new FormData();
+                fd2.append('archivo',first);
+                await fetch(`/api/im/resciliaciones/${payload.id}/documento`,{method:'POST',body:fd2}).catch(()=>{});
             }
         }
 
         closeModal('liberar');
         currentClienteId=null;
-        showToast('Resciliación registrada. La parcela volvió a Disponible.','success');
-        init();
-    }catch(e){showToast(e.message,'error');}
+        ventaData=null;
+        showToast('Resciliación guardada. Parcela liberada. Revisa devoluciones en Resciliaciones.','success');
+        await init();
+    }catch(e){showToast(e.message,'error','No se pudo resciliar');}
     finally{btn.disabled=false;btn.innerHTML='<i class="bi bi-file-earmark-x"></i> Confirmar Resciliación';}
 }
 

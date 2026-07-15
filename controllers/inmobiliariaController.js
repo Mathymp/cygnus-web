@@ -420,12 +420,15 @@ exports.getParcelaById = async (req, res) => {
         }
 
         const historialVentasRes = await pool.query(
-            `SELECT v.id, v.estado, v.tipo_pago, v.precio_acordado, v.fecha_venta,
-                    v.firmo_promesa, v.firmo_compraventa, v.agente_nombre, v.condiciones_compra,
-                    v.notas, v.creado_at,
+            `SELECT v.id, v.estado, v.tipo_pago, v.precio_acordado, v.precio_lista, v.monto_pie,
+                    v.fecha_venta, v.firmo_promesa, v.firmo_compraventa, v.agente_nombre,
+                    v.condiciones_compra, v.notas AS venta_notas, v.creado_at,
                     c.nombre_completo, c.rut,
                     r.id as resc_id, r.fecha as resc_fecha, r.motivo as resc_motivo,
-                    r.notas as resc_notas, r.creado_por_nombre as resc_agente
+                    r.notas as resc_notas, r.creado_por_nombre as resc_agente,
+                    r.tipo_devolucion as resc_tipo_dev, r.monto_total_devolucion as resc_monto_dev,
+                    r.monto_pie_devolucion as resc_pie_dev, r.numero_cuotas_devolucion as resc_num_cuotas,
+                    r.estado as resc_estado
              FROM im_ventas_lotes v
              LEFT JOIN im_clientes c ON c.id::text = v.cliente_id::text
              LEFT JOIN im_resciliaciones r ON r.venta_id = v.id
@@ -1164,49 +1167,164 @@ exports.deleteVenta = async (req, res) => {
 exports.resciliarVenta = async (req, res) => {
     const client = await pool.connect();
     try {
+        await ensureSchemaOnce();
         await client.query('BEGIN');
         const { id } = req.params;
-        const { fecha, motivo, notas } = req.body;
+        const {
+            fecha, motivo, notas,
+            tipo_devolucion,
+            monto_total_devolucion,
+            monto_pie_devolucion,
+            numero_cuotas_devolucion,
+            monto_cuota_devolucion,
+            fechas_cuotas_devolucion
+        } = req.body;
 
         const ventaRes = await client.query(
-            `SELECT parcela_id FROM im_ventas_lotes WHERE id=$1 AND COALESCE(estado,'activa')='activa'`, [id]
+            `SELECT v.id, v.parcela_id, v.cliente_id, v.precio_acordado, v.precio_lista,
+                    v.monto_pie, v.tipo_pago, v.fecha_venta
+             FROM im_ventas_lotes v
+             WHERE v.id::text=$1 AND COALESCE(v.estado,'activa')='activa'
+             FOR UPDATE`,
+            [String(id)]
         );
         if (ventaRes.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Venta activa no encontrada.' });
         }
 
-        const parcela_id = ventaRes.rows[0].parcela_id;
+        const venta = ventaRes.rows[0];
+        const parcela_id = venta.parcela_id;
         const agente = req.session.user ? req.session.user.name : 'Sistema';
+        const tipoDev = String(tipo_devolucion || 'contado').toLowerCase();
+        const montoTotal = cleanMoney(monto_total_devolucion);
+        const montoPie = cleanMoney(monto_pie_devolucion);
+        const numCuotas = parseInt(numero_cuotas_devolucion, 10) || 0;
+        const montoCuota = cleanMoney(monto_cuota_devolucion);
+        const fechaResc = fecha || new Date().toISOString().split('T')[0];
 
-        // Crear registro de resciliación
+        if (tipoDev !== 'contado' && tipoDev !== 'sin_devolucion') {
+            if (!montoTotal && !montoCuota && !(Array.isArray(fechas_cuotas_devolucion) && fechas_cuotas_devolucion.length)) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    message: 'Indica el monto total a devolver o el calendario de cuotas de devolución.'
+                });
+            }
+        }
+
         const rescRes = await client.query(
-            `INSERT INTO im_resciliaciones (venta_id, parcela_id, fecha, motivo, notas, creado_por_nombre)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [id, parcela_id, fecha || new Date().toISOString().split('T')[0], motivo || null, notas || null, agente]
+            `INSERT INTO im_resciliaciones (
+                venta_id, parcela_id, fecha, motivo, notas, creado_por_nombre,
+                tipo_devolucion, monto_total_devolucion, monto_pie_devolucion,
+                numero_cuotas_devolucion, monto_cuota_devolucion, estado
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'en_proceso')
+             RETURNING *`,
+            [
+                venta.id, parcela_id, fechaResc, motivo || null, notas || null, agente,
+                tipoDev === 'sin_devolucion' ? 'sin_devolucion' : tipoDev,
+                montoTotal,
+                montoPie,
+                tipoDev === 'contado' || tipoDev === 'sin_devolucion' ? 0 : (numCuotas || (Array.isArray(fechas_cuotas_devolucion) ? fechas_cuotas_devolucion.length : 0)),
+                montoCuota
+            ]
         );
+        const resc = rescRes.rows[0];
 
-        // Marcar venta como resciliada
+        // Cuotas de devolución (si aplica)
+        if (tipoDev === 'cuotas' || tipoDev === 'pie_mas_cuotas') {
+            const cuotas = Array.isArray(fechas_cuotas_devolucion) ? fechas_cuotas_devolucion : [];
+            if (cuotas.length > 0) {
+                for (let i = 0; i < cuotas.length; i++) {
+                    const c = cuotas[i];
+                    await client.query(
+                        `INSERT INTO im_cuotas_devolucion (resciliacion_id, numero_cuota, monto, fecha_vencimiento)
+                         VALUES ($1,$2,$3,$4)`,
+                        [
+                            resc.id,
+                            c.numero || c.numero_cuota || (i + 1),
+                            cleanMoney(c.monto) || montoCuota,
+                            c.fecha || c.fecha_vencimiento || null
+                        ]
+                    );
+                }
+            } else if (numCuotas > 0 && montoCuota) {
+                const base = fechaResc;
+                for (let i = 0; i < numCuotas; i++) {
+                    const d = new Date(base + 'T12:00:00');
+                    d.setMonth(d.getMonth() + i);
+                    await client.query(
+                        `INSERT INTO im_cuotas_devolucion (resciliacion_id, numero_cuota, monto, fecha_vencimiento)
+                         VALUES ($1,$2,$3,$4)`,
+                        [resc.id, i + 1, montoCuota, d.toISOString().split('T')[0]]
+                    );
+                }
+            }
+        } else if (tipoDev === 'contado' && montoTotal) {
+            // Una sola "cuota" de devolución al contado (marcable como pagada en el módulo)
+            await client.query(
+                `INSERT INTO im_cuotas_devolucion (resciliacion_id, numero_cuota, monto, fecha_vencimiento, pagado, fecha_pago)
+                 VALUES ($1,1,$2,$3,false,null)`,
+                [resc.id, montoTotal, fechaResc]
+            );
+        }
+
         await client.query(
-            `UPDATE im_ventas_lotes SET estado='resciliada' WHERE id=$1`, [id]
+            `UPDATE im_ventas_lotes SET estado='resciliada' WHERE id=$1`,
+            [venta.id]
         );
-
-        // Liberar parcela
         await client.query(
-            `UPDATE im_parcelas SET estado_venta='disponible' WHERE id=$1`, [parcela_id]
+            `UPDATE im_parcelas SET estado_venta='disponible' WHERE id=$1`,
+            [parcela_id]
         );
 
-        await auditLog(client, { tabla: 'im_ventas_lotes', entidadId: id,
+        await auditLog(client, {
+            tabla: 'im_ventas_lotes',
+            entidadId: venta.id,
             accion: 'RESCILIACION',
-            descripcion: `Contrato resciliado por ${agente}. Motivo: ${motivo || 'no especificado'}. Parcela devuelta a disponible.`,
-            req });
+            descripcion: `Contrato resciliado por ${agente}. Motivo: ${motivo || 'no especificado'}. Devolución: ${tipoDev}${montoTotal ? ' $' + Number(montoTotal).toLocaleString('es-CL') : ''}. Parcela liberada.`,
+            req
+        });
 
         await client.query('COMMIT');
-        res.status(201).json(rescRes.rows[0]);
+
+        // Verificar persistencia
+        const check = await pool.query(
+            `SELECT r.id, p.estado_venta, v.estado AS venta_estado
+             FROM im_resciliaciones r
+             JOIN im_parcelas p ON p.id = r.parcela_id
+             JOIN im_ventas_lotes v ON v.id = r.venta_id
+             WHERE r.id = $1`,
+            [resc.id]
+        );
+        if (!check.rows[0] || check.rows[0].estado_venta !== 'disponible') {
+            const err = new Error('La resciliación no quedó confirmada en la base de datos.');
+            err.status = 500;
+            throw err;
+        }
+
+        let cuotasDev = [];
+        try {
+            const cRes = await pool.query(
+                `SELECT * FROM im_cuotas_devolucion WHERE resciliacion_id=$1 ORDER BY numero_cuota ASC`,
+                [resc.id]
+            );
+            cuotasDev = cRes.rows;
+        } catch (_) {}
+
+        res.status(201).json({
+            ...resc,
+            parcela_estado: 'disponible',
+            venta_precio_acordado: venta.precio_acordado,
+            venta_monto_pie: venta.monto_pie,
+            cuotas_devolucion: cuotasDev
+        });
     } catch (e) {
-        await client.query('ROLLBACK');
-        res.status(500).json({ error: e.message });
-    } finally { client.release(); }
+        try { await client.query('ROLLBACK'); } catch (_) {}
+        console.error('[resciliarVenta]', e.message);
+        res.status(e.status || 500).json({ error: e.message, message: e.message });
+    } finally {
+        client.release();
+    }
 };
 
 // ==========================================
