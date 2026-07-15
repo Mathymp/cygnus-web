@@ -1346,10 +1346,20 @@ $('form-venta').addEventListener('submit',async(e)=>{
                 : 'Venta guardada. Parcela marcada como Vendida.',
             'success'
         );
+        const idGuardada=ventaGuardada.id;
         await init();
-        // Verificar que la venta quedó efectivamente asociada tras recargar
-        if(!ventaData||!ventaData.id){
-            showToast('La venta se registró, pero no se pudo confirmar la recarga. Refresca la página para verla.','warning','Verifica la carga');
+        // La recarga puede tardar un instante en reflejar el commit. Reintentar
+        // una vez en silencio antes de avisar, para no alarmar al usuario.
+        if((!ventaData||!ventaData.id)&&idGuardada){
+            await new Promise(r=>setTimeout(r,700));
+            await init();
+        }
+        // Si aún no se reflejó, mantener visible el estado recién guardado.
+        if((!ventaData||!ventaData.id)&&idGuardada){
+            ventaData={id:idGuardada};
+            currentClienteId=clienteId;
+            habilitarDocsVentaCliente(idGuardada,clienteId);
+            showToast('Venta guardada. Si no ves el detalle, refresca la página.','info','Guardado');
         }
     }catch(err){showToast(err.message,'error','No se pudo guardar');}
     finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta';}}
