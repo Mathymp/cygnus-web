@@ -717,11 +717,11 @@ async function renderDetail(rescId, container){
                 <div class="im-form-row">
                     <div class="im-input-group">
                         <label>Monto Total a Devolver (CLP)</label>
-                        <input type="text" id="dev-monto-${rescId}" class="styled-input" value="${Number(r.monto_total_devolucion!=null?r.monto_total_devolucion:(r.precio_acordado||0)).toLocaleString('es-CL')}" placeholder="Ej: 5.000.000" oninput="fmtDevInput(this);recalcDevCuotas(${rescId})">
+                        <input type="text" id="dev-monto-${rescId}" class="styled-input" value="${Number(r.monto_total_devolucion!=null?r.monto_total_devolucion:(r.precio_acordado||0)).toLocaleString('es-CL')}" placeholder="Ej: 5.000.000" oninput="fmtDevInput(this);recalcDevCuotas(${rescId},true)">
                     </div>
                     <div class="im-input-group" id="dev-pie-wrap-${rescId}" style="${tipoDev!=='pie_mas_cuotas'?'display:none':''}">
                         <label>Pie inicial de devolución (CLP)</label>
-                        <input type="text" id="dev-pie-${rescId}" class="styled-input" value="${r.monto_pie_devolucion!=null?Number(r.monto_pie_devolucion).toLocaleString('es-CL'):(r.venta_monto_pie?Number(r.venta_monto_pie).toLocaleString('es-CL'):'')}" placeholder="Se resta del total antes de cuotas" oninput="fmtDevInput(this);recalcDevCuotas(${rescId})">
+                        <input type="text" id="dev-pie-${rescId}" class="styled-input" value="${r.monto_pie_devolucion!=null?Number(r.monto_pie_devolucion).toLocaleString('es-CL'):(r.venta_monto_pie?Number(r.venta_monto_pie).toLocaleString('es-CL'):'')}" placeholder="Se resta del total antes de cuotas" oninput="fmtDevInput(this);recalcDevCuotas(${rescId},true)">
                     </div>
                 </div>
                 <div id="dev-calc-hint-${rescId}" style="font-size:.78rem;color:#64748b;margin:0 0 10px;"></div>
@@ -729,15 +729,15 @@ async function renderDetail(rescId, container){
                     <div class="im-form-row">
                         <div class="im-input-group">
                             <label>Cantidad de Cuotas</label>
-                            <input type="number" id="dev-ncuotas-${rescId}" class="styled-input" value="${r.numero_cuotas_devolucion||''}" min="1" placeholder="Ej: 6" oninput="recalcDevCuotas(${rescId})">
+                            <input type="number" id="dev-ncuotas-${rescId}" class="styled-input" value="${r.numero_cuotas_devolucion||''}" min="1" placeholder="Ej: 6" oninput="recalcDevCuotas(${rescId},true)">
                         </div>
                         <div class="im-input-group">
                             <label>Monto por Cuota (CLP)</label>
-                            <input type="text" id="dev-mcuota-${rescId}" class="styled-input" value="${r.monto_cuota_devolucion!=null?Number(r.monto_cuota_devolucion).toLocaleString('es-CL'):''}" placeholder="Auto: (total−pie)/N" oninput="fmtDevInput(this)">
+                            <input type="text" id="dev-mcuota-${rescId}" class="styled-input" value="${r.monto_cuota_devolucion!=null?Number(r.monto_cuota_devolucion).toLocaleString('es-CL'):''}" placeholder="Auto: (total−pie)/N" oninput="fmtDevInput(this);recalcDevCuotas(${rescId},false)" onblur="recalcDevCuotas(${rescId},false)">
                         </div>
                         <div class="im-input-group">
                             <label>Primera Cuota (fecha)</label>
-                            <input type="date" id="dev-fecha1-${rescId}" class="styled-input" onchange="recalcDevCuotas(${rescId})">
+                            <input type="date" id="dev-fecha1-${rescId}" class="styled-input" onchange="recalcDevCuotas(${rescId},false)">
                         </div>
                     </div>
                     <button class="im-btn im-btn-ghost" onclick="generarCuotasDev(${rescId})" style="margin-bottom:8px;">
@@ -771,7 +771,7 @@ async function renderDetail(rescId, container){
         // Auto-cargar docs parcela + recalcular hint de cuotas
         setTimeout(()=>{
             loadRelDocs(rescId,'parcela',r.parcela_id,$id(`doc-tab-${rescId}-parcela`));
-            try{recalcDevCuotas(rescId);}catch(_){}
+            try{recalcDevCuotas(rescId,true,false);}catch(_){}
         },100);
     }catch(e){
         container.innerHTML=`<div style="color:#ef4444;padding:16px;">${escH(e.message)}</div>`;
@@ -788,7 +788,7 @@ function setDevTipo(rescId, tipo, btn){
     const pieWrap=$id(`dev-pie-wrap-${rescId}`);
     if(tipo==='completa'){cuotasConfig.style.display='none';if(pieWrap)pieWrap.style.display='none';}
     else{cuotasConfig.style.display='block';if(pieWrap)pieWrap.style.display=(tipo==='pie_mas_cuotas'?'block':'none');}
-    recalcDevCuotas(rescId);
+    recalcDevCuotas(rescId,true,true);
 }
 
 function fmtDevInput(inp){
@@ -798,14 +798,49 @@ function fmtDevInput(inp){
 
 function parsePesos(s){return parseInt((s||'').replace(/\./g,'').replace(/[^0-9]/g,''))||0;}
 
-function recalcDevCuotas(rescId){
+const _devDraftFilas={};
+
+function getDevTipoFlags(rescId){
+    const tipoTxt=$id(`dev-type-btns-${rescId}`)?.querySelector('.dev-type-btn.active')?.textContent?.trim()||'';
+    return {conPie:tipoTxt.includes('Pie'), esCompleta:tipoTxt.includes('Completa')||!tipoTxt};
+}
+
+function buildDevCuotasFilas(rescId,{recalcMonto=true}={}){
     const total=parsePesos($id(`dev-monto-${rescId}`)?.value);
-    const tipoEl=$id(`dev-type-btns-${rescId}`);
-    const tipoTxt=tipoEl?.querySelector('.dev-type-btn.active')?.textContent?.trim()||'';
-    const conPie=tipoTxt.includes('Pie');
+    const {conPie}=getDevTipoFlags(rescId);
     const pie=conPie?parsePesos($id(`dev-pie-${rescId}`)?.value):0;
     const nc=parseInt($id(`dev-ncuotas-${rescId}`)?.value)||0;
     const base=Math.max(0,total-pie);
+    const inpMc=$id(`dev-mcuota-${rescId}`);
+    if(recalcMonto&&nc>0&&base>0&&inpMc){
+        inpMc.value=Math.round(base/nc).toLocaleString('es-CL');
+    }
+    const mc=parsePesos(inpMc?.value)||(nc>0?Math.round(base/nc):0);
+    let fecha1=$id(`dev-fecha1-${rescId}`)?.value||'';
+    if(!fecha1&&nc>0){
+        fecha1=new Date().toISOString().split('T')[0];
+        const fInp=$id(`dev-fecha1-${rescId}`);
+        if(fInp&&!fInp.value)fInp.value=fecha1;
+    }
+    const filas=[];
+    let acumulado=0;
+    for(let i=1;i<=nc;i++){
+        let fv='';
+        if(fecha1){
+            const d=new Date(fecha1+'T12:00:00');
+            d.setMonth(d.getMonth()+(i-1));
+            fv=d.toISOString().split('T')[0];
+        }
+        const monto=i===nc?Math.max(0,base-acumulado):mc;
+        acumulado+=monto;
+        filas.push({numero_cuota:i,monto,fecha_vencimiento:fv});
+    }
+    return {filas,total,pie,base,nc,mc};
+}
+
+function recalcDevCuotas(rescId,recalcMonto=true,forcePreview=true){
+    const {conPie,esCompleta}=getDevTipoFlags(rescId);
+    const {filas,total,pie,base,nc}=buildDevCuotasFilas(rescId,{recalcMonto:!!recalcMonto&&!esCompleta});
     const hint=$id(`dev-calc-hint-${rescId}`);
     if(hint){
         if(conPie){
@@ -816,53 +851,47 @@ function recalcDevCuotas(rescId){
             hint.innerHTML=`<i class="bi bi-info-circle"></i> Usa el precio de la parcela/venta como total. Si hay pie, elígelo en «Pie + Cuotas».`;
         }
     }
-    if(nc>0&&base>0){
-        const mc=Math.round(base/nc);
-        const inp=$id(`dev-mcuota-${rescId}`);
-        if(inp)inp.value=mc.toLocaleString('es-CL');
+    if(esCompleta)return;
+    // Vista previa en vivo al editar (no al abrir detalle, para no pisar cuotas guardadas)
+    if(forcePreview&&nc>=1&&base>0){
+        renderDevCuotasPreview(rescId,filas,{total,pie,base,nc});
     }
+}
+
+function renderDevCuotasPreview(rescId,filas,{total,pie,base,nc}){
+    _devDraftFilas[rescId]=filas;
+    const suma=filas.reduce((s,c)=>s+Number(c.monto||0),0);
+    const tbl=$id(`dev-cuotas-table-${rescId}`);
+    if(!tbl)return;
+    tbl.innerHTML=`
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:.78rem;color:#166534;">
+            <i class="bi bi-check2-circle"></i> Tabla: total $${Number(total).toLocaleString('es-CL')}${pie?` − pie $${Number(pie).toLocaleString('es-CL')}`:''} = <strong>$${Number(base).toLocaleString('es-CL')}</strong> en ${nc} cuota(s).
+        </div>
+        ${previewCuotasDevHTML(filas,rescId)}
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;padding:12px 14px;background:#0f172a;border-radius:8px;color:#fff;">
+            <span style="font-size:.78rem;font-weight:600;opacity:.85;">Total pago de cuotas</span>
+            <strong style="font-size:1.05rem;letter-spacing:.2px;">$${suma.toLocaleString('es-CL')}</strong>
+        </div>
+        <button class="im-btn im-btn-primary" style="margin-top:10px;background:#dc2626;border:none;" onclick="guardarCuotasDevDraft(${rescId})">
+            <i class="bi bi-floppy"></i> Guardar Cuotas de Devolución
+        </button>`;
+}
+
+function guardarCuotasDevDraft(rescId){
+    const filas=_devDraftFilas[rescId];
+    if(!filas||!filas.length){showToast('Genera primero la tabla de cuotas.','error');return;}
+    guardarCuotasDev(rescId,filas);
 }
 
 function generarCuotasDev(rescId){
-    recalcDevCuotas(rescId);
-    const nc=parseInt($id(`dev-ncuotas-${rescId}`)?.value)||0;
-    const mc=parsePesos($id(`dev-mcuota-${rescId}`)?.value);
-    const fecha1=$id(`dev-fecha1-${rescId}`)?.value;
-    const total=parsePesos($id(`dev-monto-${rescId}`)?.value);
-    const tipoEl=$id(`dev-type-btns-${rescId}`);
-    const conPie=(tipoEl?.querySelector('.dev-type-btn.active')?.textContent||'').includes('Pie');
-    const pie=conPie?parsePesos($id(`dev-pie-${rescId}`)?.value):0;
-    const base=Math.max(0,total-pie);
+    const {filas,total,pie,base,nc}=buildDevCuotasFilas(rescId,{recalcMonto:false});
     if(!nc||nc<1){showToast('Indica la cantidad de cuotas.','error');return;}
     if(!base){showToast('Indica el monto total a devolver (y pie si aplica).','error');return;}
-    const montoCuota=mc||Math.round(base/nc);
-
-    const filas=[];
-    let acumulado=0;
-    for(let i=1;i<=nc;i++){
-        let fv='';
-        if(fecha1){
-            const d=new Date(fecha1+'T12:00:00');
-            d.setMonth(d.getMonth()+(i-1));
-            fv=d.toISOString().split('T')[0];
-        }
-        // Última cuota ajusta redondeo
-        const monto=i===nc?Math.max(0,base-acumulado):montoCuota;
-        acumulado+=monto;
-        filas.push({numero_cuota:i,monto,fecha_vencimiento:fv});
-    }
-    const tbl=$id(`dev-cuotas-table-${rescId}`);
-    tbl.innerHTML=`
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:.78rem;color:#166534;">
-            <i class="bi bi-check2-circle"></i> Tabla: total $${total.toLocaleString('es-CL')}${pie?` − pie $${pie.toLocaleString('es-CL')}`:''} = <strong>$${base.toLocaleString('es-CL')}</strong> en ${nc} cuota(s).
-        </div>
-        ${previewCuotasDevHTML(filas,rescId)}
-        <button class="im-btn im-btn-primary" style="margin-top:10px;background:#dc2626;border:none;" onclick='guardarCuotasDev(${rescId},${JSON.stringify(filas)})'>
-            <i class="bi bi-floppy"></i> Guardar Cuotas de Devolución
-         </button>`;
+    renderDevCuotasPreview(rescId,filas,{total,pie,base,nc});
 }
 
 function previewCuotasDevHTML(cuotas,rescId){
+    const suma=cuotas.reduce((s,c)=>s+Number(c.monto||0),0);
     return `<table style="width:100%;border-collapse:collapse;font-size:.8rem;margin-top:8px;">
         <thead><tr>
             <th style="padding:6px 10px;text-align:left;background:#f8fafc;border-bottom:2px solid #e2e8f0;">N°</th>
@@ -876,6 +905,12 @@ function previewCuotasDevHTML(cuotas,rescId){
             <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">${fmtFecha(c.fecha_vencimiento)}</td>
             <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;"><span class="badge-pendiente">Pendiente</span></td>
         </tr>`).join('')}</tbody>
+        <tfoot>
+            <tr>
+                <td style="padding:10px;border-top:2px solid #e2e8f0;font-weight:800;color:#0f172a;" colspan="1">Total</td>
+                <td style="padding:10px;border-top:2px solid #e2e8f0;font-weight:800;color:#0f172a;" colspan="3">$${suma.toLocaleString('es-CL')}</td>
+            </tr>
+        </tfoot>
     </table>`;
 }
 
@@ -926,10 +961,15 @@ function renderCuotasDev(cuotas,rescId){
             ${pagarBtn}
         </div>`;
     }).join('');
+    const montoTotal=cuotas.reduce((s,c)=>s+Number(c.monto||0),0);
     return `<div style="margin-top:8px;">
         <p style="font-size:.75rem;font-weight:800;color:#475569;margin:0 0 8px;text-transform:uppercase;letter-spacing:.3px;"><i class="bi bi-list-check" style="color:#2563eb;"></i> Cuotas de Devolución</p>
         ${resumenHeader}
         ${html}
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px 14px;background:#0f172a;border-radius:8px;color:#fff;">
+            <span style="font-size:.78rem;font-weight:600;opacity:.85;">Total pago de cuotas</span>
+            <strong style="font-size:1.05rem;">$${montoTotal.toLocaleString('es-CL')}</strong>
+        </div>
     </div>`;
 }
 
