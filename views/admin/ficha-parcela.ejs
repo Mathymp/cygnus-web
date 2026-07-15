@@ -1401,7 +1401,7 @@ $('form-venta').addEventListener('submit',async(e)=>{
             }
         }
 
-        // Pintar UI inmediatamente con la respuesta verificada del servidor
+        // Pintar UI solo tras confirmación del servidor
         const snapshot={
             parcela:Object.assign({},parcelaData||{},{
                 id:PARCELA_ID,
@@ -1416,27 +1416,26 @@ $('form-venta').addEventListener('submit',async(e)=>{
         currentClienteId=ventaGuardada.cliente_id;
         parcelaData=snapshot.parcela;
         cuotasData=snapshot.cuotas;
-        renderParcela(snapshot);
-        habilitarDocsVentaCliente(ventaGuardada.id,ventaGuardada.cliente_id);
 
+        // Revalidar contra GET: si no está en BD, NO mostrar éxito
+        await init();
+        if(!ventaData||!ventaData.id||String(ventaData.id)!==String(ventaGuardada.id)){
+            throw new Error('El servidor respondió OK pero la venta no quedó en la base de datos. Espera el redeploy o revisa en Render que DATABASE_URL use puerto 5432 (Session), no 6543.');
+        }
+        if(!parcelaData||!['vendido','reservado'].includes(String(parcelaData.estado_venta||''))){
+            // Puede venir sincronizado por la venta; si hay venta activa igual OK
+            if(!ventaData||!ventaData.id){
+                throw new Error('La parcela no quedó marcada como vendida/reservada en la base de datos.');
+            }
+        }
+
+        habilitarDocsVentaCliente(ventaGuardada.id,ventaGuardada.cliente_id);
         showToast(
             (ventaGuardada.parcela_estado||estadoOp)==='reservado'
                 ? 'Venta guardada. Parcela marcada como Reservada.'
                 : 'Venta guardada. Parcela marcada como Vendida.',
             'success'
         );
-
-        // Revalidar contra GET; si falla, mantener el snapshot ya pintado
-        try{
-            await init();
-            if(!ventaData||!ventaData.id||String(ventaData.id)!==String(ventaGuardada.id)){
-                renderParcela(snapshot);
-                habilitarDocsVentaCliente(ventaGuardada.id,ventaGuardada.cliente_id);
-            }
-        }catch(_){
-            renderParcela(snapshot);
-            habilitarDocsVentaCliente(ventaGuardada.id,ventaGuardada.cliente_id);
-        }
     }catch(err){showToast(err.message,'error','No se pudo guardar');}
     finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-person-check-fill"></i> Guardar Comprador y Venta';}}
 });

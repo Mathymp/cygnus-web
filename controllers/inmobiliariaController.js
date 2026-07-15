@@ -2,9 +2,30 @@ const { Pool } = require('pg');
 const path = require('path');
 const docStorage = require('../helpers/docStorage');
 
+/**
+ * Supabase transaction pooler (:6543) puede devolver INSERT…RETURNING “fantasma”
+ * sin persistir el COMMIT. Preferimos session mode (:5432) cuando detectamos 6543.
+ */
+function resolveImDatabaseUrl(raw) {
+    const url = String(raw || '').trim();
+    if (!url) return url;
+    try {
+        const u = new URL(url);
+        if (u.port === '6543') {
+            u.port = '5432';
+            console.warn('[imDB] DATABASE_URL usaba :6543 (transaction pooler). Cambiado a :5432 (session) para ventas fiables.');
+            return u.toString();
+        }
+    } catch (_) {}
+    return url;
+}
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    connectionString: resolveImDatabaseUrl(process.env.DATABASE_URL),
+    ssl: { rejectUnauthorized: false },
+    max: 8,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 15000
 });
 
 const isAdmin = (req) => {
@@ -119,7 +140,9 @@ async function loadVentaForParcela(db, parcelaId) {
     const raw = await db.query(
         `SELECT *
          FROM im_ventas_lotes
-         WHERE parcela_id::text = $1
+         WHERE parcela_id = $1
+            OR parcela_id::text = $1::text
+            OR replace(parcela_id::text, '-', '') = replace($1::text, '-', '')
          ORDER BY
            CASE
              WHEN COALESCE(estado,'activa') = 'activa' THEN 0
@@ -751,10 +774,8 @@ exports.getVentas = async (req, res) => {
 };
 
 exports.createVenta = async (req, res) => {
-    const client = await pool.connect();
     try {
         await ensureSchemaOnce();
-        await client.query('BEGIN');
         const {
             parcela_id, cliente_id, firmo_promesa, firmo_compraventa,
             forma_pago, fecha_venta, precio_lista, precio_acordado, notas,
@@ -763,70 +784,137 @@ exports.createVenta = async (req, res) => {
             agente_id
         } = req.body;
         if (!parcela_id || !cliente_id) {
-            await client.query('ROLLBACK');
             return res.status(400).json({ message: 'Parcela y cliente son obligatorios.' });
         }
 
-        const { parcela, cliente } = await assertParcelaYCliente(client, parcela_id, cliente_id);
+        const { parcela, cliente } = await assertParcelaYCliente(pool, parcela_id, cliente_id);
         const precioListaFinal = cleanMoney(precio_lista) ?? (parcela.precio_actual != null ? Number(parcela.precio_actual) : null);
         const precioAcordadoFinal = cleanMoney(precio_acordado) ?? precioListaFinal;
         const nuevoEstado = resolveEstadoOperacion(req.body);
         const firmoPromesa = firmo_promesa === true || firmo_promesa === 'true' || firmo_promesa === 1 || firmo_promesa === '1' || nuevoEstado === 'reservado';
         const firmoCompraventa = firmo_compraventa === true || firmo_compraventa === 'true' || firmo_compraventa === 1 || firmo_compraventa === '1' || nuevoEstado === 'vendido';
+        const agente = await resolveVentaAgent(pool, req, agente_id);
 
-        await client.query(
-            `UPDATE im_ventas_lotes SET estado='liberada'
-             WHERE parcela_id::text=$1 AND COALESCE(estado,'activa')='activa'`,
-            [String(parcela.id)]
-        );
+        const insertParams = [
+            parcela.id, cliente.id,
+            firmoPromesa, firmoCompraventa,
+            forma_pago || null,
+            fecha_venta || new Date().toISOString().split('T')[0],
+            precioListaFinal, precioAcordadoFinal,
+            notas || null,
+            tipo_pago || 'contado',
+            cleanMoney(monto_pie), numero_credito || null,
+            parseInt(numero_cuotas, 10) || 0,
+            cleanMoney(monto_cuota),
+            condiciones_compra || null,
+            agente.id, agente.nombre,
+            nuevoEstado
+        ];
 
-        const agente = await resolveVentaAgent(client, req, agente_id);
+        // Una sola sentencia atómica (CTE). Evita BEGIN/COMMIT frágil con poolers.
+        const atomicSql = `
+            WITH liberar AS (
+                UPDATE im_ventas_lotes
+                SET estado = 'liberada'
+                WHERE parcela_id = $1 AND COALESCE(estado, 'activa') = 'activa'
+                RETURNING id
+            ),
+            ins AS (
+                INSERT INTO im_ventas_lotes (
+                    parcela_id, cliente_id, firmo_promesa, firmo_compraventa, forma_pago,
+                    fecha_venta, precio_lista, precio_acordado, notas,
+                    tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota, condiciones_compra,
+                    agente_id, agente_nombre, estado
+                ) VALUES (
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'activa'
+                ) RETURNING *
+            ),
+            parc AS (
+                UPDATE im_parcelas SET estado_venta = $18 WHERE id = $1
+                RETURNING id, estado_venta
+            )
+            SELECT ins.*, parc.estado_venta AS _parcela_estado
+            FROM ins CROSS JOIN parc`;
 
-        const result = await client.query(
-            `INSERT INTO im_ventas_lotes (
-                parcela_id, cliente_id, firmo_promesa, firmo_compraventa, forma_pago,
-                fecha_venta, precio_lista, precio_acordado, notas,
-                tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota, condiciones_compra,
-                agente_id, agente_nombre, estado
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'activa') RETURNING *`,
-            [
-                parcela.id, cliente.id,
-                firmoPromesa, firmoCompraventa,
-                forma_pago || null,
-                fecha_venta || new Date().toISOString().split('T')[0],
-                precioListaFinal, precioAcordadoFinal,
-                notas || null,
-                tipo_pago || 'contado',
-                cleanMoney(monto_pie), numero_credito || null,
-                parseInt(numero_cuotas, 10) || 0,
-                cleanMoney(monto_cuota),
-                condiciones_compra || null,
-                agente.id, agente.nombre
-            ]
-        );
-        const ventaInsertada = result.rows[0];
+        let ventaInsertada = (await pool.query(atomicSql, insertParams)).rows[0];
         if (!ventaInsertada?.id) {
             const err = new Error('No se pudo insertar la venta en la base de datos.');
             err.status = 500;
             throw err;
         }
-        const ventaIdStr = String(ventaInsertada.id);
 
-        // Verificar DENTRO de la transacción (antes del COMMIT)
-        const checkTx = await client.query(
-            `SELECT id, cliente_id, parcela_id, estado FROM im_ventas_lotes WHERE id::text=$1`,
-            [ventaIdStr]
+        // Verificación en conexión distinta: detecta writes fantasma del pooler
+        let persistida = await pool.query(
+            `SELECT v.id, v.cliente_id, v.parcela_id, v.estado, p.estado_venta
+             FROM im_ventas_lotes v
+             JOIN im_parcelas p ON p.id = v.parcela_id
+             WHERE v.id = $1`,
+            [ventaInsertada.id]
         );
-        if (!checkTx.rows[0]) {
-            const err = new Error('La venta se insertó pero no se pudo releer dentro de la transacción.');
+
+        if (!persistida.rows[0]) {
+            console.error('[createVenta] write fantasma tras CTE, reintento con transacción explícita', {
+                ventaId: ventaInsertada.id, parcelaId: parcela.id
+            });
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+                await client.query(
+                    `UPDATE im_ventas_lotes SET estado='liberada'
+                     WHERE parcela_id=$1 AND COALESCE(estado,'activa')='activa'`,
+                    [parcela.id]
+                );
+                const retry = await client.query(
+                    `INSERT INTO im_ventas_lotes (
+                        parcela_id, cliente_id, firmo_promesa, firmo_compraventa, forma_pago,
+                        fecha_venta, precio_lista, precio_acordado, notas,
+                        tipo_pago, monto_pie, numero_credito, numero_cuotas, monto_cuota, condiciones_compra,
+                        agente_id, agente_nombre, estado
+                     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'activa') RETURNING *`,
+                    insertParams.slice(0, 17)
+                );
+                ventaInsertada = retry.rows[0];
+                await client.query(
+                    `UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`,
+                    [nuevoEstado, parcela.id]
+                );
+                await client.query('COMMIT');
+            } catch (e) {
+                try { await client.query('ROLLBACK'); } catch (_) {}
+                throw e;
+            } finally {
+                client.release();
+            }
+
+            persistida = await pool.query(
+                `SELECT v.id, v.cliente_id, v.parcela_id, v.estado, p.estado_venta
+                 FROM im_ventas_lotes v
+                 JOIN im_parcelas p ON p.id = v.parcela_id
+                 WHERE v.id = $1`,
+                [ventaInsertada.id]
+            );
+        }
+
+        if (!persistida.rows[0]) {
+            const err = new Error(
+                'La base de datos no confirmó la venta tras guardarla (posible pooler/conexión). ' +
+                'En Render, usa la connection string de Supabase en modo Session (puerto 5432), no Transaction (6543), y vuelve a intentar.'
+            );
             err.status = 500;
             throw err;
+        }
+
+        if (persistida.rows[0].estado_venta !== nuevoEstado) {
+            await pool.query(
+                `UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`,
+                [nuevoEstado, parcela.id]
+            );
         }
 
         if (tipo_pago === 'credito' && Array.isArray(fechas_cuotas) && fechas_cuotas.length > 0) {
             for (let i = 0; i < fechas_cuotas.length; i++) {
                 const fc = fechas_cuotas[i];
-                await client.query(
+                await pool.query(
                     `INSERT INTO im_cuotas (venta_id, numero_cuota, monto, fecha_vencimiento)
                      VALUES ($1, $2, $3, $4)`,
                     [ventaInsertada.id, i + 1, cleanMoney(fc.monto) || cleanMoney(monto_cuota), fc.fecha || null]
@@ -834,17 +922,7 @@ exports.createVenta = async (req, res) => {
             }
         }
 
-        const parcelaUpd = await client.query(
-            `UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2 RETURNING id, estado_venta`,
-            [nuevoEstado, parcela.id]
-        );
-        if (parcelaUpd.rows.length === 0) {
-            const err = new Error('No se pudo marcar la parcela como vendida/reservada.');
-            err.status = 500;
-            throw err;
-        }
-
-        await auditLog(client, {
+        await auditLog(pool, {
             tabla: 'im_ventas_lotes',
             entidadId: ventaInsertada.id,
             accion: 'CREAR',
@@ -852,19 +930,25 @@ exports.createVenta = async (req, res) => {
             req
         });
 
-        await client.query('COMMIT');
-
-        // Responder con datos ya confirmados en la TX + cliente conocido.
-        // No hacer DDL ni fallar si el pool tarda en releer: el COMMIT ya ocurrió.
         const verificada = hydrateVentaRow(ventaInsertada, cliente);
         let cuotas = [];
         try {
             const cuotasRes = await pool.query(
-                `SELECT * FROM im_cuotas WHERE venta_id::text=$1 ORDER BY numero_cuota ASC`,
-                [ventaIdStr]
+                `SELECT * FROM im_cuotas WHERE venta_id=$1 ORDER BY numero_cuota ASC`,
+                [ventaInsertada.id]
             );
             cuotas = cuotasRes.rows;
         } catch (_) {}
+
+        // Última confirmación: lo que verá la ficha al recargar
+        const paraFicha = await loadVentaForParcela(pool, parcela.id);
+        if (!paraFicha || String(paraFicha.id) !== String(ventaInsertada.id)) {
+            const err = new Error(
+                'La venta se escribió pero no aparece al releer la parcela. Revisa im_ventas_lotes en Supabase o la connection string (Session :5432).'
+            );
+            err.status = 500;
+            throw err;
+        }
 
         res.status(201).json({
             ...verificada,
@@ -872,10 +956,9 @@ exports.createVenta = async (req, res) => {
             cuotas
         });
     } catch (e) {
-        try { await client.query('ROLLBACK'); } catch (_) {}
         console.error('[createVenta]', e.message);
         res.status(e.status || 500).json({ error: e.message, message: e.message });
-    } finally { client.release(); }
+    }
 };
 
 exports.updateVenta = async (req, res) => {
@@ -987,6 +1070,28 @@ exports.updateVenta = async (req, res) => {
             req
         });
         await client.query('COMMIT');
+
+        // Confirmar persistencia fuera de la TX (detecta writes fantasma)
+        const persistida = await pool.query(
+            `SELECT v.id, v.cliente_id, p.estado_venta
+             FROM im_ventas_lotes v
+             JOIN im_parcelas p ON p.id = v.parcela_id
+             WHERE v.id = $1`,
+            [venta.id]
+        );
+        if (!persistida.rows[0] || String(persistida.rows[0].cliente_id) !== String(cliente.id)) {
+            const err = new Error(
+                'La actualización no quedó confirmada en la base de datos. Usa DATABASE_URL Session (:5432) en Render.'
+            );
+            err.status = 500;
+            throw err;
+        }
+        if (persistida.rows[0].estado_venta !== nuevoEstado) {
+            await pool.query(
+                `UPDATE im_parcelas SET estado_venta=$1 WHERE id=$2`,
+                [nuevoEstado, parcelaId]
+            );
+        }
 
         const verificada = hydrateVentaRow(venta, cliente);
         let cuotas = [];
