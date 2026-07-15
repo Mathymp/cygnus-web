@@ -89,7 +89,7 @@
                     <button class="im-btn im-btn-primary im-btn-sm" onclick="loadCartera()"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
                 </div>
             </div>
-            <div id="cartera-root"><div class="loading"><i class="bi bi-hourglass-split"></i>Cargando métricas de cartera...</div></div>
+            <div id="cartera-root"><div class="im-sk-cartera"><div class="im-sk-kpi-grid"><div class="im-sk-kpi"><div class="im-sk im-sk-line" style="width:40%;height:10px;margin-bottom:12px;"></div><div class="im-sk im-sk-line" style="width:55%;height:22px;margin-bottom:10px;"></div><div class="im-sk im-sk-line" style="width:70%;height:10px;"></div></div><div class="im-sk-kpi"><div class="im-sk im-sk-line" style="width:40%;height:10px;margin-bottom:12px;"></div><div class="im-sk im-sk-line" style="width:55%;height:22px;margin-bottom:10px;"></div><div class="im-sk im-sk-line" style="width:70%;height:10px;"></div></div><div class="im-sk-kpi"><div class="im-sk im-sk-line" style="width:40%;height:10px;margin-bottom:12px;"></div><div class="im-sk im-sk-line" style="width:55%;height:22px;margin-bottom:10px;"></div><div class="im-sk im-sk-line" style="width:70%;height:10px;"></div></div><div class="im-sk-kpi"><div class="im-sk im-sk-line" style="width:40%;height:10px;margin-bottom:12px;"></div><div class="im-sk im-sk-line" style="width:55%;height:22px;margin-bottom:10px;"></div><div class="im-sk im-sk-line" style="width:70%;height:10px;"></div></div><div class="im-sk-kpi"><div class="im-sk im-sk-line" style="width:40%;height:10px;margin-bottom:12px;"></div><div class="im-sk im-sk-line" style="width:55%;height:22px;margin-bottom:10px;"></div><div class="im-sk im-sk-line" style="width:70%;height:10px;"></div></div><div class="im-sk-kpi"><div class="im-sk im-sk-line" style="width:40%;height:10px;margin-bottom:12px;"></div><div class="im-sk im-sk-line" style="width:55%;height:22px;margin-bottom:10px;"></div><div class="im-sk im-sk-line" style="width:70%;height:10px;"></div></div><div class="im-sk-kpi"><div class="im-sk im-sk-line" style="width:40%;height:10px;margin-bottom:12px;"></div><div class="im-sk im-sk-line" style="width:55%;height:22px;margin-bottom:10px;"></div><div class="im-sk im-sk-line" style="width:70%;height:10px;"></div></div><div class="im-sk-kpi"><div class="im-sk im-sk-line" style="width:40%;height:10px;margin-bottom:12px;"></div><div class="im-sk im-sk-line" style="width:55%;height:22px;margin-bottom:10px;"></div><div class="im-sk im-sk-line" style="width:70%;height:10px;"></div></div></div></div></div>
         </div>
     </main>
 </div>
@@ -198,7 +198,7 @@ function render(d){
 }
 
 async function loadCartera(){
-    $('cartera-root').innerHTML='<div class="loading"><i class="bi bi-hourglass-split"></i>Calculando métricas reales...</div>';
+    $('cartera-root').innerHTML=(window.IMSkeleton&&IMSkeleton.cartera())||'<div class="im-sk-kpi-grid"><div class="im-sk-kpi"><div class="im-sk im-sk-block"></div></div></div>';
     const q=new URLSearchParams();
     if($('f-proyecto').value)q.set('proyecto_id',$('f-proyecto').value);
     if($('f-tipo').value)q.set('tipo_proyecto',$('f-tipo').value);

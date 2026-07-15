@@ -247,7 +247,20 @@
     <div id="tab-parcelas">
         <div class="pp-body">
             <div id="pp-content">
-                <div class="pp-empty"><i class="bi bi-hourglass-split"></i><p>Cargando parcelas...</p></div>
+                <div class="im-sk-parcelas">
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                    <div class="im-sk-parcela"><div class="im-sk im-sk-line" style="width:40%;height:12px;margin:0 auto 8px;"></div><div class="im-sk im-sk-line" style="width:60%;height:10px;margin:0 auto;"></div></div>
+                </div>
             </div>
         </div>
     </div>
@@ -284,7 +297,12 @@
 
             <!-- Lista de documentos -->
             <div id="proj-doc-list">
-                <div style="text-align:center;padding:28px;color:#94a3b8;"><i class="bi bi-hourglass-split" style="font-size:1.5rem;"></i><p style="margin:8px 0 0;">Cargando documentos...</p></div>
+                <div class="im-sk-docs">
+                    <div class="im-sk-doc"><div class="im-sk im-sk-icon"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:60%;height:12px;margin-bottom:6px;"></div><div class="im-sk im-sk-line" style="width:30%;height:10px;"></div></div></div>
+                    <div class="im-sk-doc"><div class="im-sk im-sk-icon"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:50%;height:12px;margin-bottom:6px;"></div><div class="im-sk im-sk-line" style="width:25%;height:10px;"></div></div></div>
+                    <div class="im-sk-doc"><div class="im-sk im-sk-icon"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:70%;height:12px;margin-bottom:6px;"></div><div class="im-sk im-sk-line" style="width:35%;height:10px;"></div></div></div>
+                    <div class="im-sk-doc"><div class="im-sk im-sk-icon"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:45%;height:12px;margin-bottom:6px;"></div><div class="im-sk im-sk-line" style="width:28%;height:10px;"></div></div></div>
+                </div>
             </div>
         </div>
     </div>
@@ -775,7 +793,7 @@ const canPreview = ext => ['pdf','jpg','jpeg','png','webp','gif'].includes(ext);
 
 async function loadProjDocs(){
     const list = $('proj-doc-list');
-    list.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="bi bi-hourglass-split"></i> Cargando...</div>';
+    list.innerHTML = (window.IMSkeleton && IMSkeleton.docs(4)) || '<div class="im-sk im-sk-block"></div>';
     try{
         const res = await fetch(`/api/im/documentos?tipo_asociacion=proyecto&asociacion_id=${PROYECTO_ID}`);
         if(!res.ok) throw new Error(`HTTP ${res.status}`);

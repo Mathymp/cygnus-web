@@ -265,7 +265,7 @@
 
                 <div class="im-page-header" id="parcela-header" style="margin-top:0;margin-bottom:16px;">
                     <div>
-                        <h1 id="parcela-titulo" style="font-size:1.5rem;">Cargando...</h1>
+                        <h1 id="parcela-titulo" style="font-size:1.5rem;"><span class="sk sk-title" style="display:block;"></span></h1>
                         <div id="parcela-estado-badge" style="margin-top:6px;"></div>
                     </div>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;" id="header-actions"></div>
@@ -603,7 +603,7 @@
 
                         <!-- ─── TAB AUDITORÍA ─── -->
                         <div id="tab-auditoria" class="im-tab-content">
-                            <div id="auditoria-list" class="im-audit-list"><div class="im-empty"><i class="bi bi-clock-history"></i><p>Cargando...</p></div></div>
+                            <div id="auditoria-list" class="im-audit-list"><div class="im-sk-list"><div class="im-sk-list-row"><div class="im-sk im-sk-avatar"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:55%;height:12px;margin-bottom:6px;"></div><div class="im-sk im-sk-line" style="width:35%;height:10px;"></div></div></div><div class="im-sk-list-row"><div class="im-sk im-sk-avatar"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:60%;height:12px;margin-bottom:6px;"></div><div class="im-sk im-sk-line" style="width:40%;height:10px;"></div></div></div><div class="im-sk-list-row"><div class="im-sk im-sk-avatar"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:45%;height:12px;margin-bottom:6px;"></div><div class="im-sk im-sk-line" style="width:30%;height:10px;"></div></div></div></div></div>
                         </div>
                     </div>
                 </div>
@@ -1888,7 +1888,7 @@ function initDM(tipo,asociacionId,force=false){
         </div>
         <div>
             <p class="step-title"><i class="bi bi-folder2-open"></i> Documentos Subidos</p>
-            <div id="dl-${tipo}" class="im-doc-list"><div class="im-empty" style="padding:16px;"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div></div>
+            <div id="dl-${tipo}" class="im-doc-list">${(window.IMSkeleton&&IMSkeleton.docs(3))||'<div class="im-sk im-sk-block"></div>'}</div>
         </div>`;
     loadDocs(tipo==='lote'?'parcela':tipo==='venta'?'venta':tipo,asociacionId);
 }
@@ -2019,7 +2019,7 @@ async function handleFileSelect(tipo,asociacionId,files){
 async function loadDocs(tipo_asociacion,asociacionId){
     const dlId=tipo_asociacion==='proyecto'?'dl-proyecto':tipo_asociacion==='parcela'?'dl-lote':tipo_asociacion==='venta'?'dl-venta':'dl-persona';
     const dl=$(dlId);if(!dl)return;
-    dl.innerHTML='<div class="im-empty" style="padding:16px;"><i class="bi bi-hourglass-split"></i><p>Cargando...</p></div>';
+    dl.innerHTML=(window.IMSkeleton&&IMSkeleton.docs(3))||'<div class="im-sk im-sk-block"></div>';
     try{
         const res=await fetch(`/api/im/documentos?tipo_asociacion=${tipo_asociacion}&asociacion_id=${asociacionId}`);
         if(!res.ok){const eb=await res.json().catch(()=>({}));throw new Error(eb.message||`No se pudieron cargar los documentos (HTTP ${res.status}).`);}
@@ -2120,7 +2120,7 @@ function previewDoc(url,nombre,ext){
 async function loadAuditoria(){
     const list=$('auditoria-list');
     if(!list)return;
-    list.innerHTML='<div class="im-empty"><i class="bi bi-hourglass-split"></i><p>Cargando movimientos...</p></div>';
+    list.innerHTML=(window.IMSkeleton&&IMSkeleton.listRows(5))||'<div class="im-sk im-sk-block"></div>';
     try{
         const res=await fetch(`/api/im/auditoria?parcela_id=${encodeURIComponent(PARCELA_ID)}`);
         if(!res.ok)throw new Error(`No se pudo cargar la auditoría (HTTP ${res.status})`);

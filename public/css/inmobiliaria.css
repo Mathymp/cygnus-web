@@ -421,6 +421,142 @@
 /* ---- Animations ---- */
 @keyframes imFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ---- Skeleton loading (Gestión de Campos) ---- */
+@keyframes imSkShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.im-sk {
+    display: block;
+    background: linear-gradient(90deg, #e2e8f0 0%, #f8fafc 40%, #e2e8f0 80%);
+    background-size: 200% 100%;
+    animation: imSkShimmer 1.35s ease-in-out infinite;
+    border-radius: 8px;
+}
+.im-sk-line { height: 12px; width: 100%; }
+.im-sk-block { height: 56px; width: 100%; margin-bottom: 10px; border-radius: 10px; }
+.im-sk-pill { height: 22px; width: 72px; border-radius: 999px; }
+.im-sk-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+.im-sk-icon { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; }
+
+.im-sk-proj {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    overflow: hidden;
+}
+.im-sk-proj-cover {
+    height: 120px;
+    background: linear-gradient(90deg, #cbd5e1 0%, #e2e8f0 40%, #cbd5e1 80%);
+    background-size: 200% 100%;
+    animation: imSkShimmer 1.35s ease-in-out infinite;
+}
+.im-sk-proj-body { padding: 16px; }
+
+.im-sk-table-wrap {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    padding: 8px 0;
+}
+.im-sk-table { width: 100%; border-collapse: collapse; }
+.im-sk-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; }
+.im-sk-tr:last-child td { border-bottom: none; }
+
+.im-sk-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+}
+.im-sk-kpi {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 18px;
+}
+
+.im-sk-list { display: flex; flex-direction: column; gap: 8px; }
+.im-sk-list-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.im-sk-parcelas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+}
+.im-sk-parcela {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 10px;
+    text-align: center;
+    min-height: 72px;
+}
+
+.im-sk-docs { display: flex; flex-direction: column; gap: 8px; }
+.im-sk-doc {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.im-sk-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fff;
+}
+.im-sk-card-head {
+    height: 72px;
+    background: linear-gradient(90deg, #cbd5e1 0%, #e2e8f0 40%, #cbd5e1 80%);
+    background-size: 200% 100%;
+    animation: imSkShimmer 1.35s ease-in-out infinite;
+}
+.im-sk-card-body { padding: 16px; }
+
+.im-sk-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px;
+}
+.im-sk-cartera { padding: 4px 0 20px; }
+
+/* Compat con clases locales de ficha */
+.sk {
+    display: inline-block;
+    background: linear-gradient(90deg, #e2e8f0 0%, #f8fafc 40%, #e2e8f0 80%);
+    background-size: 200% 100%;
+    animation: imSkShimmer 1.35s ease-in-out infinite;
+    border-radius: 8px;
+}
+.sk-title { height: 28px; width: min(420px, 70%); margin-bottom: 8px; }
+.sk-badge { height: 22px; width: 90px; border-radius: 999px; }
+.sk-line { height: 14px; width: 100%; margin: 6px 0; }
+.sk-line.short { width: 38%; }
+.sk-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+.sk-card { border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; margin-bottom: 8px; }
+.sk-card-head {
+    height: 78px;
+    background: linear-gradient(90deg, #cbd5e1 0%, #e2e8f0 40%, #cbd5e1 80%);
+    background-size: 200% 100%;
+    animation: imSkShimmer 1.35s ease-in-out infinite;
+}
+.sk-card-body { padding: 16px; }
+.sk-block { height: 64px; width: 100%; margin-bottom: 10px; border-radius: 10px; }
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
     .im-ficha-layout { grid-template-columns: 1fr; }

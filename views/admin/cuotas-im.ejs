@@ -150,7 +150,18 @@
 
             <div class="cuotas-body">
                 <div id="cuotas-container" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto;">
-                    <div style="text-align:center;padding:60px;color:#94a3b8;"><i class="bi bi-hourglass-split" style="font-size:2rem;display:block;margin-bottom:8px;"></i><p>Cargando cuotas...</p></div>
+                    <div class="im-sk-table-wrap" style="border:none;border-radius:0;">
+                        <table class="im-sk-table"><tbody>
+                            <tr class="im-sk-tr"><td><div class="im-sk im-sk-line" style="width:40%;"></div></td><td><div class="im-sk im-sk-line" style="width:55%;"></div></td><td><div class="im-sk im-sk-line" style="width:45%;"></div></td><td><div class="im-sk im-sk-line" style="width:35%;"></div></td><td><div class="im-sk im-sk-line" style="width:50%;"></div></td><td><div class="im-sk im-sk-line" style="width:30%;"></div></td><td><div class="im-sk im-sk-pill"></div></td></tr>
+                            <tr class="im-sk-tr"><td><div class="im-sk im-sk-line" style="width:35%;"></div></td><td><div class="im-sk im-sk-line" style="width:60%;"></div></td><td><div class="im-sk im-sk-line" style="width:40%;"></div></td><td><div class="im-sk im-sk-line" style="width:38%;"></div></td><td><div class="im-sk im-sk-line" style="width:48%;"></div></td><td><div class="im-sk im-sk-line" style="width:32%;"></div></td><td><div class="im-sk im-sk-pill"></div></td></tr>
+                            <tr class="im-sk-tr"><td><div class="im-sk im-sk-line" style="width:45%;"></div></td><td><div class="im-sk im-sk-line" style="width:50%;"></div></td><td><div class="im-sk im-sk-line" style="width:42%;"></div></td><td><div class="im-sk im-sk-line" style="width:36%;"></div></td><td><div class="im-sk im-sk-line" style="width:52%;"></div></td><td><div class="im-sk im-sk-line" style="width:28%;"></div></td><td><div class="im-sk im-sk-pill"></div></td></tr>
+                            <tr class="im-sk-tr"><td><div class="im-sk im-sk-line" style="width:38%;"></div></td><td><div class="im-sk im-sk-line" style="width:58%;"></div></td><td><div class="im-sk im-sk-line" style="width:48%;"></div></td><td><div class="im-sk im-sk-line" style="width:34%;"></div></td><td><div class="im-sk im-sk-line" style="width:46%;"></div></td><td><div class="im-sk im-sk-line" style="width:30%;"></div></td><td><div class="im-sk im-sk-pill"></div></td></tr>
+                            <tr class="im-sk-tr"><td><div class="im-sk im-sk-line" style="width:42%;"></div></td><td><div class="im-sk im-sk-line" style="width:52%;"></div></td><td><div class="im-sk im-sk-line" style="width:44%;"></div></td><td><div class="im-sk im-sk-line" style="width:40%;"></div></td><td><div class="im-sk im-sk-line" style="width:50%;"></div></td><td><div class="im-sk im-sk-line" style="width:34%;"></div></td><td><div class="im-sk im-sk-pill"></div></td></tr>
+                            <tr class="im-sk-tr"><td><div class="im-sk im-sk-line" style="width:36%;"></div></td><td><div class="im-sk im-sk-line" style="width:62%;"></div></td><td><div class="im-sk im-sk-line" style="width:40%;"></div></td><td><div class="im-sk im-sk-line" style="width:37%;"></div></td><td><div class="im-sk im-sk-line" style="width:55%;"></div></td><td><div class="im-sk im-sk-line" style="width:30%;"></div></td><td><div class="im-sk im-sk-pill"></div></td></tr>
+                            <tr class="im-sk-tr"><td><div class="im-sk im-sk-line" style="width:48%;"></div></td><td><div class="im-sk im-sk-line" style="width:48%;"></div></td><td><div class="im-sk im-sk-line" style="width:50%;"></div></td><td><div class="im-sk im-sk-line" style="width:33%;"></div></td><td><div class="im-sk im-sk-line" style="width:44%;"></div></td><td><div class="im-sk im-sk-line" style="width:36%;"></div></td><td><div class="im-sk im-sk-pill"></div></td></tr>
+                            <tr class="im-sk-tr"><td><div class="im-sk im-sk-line" style="width:40%;"></div></td><td><div class="im-sk im-sk-line" style="width:56%;"></div></td><td><div class="im-sk im-sk-line" style="width:46%;"></div></td><td><div class="im-sk im-sk-line" style="width:38%;"></div></td><td><div class="im-sk im-sk-line" style="width:50%;"></div></td><td><div class="im-sk im-sk-line" style="width:30%;"></div></td><td><div class="im-sk im-sk-pill"></div></td></tr>
+                        </tbody></table>
+                    </div>
                 </div>
             </div>
 
@@ -306,7 +317,7 @@ function renderTable(cuotas){
         </tr>
         <tr id="detail-${c.id}" class="cuota-detail-row" style="display:${isExp?'table-row':'none'};">
             <td colspan="11"><div class="cuota-detail-inner" id="detail-inner-${c.id}">
-                <div style="text-align:center;padding:20px;color:#94a3b8;"><i class="bi bi-hourglass-split"></i> Cargando detalle...</div>
+                ${(window.IMSkeleton&&IMSkeleton.card())||'<div class="im-sk im-sk-block"></div>'}
             </div></td>
         </tr>`;
     });

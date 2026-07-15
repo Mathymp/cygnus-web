@@ -165,9 +165,13 @@
 
         <!-- TABLE -->
         <div class="resc-body">
-            <div id="resc-loading" style="text-align:center;padding:40px;color:#94a3b8;">
-                <i class="bi bi-hourglass-split" style="font-size:2rem;"></i>
-                <p style="margin:8px 0 0;font-weight:600;">Cargando resciliaciones...</p>
+            <div id="resc-loading" class="im-sk-list" style="padding:8px 0;">
+                <div class="im-sk-list-row"><div class="im-sk im-sk-avatar"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:55%;height:13px;margin-bottom:8px;"></div><div class="im-sk im-sk-line" style="width:35%;height:10px;"></div></div><div class="im-sk im-sk-pill"></div></div>
+                <div class="im-sk-list-row"><div class="im-sk im-sk-avatar"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:60%;height:13px;margin-bottom:8px;"></div><div class="im-sk im-sk-line" style="width:40%;height:10px;"></div></div><div class="im-sk im-sk-pill"></div></div>
+                <div class="im-sk-list-row"><div class="im-sk im-sk-avatar"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:48%;height:13px;margin-bottom:8px;"></div><div class="im-sk im-sk-line" style="width:30%;height:10px;"></div></div><div class="im-sk im-sk-pill"></div></div>
+                <div class="im-sk-list-row"><div class="im-sk im-sk-avatar"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:65%;height:13px;margin-bottom:8px;"></div><div class="im-sk im-sk-line" style="width:38%;height:10px;"></div></div><div class="im-sk im-sk-pill"></div></div>
+                <div class="im-sk-list-row"><div class="im-sk im-sk-avatar"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:52%;height:13px;margin-bottom:8px;"></div><div class="im-sk im-sk-line" style="width:42%;height:10px;"></div></div><div class="im-sk im-sk-pill"></div></div>
+                <div class="im-sk-list-row"><div class="im-sk im-sk-avatar"></div><div style="flex:1;"><div class="im-sk im-sk-line" style="width:58%;height:13px;margin-bottom:8px;"></div><div class="im-sk im-sk-line" style="width:33%;height:10px;"></div></div><div class="im-sk im-sk-pill"></div></div>
             </div>
             <div id="resc-empty" style="display:none;text-align:center;padding:40px;color:#94a3b8;">
                 <i class="bi bi-file-earmark-x" style="font-size:3rem;color:#fca5a5;"></i>
@@ -370,7 +374,9 @@ async function previewRelDocById(id){
 // ─────────────────────────────────────────────
 async function loadResc(){
     $id('resc-loading').style.display='block';
-    $id('resc-loading').innerHTML='<i class="bi bi-hourglass-split" style="font-size:2rem;"></i><p style="margin:8px 0 0;font-weight:600;">Cargando resciliaciones...</p>';
+    $id('resc-loading').className='im-sk-list';
+    $id('resc-loading').style.padding='8px 0';
+    $id('resc-loading').innerHTML=(window.IMSkeleton&&IMSkeleton.listRows(6))||'<div class="im-sk im-sk-block"></div>';
     try{
         const res=await fetch('/api/im/resciliaciones',{credentials:'same-origin'});
         if(!res.ok){
@@ -382,6 +388,8 @@ async function loadResc(){
         try{ updateSummary(); }catch(e2){ console.error('[updateSummary]',e2); }
         applyFilters();
     }catch(e){
+        $id('resc-loading').className='';
+        $id('resc-loading').style.cssText='text-align:center;padding:40px;color:#94a3b8;';
         $id('resc-loading').innerHTML=`
             <i class="bi bi-exclamation-triangle" style="font-size:2.5rem;color:#ef4444;"></i>
             <p style="color:#ef4444;margin:10px 0 4px;font-weight:700;">No se pudieron cargar las resciliaciones</p>
@@ -591,7 +599,7 @@ async function toggleDetail(rowId, rStr){
     if(chev)chev.style.transform='rotate(90deg)';
     activeRow=rowId;
     const inner=$id('resc-inner-'+rowId);
-    inner.innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="bi bi-hourglass-split"></i> Cargando detalle...</div>';
+    inner.innerHTML=(window.IMSkeleton&&IMSkeleton.card())||'<div class="im-sk im-sk-block"></div>';
 
     // Parsear el id numérico del rowId
     const rescId=rowId.replace('resc-','');
