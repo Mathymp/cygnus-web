@@ -182,6 +182,11 @@ async function loadVentaForParcela(db, parcelaId) {
 }
 
 function hydrateVentaRow(venta, cliente) {
+    let fechaVenta = venta.fecha_venta || null;
+    if (fechaVenta) {
+        const m = String(fechaVenta).match(/(\d{4}-\d{2}-\d{2})/);
+        fechaVenta = m ? m[1] : null;
+    }
     return {
         id: venta.id,
         parcela_id: venta.parcela_id,
@@ -189,7 +194,7 @@ function hydrateVentaRow(venta, cliente) {
         firmo_promesa: venta.firmo_promesa,
         firmo_compraventa: venta.firmo_compraventa,
         forma_pago: venta.forma_pago,
-        fecha_venta: venta.fecha_venta,
+        fecha_venta: fechaVenta,
         precio_lista: venta.precio_lista,
         precio_acordado: venta.precio_acordado,
         notas: venta.notas,

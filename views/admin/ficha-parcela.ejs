@@ -561,6 +561,20 @@ function fmtPrecio(input){input.value=input.value.replace(/\D/g,'').replace(/\B(
 function openModal(id){$(`modal-${id}`).classList.add('show');}
 function closeModal(id){$(`modal-${id}`).classList.remove('show');}
 function cleanNum(v){return v&&String(v).trim()?parseFloat(String(v).replace(/\./g,'').replace(',','.')):null;}
+/** Fecha segura para UI (evita Invalid Date cuando PG manda ISO completo). */
+function ymd(val){
+    if(val==null||val==='')return '';
+    const m=String(val).match(/(\d{4}-\d{2}-\d{2})/);
+    return m?m[1]:'';
+}
+function fmtFechaCL(val,opts){
+    const day=ymd(val);
+    if(!day)return '—';
+    const d=new Date(day+'T12:00:00');
+    if(Number.isNaN(d.getTime()))return '—';
+    return d.toLocaleDateString('es-CL',opts||{day:'2-digit',month:'long',year:'numeric'});
+}
+function hoyYmd(){return new Date().toISOString().split('T')[0];}
 
 function showToast(msg,type='success',title=''){
     const t=$('im-toast'),i=$('im-toast-inner');
@@ -848,7 +862,7 @@ function renderParcela(data){
 
                 <!-- Venta -->
                 ${section('Datos de la Operación','#eff6ff',
-                    row('Fecha de Venta',venta.fecha_venta?new Date(venta.fecha_venta+'T12:00').toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'}):'—','bi-calendar-event')
+                    row('Fecha de Venta',fmtFechaCL(venta.fecha_venta),'bi-calendar-event')
                     +row('Modalidad de Pago',tipoPago==='contado'?'Al Contado':'Crédito / Cuotas','bi-wallet2')
                     +row('Precio Lista',venta.precio_lista?'$'+fmt(venta.precio_lista):'—','bi-tag')
                     +row('Precio Acordado',venta.precio_acordado?'$'+fmt(venta.precio_acordado):'—','bi-currency-dollar')
@@ -893,7 +907,7 @@ function renderParcela(data){
         $('cli-conyuge-rut').value=venta.rut_conyugue||'';
         $('cli-conyuge-email').value=venta.email_conyugue||'';
         $('cli-conyuge-tel').value=venta.telefono_conyugue||'';if(venta.telefono_conyugue){autoFmtTel($('cli-conyuge-tel'));}
-        $('venta-fecha').value=venta.fecha_venta?String(venta.fecha_venta).split('T')[0]:'';
+        $('venta-fecha').value=ymd(venta.fecha_venta)||hoyYmd();
         $('venta-promesa').checked=!!venta.firmo_promesa;
         $('venta-compraventa').checked=!!venta.firmo_compraventa;
         if($('venta-estado-op')){
@@ -985,7 +999,7 @@ function renderHistorialVentas(histVentas){
         </summary>
         <div style="padding:12px;display:flex;flex-direction:column;gap:10px;">
         ${histVentas.map(v=>{
-            const fechaVenta=v.fecha_venta?new Date(v.fecha_venta).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}):'—';
+            const fechaVenta=fmtFechaCL(v.fecha_venta,{day:'2-digit',month:'short',year:'numeric'});
             const precio=v.precio_acordado?'$'+fmt(v.precio_acordado):'—';
             const modPago=v.tipo_pago==='credito'?'🏦 Crédito':'💵 Contado';
             const rescInfo=v.resc_id?`
@@ -1361,7 +1375,7 @@ $('form-venta').addEventListener('submit',async(e)=>{
             estado_operacion:estadoOp,
             firmo_promesa:$('venta-promesa').checked,
             firmo_compraventa:$('venta-compraventa').checked,
-            fecha_venta:$('venta-fecha').value,
+            fecha_venta:($('venta-fecha').value||hoyYmd()),
             precio_lista:cleanNum($('venta-precio-lista').value),
             precio_acordado:cleanNum($('venta-precio-acordado').value),
             notas:$('venta-notas').value||null,
