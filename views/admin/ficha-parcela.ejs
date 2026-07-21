@@ -259,7 +259,8 @@
 
                 <div style="display:flex;align-items:center;gap:8px;margin-top:16px;margin-bottom:16px;font-size:.85rem;color:#64748b;flex-wrap:wrap;">
                     <a href="/admin/inmobiliaria" style="color:#2563eb;text-decoration:none;font-weight:600;"><i class="bi bi-arrow-left"></i> Gestión de Campos</a>
-                    <span>›</span><span id="bc-proyecto" style="color:#64748b;">Proyecto</span>
+                    <span>›</span>
+                    <a id="bc-proyecto" href="#" style="color:#2563eb;text-decoration:none;font-weight:700;">Proyecto</a>
                     <span>›</span><b id="bc-parcela" style="color:#0f172a;">Parcela</b>
                 </div>
 
@@ -887,7 +888,12 @@ function renderParcela(data){
     const bannerEl=$('banner-en-verde');
     if(bannerEl) bannerEl.style.display=(p.tipo_proyecto==='en_verde')?'block':'none';
 
-    $('bc-proyecto').textContent=p.proyecto_nombre||'Proyecto';
+    const bcProj=$('bc-proyecto');
+    if(bcProj){
+        bcProj.textContent=p.proyecto_nombre||'Proyecto';
+        bcProj.href=p.proyecto_id?`/admin/inmobiliaria/proyectos/${p.proyecto_id}`:'#';
+        bcProj.title='Ver todas las parcelas de este proyecto';
+    }
     $('bc-parcela').textContent=`Parcela N° ${p.numero_parcela}`;
     $('parcela-titulo').textContent=`Parcela N° ${p.numero_parcela} — ${p.proyecto_nombre}`;
 
@@ -898,9 +904,13 @@ function renderParcela(data){
         :(p.estado_venta||'disponible');
     const e=eMap[estadoVisual]||eMap.disponible;
     $('parcela-estado-badge').innerHTML=`<span class="im-status-badge ${e.cl}"><i class="bi ${e.ic}"></i> ${e.t}</span>`;
-    $('header-actions').innerHTML=((IS_ADMIN||PUEDE_CREAR)&&venta)
+    const btnVolverProyecto=p.proyecto_id
+        ?`<a class="im-btn im-btn-ghost" href="/admin/inmobiliaria/proyectos/${p.proyecto_id}" style="color:#2563eb;border-color:#bfdbfe;background:#eff6ff;">
+            <i class="bi bi-grid-3x3-gap"></i> ${escH(p.proyecto_nombre||'Ver parcelas')}</a>`:'';
+    const btnResciliar=((IS_ADMIN||PUEDE_CREAR)&&venta)
         ?`<button class="im-btn im-btn-warning" onclick="openResciliarModal()" style="background:#f59e0b;color:#fff;border-color:#f59e0b;">
             <i class="bi bi-file-earmark-x"></i> Resciliar Contrato</button>`:'';
+    $('header-actions').innerHTML=btnVolverProyecto+btnResciliar;
 
     const rows=[['N° Parcela',p.numero_parcela],['N° Rol Parcela',p.numero_rol_parcela||'—'],['Metraje',p.metraje?`${Number(p.metraje).toLocaleString('es-CL')} m²`:'—'],['Precio de Lista',p.precio_actual?`$${fmt(p.precio_actual)}`:'—'],['Proyecto',p.proyecto_nombre],['N° Rol 1',p.numero_rol_1||'—'],['N° Rol 2',p.numero_rol_2||'—'],['N° Matriz',p.numero_matriz||'—']];
     $('detalle-rows').innerHTML=rows.map(([k,v])=>`<div class="im-detail-row"><span class="im-detail-key">${k}</span><span class="im-detail-val">${v}</span></div>`).join('');
