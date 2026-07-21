@@ -38,6 +38,21 @@ function normalizeRut(rut) {
     return String(rut || '').replace(/[.\-\s]/g, '').toUpperCase();
 }
 
+/** Quita tildes/diacríticos para búsquedas (juan = juán = Juan). */
+function stripAccents(s) {
+    return String(s || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ñ/gi, (m) => (m === 'Ñ' ? 'N' : 'n'));
+}
+
+/** Expresión SQL que quita tildes de una columna (sin extensión unaccent). */
+function unaccentSqlExpr(col) {
+    return `TRANSLATE(COALESCE(${col},''),
+        'áàäâãÁÀÄÂÃéèëêÉÈËÊíìïîÍÌÏÎóòöôõÓÒÖÔÕúùüûÚÙÜÛñÑçÇ',
+        'aaaaaaaaaaeeeeeeeeiiiiiiiioooooooooouuuuuuuunncc')`;
+}
+
 /** Expresión SQL para normalizar columna RUT. */
 function rutSqlExpr(col = 'rut') {
     return `REPLACE(REPLACE(REPLACE(UPPER(COALESCE(${col},'')), '.', ''), '-', ''), ' ', '')`;
@@ -669,19 +684,22 @@ exports.getClientes = async (req, res) => {
         const params = [];
         if (q) {
             const qNorm = normalizeRut(q);
-            // Nombre: todas las palabras deben aparecer, en cualquier orden
-            const condsNombre = q.split(/\s+/).filter(Boolean).map((p) => {
+            const qPlain = stripAccents(q);
+            // Nombre: todas las palabras (sin tildes), en cualquier orden
+            const condsNombre = qPlain.split(/\s+/).filter(Boolean).map((p) => {
                 params.push(`%${p}%`);
-                return `c.nombre_completo ILIKE $${params.length}`;
+                return `${unaccentSqlExpr('c.nombre_completo')} ILIKE $${params.length}`;
             });
             params.push(`%${q}%`);
             const qIdx = params.length;
+            params.push(`%${qPlain}%`);
+            const qPlainIdx = params.length;
             params.push(qNorm);
             const rutIdx = params.length;
             query += ` AND (
                 (${condsNombre.join(' AND ')})
                 OR c.rut ILIKE $${qIdx}
-                OR COALESCE(c.email,'') ILIKE $${qIdx}
+                OR ${unaccentSqlExpr('c.email')} ILIKE $${qPlainIdx}
                 OR COALESCE(c.telefono,'') ILIKE $${qIdx}
                 OR ${rutSqlExpr('c.rut')} LIKE '%' || $${rutIdx} || '%'
             )`;
@@ -764,12 +782,12 @@ exports.buscarClientePorRut = async (req, res) => {
             if (r.rows.length > 0) return res.json(r.rows[0]);
         }
 
-        // Búsqueda flexible por nombre (todas las palabras, en cualquier orden) o RUT (con y sin formato)
-        const palabras = term.split(/\s+/).filter(Boolean);
+        // Búsqueda flexible por nombre (palabras, sin tildes, cualquier orden) o RUT
+        const palabras = stripAccents(term).split(/\s+/).filter(Boolean);
         const params = [];
         const condsNombre = palabras.map(p => {
             params.push(`%${p}%`);
-            return `c.nombre_completo ILIKE $${params.length}`;
+            return `${unaccentSqlExpr('c.nombre_completo')} ILIKE $${params.length}`;
         });
         params.push(`%${term}%`);
         const idxTerm = params.length;
