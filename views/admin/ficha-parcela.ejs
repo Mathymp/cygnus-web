@@ -1370,8 +1370,17 @@ function renderResultadosClientes(lista){
     </div>`;
 }
 
+function fmtRutSiParece(input){
+    // Si lo escrito parece un RUT (solo dígitos, K, puntos, guiones), lo formatea como x.xxx.xxx-x
+    const raw=input.value;
+    if(!raw||!/^[\d.\-kK\s]+$/.test(raw))return;
+    const limpio=raw.replace(/[^0-9kK]/g,'').toUpperCase().slice(0,9);
+    if(limpio.length<2){return;}
+    input.value=limpio.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'-'+limpio.slice(-1);
+}
 function buscarClienteLive(){
     clearTimeout(_buscarTimer);
+    fmtRutSiParece($('buscar-rut'));
     const q=$('buscar-rut').value.trim();
     if(q.length<2){$('cliente-encontrado').style.display='none';return;}
     _buscarTimer=setTimeout(()=>buscarCliente(true),350);
@@ -1474,8 +1483,16 @@ $('form-venta').addEventListener('submit',async(e)=>{
     try{
         const nombre=($('cli-nombre').value||'').trim();
         const rut=($('cli-rut').value||'').trim();
-        if(!nombre){showToast('Ingresa el nombre del comprador.','warning');return;}
-        if(!validarRut(rut)){showToast('RUT del comprador inválido (Módulo 11).','error','RUT inválido');return;}
+        const marcarError=(id,msg,titulo)=>{
+            const f=$(id);
+            if(f){f.style.borderColor='#ef4444';f.scrollIntoView({behavior:'smooth',block:'center'});f.focus({preventScroll:true});setTimeout(()=>{f.style.borderColor='';},4000);}
+            showToast(msg,'error',titulo||'Revisa los datos');
+        };
+        if(!nombre){marcarError('cli-nombre','Falta el nombre del comprador. Complétalo antes de guardar.','Falta un dato');return;}
+        if(!rut){marcarError('cli-rut','Falta el RUT del comprador. Complétalo antes de guardar.','Falta un dato');return;}
+        if(!validarRut(rut)){marcarError('cli-rut',`El RUT "${rut}" no es válido: el dígito verificador no corresponde. Verifica que esté bien escrito.`,'RUT inválido');return;}
+        const rutCony=($('cli-conyuge-rut').value||'').trim();
+        if(rutCony&&!validarRut(rutCony)){marcarError('cli-conyuge-rut',`El RUT del cónyuge "${rutCony}" no es válido: verifica el dígito verificador.`,'RUT inválido');return;}
 
         // Si precio acordado vacío, copiar precio de lista en el formulario
         if(!cleanNum($('venta-precio-acordado').value)&&cleanNum($('venta-precio-lista').value)){

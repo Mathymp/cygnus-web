@@ -669,12 +669,17 @@ exports.getClientes = async (req, res) => {
         const params = [];
         if (q) {
             const qNorm = normalizeRut(q);
+            // Nombre: todas las palabras deben aparecer, en cualquier orden
+            const condsNombre = q.split(/\s+/).filter(Boolean).map((p) => {
+                params.push(`%${p}%`);
+                return `c.nombre_completo ILIKE $${params.length}`;
+            });
             params.push(`%${q}%`);
             const qIdx = params.length;
             params.push(qNorm);
             const rutIdx = params.length;
             query += ` AND (
-                c.nombre_completo ILIKE $${qIdx}
+                (${condsNombre.join(' AND ')})
                 OR c.rut ILIKE $${qIdx}
                 OR COALESCE(c.email,'') ILIKE $${qIdx}
                 OR COALESCE(c.telefono,'') ILIKE $${qIdx}
@@ -759,14 +764,24 @@ exports.buscarClientePorRut = async (req, res) => {
             if (r.rows.length > 0) return res.json(r.rows[0]);
         }
 
-        // Búsqueda flexible por nombre o RUT (con y sin formato)
+        // Búsqueda flexible por nombre (todas las palabras, en cualquier orden) o RUT (con y sin formato)
+        const palabras = term.split(/\s+/).filter(Boolean);
+        const params = [];
+        const condsNombre = palabras.map(p => {
+            params.push(`%${p}%`);
+            return `c.nombre_completo ILIKE $${params.length}`;
+        });
+        params.push(`%${term}%`);
+        const idxTerm = params.length;
+        params.push(rutNorm);
+        const idxRut = params.length;
         const result = await pool.query(
             `SELECT c.*, ${comprasSub} FROM im_clientes c
-             WHERE c.nombre_completo ILIKE $1
-                OR c.rut ILIKE $1
-                OR ${rutSqlExpr('c.rut')} LIKE '%' || $2 || '%'
+             WHERE (${condsNombre.join(' AND ')})
+                OR c.rut ILIKE $${idxTerm}
+                OR ($${idxRut} <> '' AND ${rutSqlExpr('c.rut')} LIKE '%' || $${idxRut} || '%')
              ORDER BY c.nombre_completo ASC LIMIT 8`,
-            [`%${term}%`, rutNorm]
+            params
         );
         if (result.rows.length === 0) return res.json({ multiple: true, clientes: [] });
         if (result.rows.length === 1) return res.json(result.rows[0]);
