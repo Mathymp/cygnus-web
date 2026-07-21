@@ -601,8 +601,8 @@
                         <span style="padding:1px 5px;border-radius:999px;border:1px solid ${(p.firmo_promesa===true||p.firmo_promesa===1||p.firmo_promesa==='t')?'#bbf7d0':'#fecaca'};background:${(p.firmo_promesa===true||p.firmo_promesa===1||p.firmo_promesa==='t')?'#f0fdf4':'#fef2f2'};color:${(p.firmo_promesa===true||p.firmo_promesa===1||p.firmo_promesa==='t')?'#15803d':'#b91c1c'};">${(p.firmo_promesa===true||p.firmo_promesa===1||p.firmo_promesa==='t')?'✓':'✗'} P</span>
                         <span style="padding:1px 5px;border-radius:999px;border:1px solid ${(p.firmo_compraventa===true||p.firmo_compraventa===1||p.firmo_compraventa==='t')?'#bbf7d0':'#fecaca'};background:${(p.firmo_compraventa===true||p.firmo_compraventa===1||p.firmo_compraventa==='t')?'#f0fdf4':'#fef2f2'};color:${(p.firmo_compraventa===true||p.firmo_compraventa===1||p.firmo_compraventa==='t')?'#15803d':'#b91c1c'};">${(p.firmo_compraventa===true||p.firmo_compraventa===1||p.firmo_compraventa==='t')?'✓':'✗'} E</span>
                     </span>` : ''}
-                    ${p.cliente_nombre ? `<span style="font-size:0.63rem; color:#64748b; text-align:center; margin-top:2px;">${escapeHtml(p.cliente_nombre.split(' ')[0])}</span>` : ''}
-                    ${p.agente_nombre && (p.estado_venta==='reservado'||p.estado_venta==='vendido') ? `<span style="font-size:0.58rem; color:#94a3b8; text-align:center;">${escapeHtml(String(p.agente_nombre).split(' ').slice(0,2).join(' '))}</span>` : ''}
+                    ${p.cliente_nombre ? `<span style="font-size:0.63rem; color:#64748b; text-align:center; margin-top:2px;">${escapeHtml(p.cliente_nombre)}</span>` : ''}
+                    ${p.agente_nombre && (p.estado_venta==='reservado'||p.estado_venta==='vendido') ? `<span style="font-size:0.58rem; color:#94a3b8; text-align:center;">${escapeHtml(String(p.agente_nombre))}</span>` : ''}
                     ${p.estado_venta==='reservado' ? `<span style="font-size:0.55rem;font-weight:700;color:#b45309;margin-top:2px;">Falta cerrar</span>` : ''}`;
                 grid.appendChild(chip);
             });

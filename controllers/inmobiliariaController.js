@@ -352,15 +352,79 @@ exports.deleteProyecto = async (req, res) => {
     try {
         await client.query('BEGIN');
         const { id } = req.params;
-        const result = await client.query(`DELETE FROM im_proyectos WHERE id=$1 RETURNING nombre`, [id]);
-        if (result.rows.length === 0) return res.status(404).json({ message: 'Proyecto no encontrado.' });
+
+        const projRes = await client.query(`SELECT nombre FROM im_proyectos WHERE id=$1`, [id]);
+        if (projRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Proyecto no encontrado.' });
+        }
+        const nombreProyecto = projRes.rows[0].nombre;
+
+        // Cascada acotada al proyecto: sus parcelas, ventas, cuotas, resciliaciones y documentos.
+        // Los clientes y sus ventas en otros proyectos NO se tocan.
+        const parcelasRes = await client.query(`SELECT id FROM im_parcelas WHERE proyecto_id=$1`, [id]);
+        const parcelaIds = parcelasRes.rows.map(r => r.id);
+
+        let ventaIds = [];
+        if (parcelaIds.length) {
+            const ventasRes = await client.query(
+                `SELECT id FROM im_ventas_lotes WHERE parcela_id = ANY($1)`, [parcelaIds]
+            );
+            ventaIds = ventasRes.rows.map(r => r.id);
+        }
+
+        if (ventaIds.length) {
+            await client.query(
+                `DELETE FROM im_cuotas_devolucion WHERE resciliacion_id IN
+                    (SELECT id FROM im_resciliaciones WHERE venta_id = ANY($1))`, [ventaIds]
+            ).catch(() => {});
+            await client.query(`DELETE FROM im_resciliaciones WHERE venta_id = ANY($1)`, [ventaIds]).catch(() => {});
+            await client.query(`DELETE FROM im_cuotas WHERE venta_id = ANY($1)`, [ventaIds]);
+        }
+        if (parcelaIds.length) {
+            await client.query(
+                `DELETE FROM im_cuotas_devolucion WHERE resciliacion_id IN
+                    (SELECT id FROM im_resciliaciones WHERE parcela_id = ANY($1))`, [parcelaIds]
+            ).catch(() => {});
+            await client.query(`DELETE FROM im_resciliaciones WHERE parcela_id = ANY($1)`, [parcelaIds]).catch(() => {});
+        }
+
+        // Documentos vinculados a este proyecto, sus parcelas y sus ventas (docs de clientes se conservan)
+        await client.query(
+            `DELETE FROM im_documentos WHERE tipo_asociacion='proyecto' AND asociacion_id::text=$1::text`, [String(id)]
+        ).catch(() => {});
+        if (parcelaIds.length) {
+            await client.query(
+                `DELETE FROM im_documentos WHERE tipo_asociacion='parcela' AND asociacion_id::text = ANY($1::text[])`,
+                [parcelaIds.map(String)]
+            ).catch(() => {});
+        }
+        if (ventaIds.length) {
+            await client.query(
+                `DELETE FROM im_documentos WHERE tipo_asociacion='venta' AND asociacion_id::text = ANY($1::text[])`,
+                [ventaIds.map(String)]
+            ).catch(() => {});
+        }
+
+        if (ventaIds.length) {
+            await client.query(`DELETE FROM im_ventas_lotes WHERE id = ANY($1)`, [ventaIds]);
+        }
+        if (parcelaIds.length) {
+            await client.query(`DELETE FROM im_historial_precios WHERE parcela_id = ANY($1)`, [parcelaIds]).catch(() => {});
+            await client.query(`DELETE FROM im_parcelas WHERE id = ANY($1)`, [parcelaIds]);
+        }
+
+        await client.query(`DELETE FROM im_proyectos WHERE id=$1`, [id]);
+
         await auditLog(client, { tabla: 'im_proyectos', entidadId: id,
-            accion: 'ELIMINAR', descripcion: `Proyecto "${result.rows[0].nombre}" eliminado.`, req });
+            accion: 'ELIMINAR',
+            descripcion: `Proyecto "${nombreProyecto}" eliminado con ${parcelaIds.length} parcela(s) y ${ventaIds.length} venta(s)/reserva(s). Clientes conservados.`, req });
         await client.query('COMMIT');
         res.sendStatus(204);
     } catch (e) {
         await client.query('ROLLBACK');
-        if (e.code === '23503') return res.status(409).json({ message: 'No se puede eliminar: el proyecto tiene datos relacionados.' });
+        console.error('[deleteProyecto]', e.message);
+        if (e.code === '23503') return res.status(409).json({ message: `No se puede eliminar: quedan datos relacionados (${e.detail || e.message}).` });
         res.status(500).json({ error: e.message });
     } finally { client.release(); }
 };

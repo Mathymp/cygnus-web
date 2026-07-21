@@ -68,14 +68,16 @@
         .parc-meta{margin-top:10px;display:flex;flex-direction:column;gap:3px;}
         .parc-meta-row{font-size:.76rem;color:#64748b;display:flex;gap:6px;}
         .parc-meta-row strong{color:#334155;}
-        .parc-comprador{margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9;font-size:.75rem;color:#475569;font-weight:600;display:flex;align-items:center;gap:4px;}
+        .parc-comprador{margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9;font-size:.75rem;color:#475569;font-weight:600;display:flex;align-items:flex-start;gap:4px;overflow-wrap:anywhere;line-height:1.35;}
+        .parc-comprador i{flex-shrink:0;margin-top:1px;}
         .parc-docs{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:3px;align-items:flex-end;}
         .parc-doc{display:inline-flex;align-items:center;gap:3px;font-size:.62rem;font-weight:700;letter-spacing:.2px;padding:2px 6px;border-radius:999px;border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;line-height:1.2;}
         .parc-doc.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d;}
         .parc-doc.no{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
         .parc-doc i{font-size:.58rem;}
         .parc-hint{margin-top:7px;font-size:.68rem;font-weight:700;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:3px 7px;display:inline-flex;align-items:center;gap:4px;}
-        .parc-agente{margin-top:5px;font-size:.7rem;color:#64748b;display:flex;align-items:center;gap:4px;font-weight:500;}
+        .parc-agente{margin-top:5px;font-size:.7rem;color:#64748b;display:flex;align-items:flex-start;gap:4px;font-weight:500;overflow-wrap:anywhere;line-height:1.35;}
+        .parc-agente i{flex-shrink:0;margin-top:1px;}
         .parc-agente i{color:#94a3b8;font-size:.72rem;}
         .parc-docs-inline{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap;}
         .parc-docs-inline .parc-doc{position:static;}
@@ -489,7 +491,7 @@ function applyFilters(){
 }
 
 function toBool(v){return v===true||v===1||v==='1'||v==='t'||v==='true'||v==='TRUE';}
-function shortName(n){return escH(String(n||'').trim().split(/\s+/).slice(0,2).join(' '));}
+function shortName(n){return escH(String(n||'').trim());}
 function hasVentaActiva(p){
     return !!(p.venta_id||p.cliente_nombre||p.agente_nombre||p.firmo_promesa!=null||p.firmo_compraventa!=null)
         &&(p.estado_venta==='reservado'||p.estado_venta==='vendido');
