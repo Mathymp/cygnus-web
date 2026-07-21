@@ -68,19 +68,24 @@
         .parc-meta{margin-top:10px;display:flex;flex-direction:column;gap:3px;}
         .parc-meta-row{font-size:.76rem;color:#64748b;display:flex;gap:6px;}
         .parc-meta-row strong{color:#334155;}
-        .parc-comprador{margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9;font-size:.75rem;color:#475569;font-weight:600;display:flex;align-items:flex-start;gap:4px;overflow-wrap:anywhere;line-height:1.35;}
-        .parc-comprador i{flex-shrink:0;margin-top:1px;}
+        .parc-people{margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9;display:flex;flex-direction:column;gap:6px;}
+        .parc-comprador{font-size:.8rem;color:#0f172a;font-weight:700;display:flex;align-items:flex-start;gap:6px;overflow-wrap:anywhere;line-height:1.35;}
+        .parc-comprador i{flex-shrink:0;margin-top:1px;color:#16a34a;font-size:.9rem;}
+        .parc-comprador .parc-role{display:block;font-size:.62rem;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.3px;margin-bottom:1px;}
         .parc-docs{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:3px;align-items:flex-end;}
         .parc-doc{display:inline-flex;align-items:center;gap:3px;font-size:.62rem;font-weight:700;letter-spacing:.2px;padding:2px 6px;border-radius:999px;border:1px solid #e2e8f0;background:#f8fafc;color:#64748b;line-height:1.2;}
         .parc-doc.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d;}
         .parc-doc.no{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
         .parc-doc i{font-size:.58rem;}
-        .parc-hint{margin-top:7px;font-size:.68rem;font-weight:700;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:3px 7px;display:inline-flex;align-items:center;gap:4px;}
-        .parc-agente{margin-top:5px;font-size:.7rem;color:#64748b;display:flex;align-items:flex-start;gap:4px;font-weight:500;overflow-wrap:anywhere;line-height:1.35;}
-        .parc-agente i{flex-shrink:0;margin-top:1px;}
-        .parc-agente i{color:#94a3b8;font-size:.72rem;}
+        .parc-hint{margin-top:2px;font-size:.68rem;font-weight:700;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:3px 7px;display:inline-flex;align-items:center;gap:4px;}
+        .parc-agente{display:inline-flex;align-items:flex-start;gap:5px;max-width:100%;font-size:.68rem;font-weight:600;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:3px 9px 3px 7px;line-height:1.3;overflow-wrap:anywhere;}
+        .parc-agente i{flex-shrink:0;margin-top:1px;color:#2563eb;font-size:.72rem;}
         .parc-docs-inline{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap;}
         .parc-docs-inline .parc-doc{position:static;}
+        .parc-pill-cli{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:700;color:#166534;}
+        .parc-pill-cli i{color:#16a34a;}
+        .parc-pill-age{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:600;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:999px;padding:3px 9px;}
+        .parc-pill-age i{color:#2563eb;}
 
         /* --- LIST VIEW --- */
         .parc-table{width:100%;border-collapse:collapse;font-size:.84rem;}
@@ -519,7 +524,7 @@ function parcFooterExtra(p){
     const hint=p.estado_venta==='reservado'
         ?`<div class="parc-hint"><i class="bi bi-hourglass-split"></i> Falta cerrar venta</div>`:'';
     const agente=p.agente_nombre
-        ?`<div class="parc-agente"><i class="bi bi-briefcase"></i> ${shortName(p.agente_nombre)}</div>`:'';
+        ?`<span class="parc-agente" title="Ejecutivo de la venta"><i class="bi bi-briefcase-fill"></i><span>${shortName(p.agente_nombre)}</span></span>`:'';
     return hint+agente;
 }
 
@@ -531,6 +536,11 @@ function renderGrid(parcelas){
     const eMap={disponible:{cl:'disponible',ic:'bi-circle',t:'Disponible'},reservado:{cl:'reservado',ic:'bi-clock-history',t:'Reservado'},vendido:{cl:'vendido',ic:'bi-bag-check-fill',t:'Vendido'}};
     $('pp-content').innerHTML=`<div class="parc-grid">${parcelas.map(p=>{
         const e=eMap[p.estado_venta]||eMap.disponible;
+        const people=(p.cliente_nombre||(hasVentaActiva(p)&&p.agente_nombre)||p.estado_venta==='reservado')
+            ?`<div class="parc-people">
+                ${p.cliente_nombre?`<div class="parc-comprador" title="Cliente / comprador"><i class="bi bi-person-fill"></i><span><span class="parc-role">Cliente</span>${shortName(p.cliente_nombre)}</span></div>`:''}
+                ${parcFooterExtra(p)}
+            </div>`:'';
         return `<a class="parc-card ${e.cl}" href="/admin/inmobiliaria/parcela/${p.id}">
             ${parcDocsCorner(p)}
             <div class="parc-num">N° ${escH(String(p.numero_parcela))}</div>
@@ -540,8 +550,7 @@ function renderGrid(parcelas){
                 ${p.metraje?`<div class="parc-meta-row"><strong>${fmt(p.metraje)}</strong> m²</div>`:''}
                 ${p.ultimo_precio||p.precio_actual?`<div class="parc-meta-row"><strong>$${fmt(p.ultimo_precio||p.precio_actual)}</strong></div>`:''}
             </div>
-            ${p.cliente_nombre?`<div class="parc-comprador"><i class="bi bi-person-fill" style="color:#16a34a;"></i>${shortName(p.cliente_nombre)}</div>`:''}
-            ${parcFooterExtra(p)}
+            ${people}
         </a>`;
     }).join('')}</div>`;
 }
@@ -573,8 +582,8 @@ function renderList(parcelas){
                     <td>${parcDocsInline(p)||'<span style="color:#94a3b8;">—</span>'}</td>
                     <td>${p.metraje?fmt(p.metraje)+' m²':'<span style="color:#94a3b8;">—</span>'}</td>
                     <td>${(p.ultimo_precio||p.precio_actual)?'$'+fmt(p.ultimo_precio||p.precio_actual):'<span style="color:#94a3b8;">—</span>'}</td>
-                    <td>${p.cliente_nombre?`<span style="display:flex;align-items:center;gap:5px;"><i class="bi bi-person-fill" style="color:#16a34a;"></i>${shortName(p.cliente_nombre)}</span>`:'<span style="color:#94a3b8;">Disponible</span>'}</td>
-                    <td>${p.agente_nombre&&hasVentaActiva(p)?`<span style="font-size:.78rem;color:#64748b;"><i class="bi bi-briefcase" style="margin-right:3px;"></i>${shortName(p.agente_nombre)}</span>`:'<span style="color:#94a3b8;">—</span>'}</td>
+                    <td>${p.cliente_nombre?`<span class="parc-pill-cli"><i class="bi bi-person-fill"></i>${shortName(p.cliente_nombre)}</span>`:'<span style="color:#94a3b8;">Disponible</span>'}</td>
+                    <td>${p.agente_nombre&&hasVentaActiva(p)?`<span class="parc-pill-age"><i class="bi bi-briefcase-fill"></i>${shortName(p.agente_nombre)}</span>`:'<span style="color:#94a3b8;">—</span>'}</td>
                     <td><span class="im-btn im-btn-sm im-btn-ghost" style="font-size:.75rem;padding:4px 10px;"><i class="bi bi-arrow-right"></i> Abrir</span></td>
                 </tr>`;
             }).join('')}
